@@ -30,12 +30,14 @@ Se buscan en este orden, igual que WayOfWork:
 
 ## Comandos
 
-Todos aceptan `--project DIR` (por defecto, el directorio actual). **Ninguno escribe en Jira sin `--apply`.**
+Todos aceptan `--project DIR` (por defecto, el directorio actual). **Ninguno escribe en Jira sin `--apply`**, y el
+`--apply` lo corrés vos: en Claude Code un hook se lo bloquea al agente, que te pasa el comando listo. Cada escritura
+queda en `./.jira-kanban/jira-writes.jsonl` (hora, comando, issue y cambio).
 
 | Comando | Qué hace |
 |---|---|
 | `jk create --spec spec.json [--html vista.html]` | Vista previa de lo que crearía; con `--html`, la página navegable |
-| `jk create --spec spec.json --apply [--assign-open \| --no-assign-open]` | Crea en Jira (primero los padres) y escribe el kanban local |
+| `jk create --spec spec.json --jira-project KEY --apply [--assign-open \| --no-assign-open]` | Crea en Jira (primero los padres), pasa a Done lo terminado y escribe el kanban local. Si Jira rechaza un issue a mitad de camino, conserva lo creado y el mismo comando retoma sin duplicar |
 | `jk pull EPIC` | Trae la épica y sus hijos de Jira al kanban local |
 | `jk push EPIC [--apply] [--assign-open \| --no-assign-open]` | Manda a Jira los cambios locales: estado, título, descripción, subtareas nuevas |
 | `jk show EPIC` | Lista el kanban local como árbol |
@@ -109,7 +111,8 @@ la bandera.
 
 ## Convenciones
 
-`conventions.json` define el proyecto (`PLATE`), los tipos de issue, las áreas, las prioridades, `blocked_statuses` y si se
+`conventions.json` no define proyecto: `create` lo pide con `--jira-project` o con `"project"` en el
+`./.jira-kanban/conventions.json` del proyecto, y `pull`/`push` lo toman de la key de la épica. Define los tipos de issue, las áreas, las prioridades, `blocked_statuses` y si se
 asigna. Un proyecto puede pisar cualquier clave con su propio `./.jira-kanban/conventions.json`.
 
 ## Desarrollo
