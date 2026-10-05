@@ -81,6 +81,17 @@ class Jira:
     def update(self, key: str, fields: dict) -> None:
         self._send("PUT", f"/rest/api/2/issue/{key}", {"fields": fields})
 
+    def transition_done(self, key: str) -> Optional[str]:
+        """Apply the transition that lands in Jira's done category, preferring a plain "Done" over "Won't Do"."""
+        options = self._send("GET", f"/rest/api/3/issue/{key}/transitions").get("transitions", [])
+        done = [t for t in options if (((t.get("to") or {}).get("statusCategory") or {}).get("key")) == "done"]
+        plain = ("done", "hecho", "listo", "finalizada", "finalizado", "cerrada", "cerrado")
+        target = next((t for t in done if (t["to"].get("name") or "").lower() in plain), done[0] if done else None)
+        if target is None:
+            return None
+        self._send("POST", f"/rest/api/3/issue/{key}/transitions", {"transition": {"id": target["id"]}})
+        return target["to"].get("name")
+
     def transition(self, key: str, status: str) -> bool:
         options = self._send("GET", f"/rest/api/3/issue/{key}/transitions").get("transitions", [])
         wanted = status.strip().lower()

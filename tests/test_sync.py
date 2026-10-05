@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from helpers import CONVENTIONS, FakeJira, epic_with_children, make_project
+from helpers import CONVENTIONS, FailingJira, FakeJira, epic_with_children, make_project
 from jkan import kanban, sync
 from test_spec import GOOD
 
@@ -43,7 +43,7 @@ class CreateTest(unittest.TestCase):
             {"type": "task", "summary": "Abierta", "subtasks": [{"summary": "abierta", "done": False}]}]}
         jira = FakeJira()
         sync.create(jira, make_project(), done, CONVENTIONS, apply=True, assign_open=False)
-        assigned = {w[2]["summary"]: w[2].get("assignee") for w in jira.writes}
+        assigned = {w[2]["summary"]: w[2].get("assignee") for w in jira.writes if w[0] == "create"}
         self.assertEqual(assigned, {"e": None, "Hecha": {"accountId": "acc-me"}, "hereda": {"accountId": "acc-me"},
                                     "Abierta": None, "abierta": None})
 
@@ -51,11 +51,48 @@ class CreateTest(unittest.TestCase):
         done = {"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True}]}
         jira = FakeJira()
         sync.create(jira, make_project(), done, CONVENTIONS, apply=True)
-        self.assertTrue(all(w[2]["assignee"] == {"accountId": "acc-me"} for w in jira.writes))
+        self.assertTrue(all(w[2]["assignee"] == {"accountId": "acc-me"} for w in jira.writes if w[0] == "create"))
 
     def test_dry_run_marks_what_still_needs_a_decision(self):
         result = sync.create(FakeJira(), make_project(), GOOD, CONVENTIONS, apply=False)
         self.assertEqual({op["assignee"] for op in result["ops"]}, {"ask"})
+
+    def test_a_failure_halfway_keeps_what_was_created_and_a_rerun_resumes_without_duplicates(self):
+        project = make_project()
+        broken = FakeJira(fail_on_create=3)  # epic and story go through, the story's subtask is rejected
+        with self.assertRaises(sync.PartialCreate) as caught:
+            sync.create(broken, project, GOOD, CONVENTIONS, apply=True, assign_open=True)
+        self.assertIn("PLATE-600", str(caught.exception))
+        self.assertIn("PLATE-601", str(caught.exception))
+        self.assertTrue((kanban.epic_dir(project, "PLATE-600") / "epic.md").is_file())
+        # Rerun against the same Jira: only the two missing issues are created.
+        broken.fail_on_create = None
+        result = sync.create(broken, project, GOOD, CONVENTIONS, apply=True, assign_open=True)
+        summaries = [w[2]["summary"] for w in broken.writes if w[0] == "create"]
+        self.assertEqual(len(summaries), len(set(summaries)))
+        self.assertEqual(result["epic"], "PLATE-600")
+        self.assertEqual(len([w for w in broken.writes if w[0] == "create"]), 4)
+        self.assertEqual(list((project / ".jira-kanban").glob(".create-progress-*.json")), [])
+
+    def test_done_items_are_moved_to_done_children_before_parents(self):
+        done = {"epic": {"summary": "e"}, "items": [
+            {"type": "story", "summary": "Hecha", "user_story": "Como dev quiero x para y", "done": True,
+             "acceptance": ["AC1: Dado a Cuando b Entonces c"], "subtasks": [{"summary": "hereda"}]},
+            {"type": "task", "summary": "Abierta"}]}
+        jira = FakeJira()
+        result = sync.create(jira, make_project(), done, CONVENTIONS, apply=True, assign_open=False)
+        moved = [w[1] for w in jira.writes if w[0] == "transition"]
+        story, subtask = result["keys"]["items[0]"], result["keys"]["items[0].subtasks[0]"]
+        self.assertEqual(moved, [subtask, story])
+        self.assertEqual(jira.issues[story]["status"], "Done")
+
+    def test_create_needs_a_jira_project_and_never_assumes_one(self):
+        conv = {k: v for k, v in CONVENTIONS.items() if k != "project"}
+        jira = FakeJira()
+        with self.assertRaises(ValueError) as caught:
+            sync.create(jira, make_project(), GOOD, conv, apply=False)
+        self.assertIn("--jira-project", str(caught.exception))
+        self.assertEqual(jira.writes, [])
 
     def test_invalid_spec_is_refused_before_any_write(self):
         jira = FakeJira()
@@ -87,6 +124,18 @@ class PullTest(unittest.TestCase):
 
 
 class PushTest(unittest.TestCase):
+    def test_push_takes_the_project_from_the_epic_key_when_none_is_configured(self):
+        conv = {k: v for k, v in CONVENTIONS.items() if k != "project"}
+        jira, project = FakeJira(project="ACME"), make_project()
+        key = epic_with_children(jira)
+        sync.pull(jira, project, key, conv)
+        new = kanban.epic_dir(project, key) / "tasks" / "_new-docs" / "task.md"
+        new.parent.mkdir(parents=True)
+        new.write_text("# [FE] Docs\n", encoding="utf-8")
+        sync.push(jira, project, key, apply=True, conv=conv, assign_open=False)
+        [created] = [w for w in jira.writes if w[0] == "create"]
+        self.assertEqual(created[2]["project"], {"key": "ACME"})
+
     def setUp(self):
         self.jira, self.project = FakeJira(), make_project()
         self.key = epic_with_children(self.jira)

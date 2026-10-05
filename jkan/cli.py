@@ -41,6 +41,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
         if name == "create":
             p.add_argument("--spec", required=True, help="epic spec JSON (see SKILL.md)")
             p.add_argument("--html", help="also write a standalone, navigable HTML preview to this path")
+            p.add_argument("--jira-project", help="Jira project key for the new epic (no default: ask the user)")
         else:
             p.add_argument("epic", help="epic key, e.g. PLATE-504")
         if name in ("create", "push"):
@@ -53,6 +54,8 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
     args = parser.parse_args(argv)
     project = Path(args.project).resolve()
     conv = config.load_conventions(project)
+    if getattr(args, "jira_project", None):
+        conv["project"] = args.jira_project
     try:
         if args.cmd == "show":
             _show(project, args.epic)
@@ -71,7 +74,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
             epic_spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
             try:
                 result = sync.create(jira, project, epic_spec, conv, apply=args.apply, assign_open=args.assign_open)
-            except (ValueError, sync.NeedsDecision) as exc:
+            except (ValueError, sync.NeedsDecision, sync.PartialCreate) as exc:
                 sys.stderr.write(f"{exc}\n")
                 return FINDINGS
             for op in result["ops"]:

@@ -57,7 +57,7 @@ class PreviewCliTest(unittest.TestCase):
         path = project / "spec.json"
         path.write_text(json.dumps(GOOD), encoding="utf-8")
         out = project / "vista.html"
-        code, stdout, _ = run(["create", "--spec", str(path), "--project", str(project), "--html", str(out)], jira)
+        code, stdout, _ = run(["create", "--spec", str(path), "--project", str(project), "--jira-project", "PLATE", "--html", str(out)], jira)
         self.assertEqual(code, 0)
         self.assertTrue(out.is_file())
         self.assertIn(str(out), stdout)

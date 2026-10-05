@@ -18,20 +18,40 @@ def run(args, jira):
 
 
 class CliTest(unittest.TestCase):
+    def test_a_partial_create_reports_the_keys_and_how_to_resume(self):
+        jira, project = FakeJira(fail_on_create=2), make_project()
+        path = project / "spec.json"
+        path.write_text(json.dumps(GOOD), encoding="utf-8")
+        code, _, err = run(["create", "--spec", str(path), "--project", str(project), "--jira-project", "PLATE",
+                            "--apply", "--assign-open"], jira)
+        self.assertEqual(code, 1)
+        self.assertIn("Already created: PLATE-600", err)
+        self.assertIn("run the same command again", err)
+
+    def test_create_without_a_jira_project_asks_for_one(self):
+        jira, project = FakeJira(), make_project()
+        path = project / "spec.json"
+        path.write_text(json.dumps(GOOD), encoding="utf-8")
+        code, _, err = run(["create", "--spec", str(path), "--project", str(project)], jira)
+        self.assertEqual(code, 1)
+        self.assertIn("--jira-project", err)
+        self.assertEqual(jira.writes, [])
+
     def test_create_previews_by_default_and_applies_on_request(self):
         jira, project = FakeJira(), make_project()
         path = project / "spec.json"
         path.write_text(json.dumps(GOOD), encoding="utf-8")
-        code, out, _ = run(["create", "--spec", str(path), "--project", str(project)], jira)
+        code, out, _ = run(["create", "--spec", str(path), "--project", str(project), "--jira-project", "PLATE"], jira)
         self.assertEqual(code, 0)
         self.assertIn("[FE] Ver el tablero", out)
         self.assertIn("dry run", out)
         self.assertEqual(jira.writes, [])
-        code, _, err = run(["create", "--spec", str(path), "--project", str(project), "--apply"], jira)
+        code, _, err = run(["create", "--spec", str(path), "--project", str(project), "--jira-project", "PLATE",
+                            "--apply"], jira)
         self.assertEqual(code, 1)
         self.assertIn("--assign-open", err)
         self.assertEqual(jira.writes, [])
-        code, out, _ = run(["create", "--spec", str(path), "--project", str(project), "--apply", "--assign-open"], jira)
+        code, out, _ = run(["create", "--spec", str(path), "--project", str(project), "--jira-project", "PLATE", "--apply", "--assign-open"], jira)
         self.assertEqual(code, 0)
         self.assertIn("PLATE-600", out)
         self.assertTrue((project / ".jira-kanban/PLATE-600/epic.md").is_file())
@@ -40,7 +60,7 @@ class CliTest(unittest.TestCase):
         jira, project = FakeJira(), make_project()
         path = project / "spec.json"
         path.write_text(json.dumps({"epic": {}, "items": []}), encoding="utf-8")
-        code, _, err = run(["create", "--spec", str(path), "--project", str(project)], jira)
+        code, _, err = run(["create", "--spec", str(path), "--project", str(project), "--jira-project", "PLATE"], jira)
         self.assertEqual(code, 1)
         self.assertIn("epic: summary is required", err)
 

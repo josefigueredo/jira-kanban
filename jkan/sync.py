@@ -8,6 +8,7 @@ push:   local -> Jira, only fields changed locally since the baseline; a field t
 from __future__ import annotations
 
 import datetime as _dt
+import hashlib
 import json
 import re
 import shutil
@@ -23,6 +24,11 @@ DONE_STATUSES = ("done", "hecho", "listo", "finalizada", "finalizado", "cerrada"
 
 class NeedsDecision(Exception):
     """Some issues are not complete locally: the user decides whether they are assigned to them."""
+
+
+class PartialCreate(Exception):
+    """Jira rejected an issue halfway through create. What was created stays, the local kanban mirrors it and the
+    progress file lets the same command resume without creating anything twice."""
 
 
 def assignment(ops: List[dict], assign_open: Optional[bool], enabled: bool = True) -> int:
@@ -70,7 +76,15 @@ def _fields(conv: dict, me: Optional[str], kind: str, summary: str, description:
     return fields
 
 
+def _progress_path(project: Path, epic_spec: dict, conv: dict) -> Path:
+    digest = hashlib.sha256(json.dumps([conv["project"], epic_spec], sort_keys=True).encode()).hexdigest()[:16]
+    return project / ".jira-kanban" / f".create-progress-{digest}.json"
+
+
 def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign_open: Optional[bool] = None) -> dict:
+    if not conv.get("project"):
+        raise ValueError("no Jira project configured: ask the user which one, then pass --jira-project KEY or set "
+                         "\"project\" in ./.jira-kanban/conventions.json (the skill never assumes one)")
     findings = spec.validate(epic_spec, conv)
     if findings:
         raise ValueError("\n".join(findings))
@@ -81,13 +95,32 @@ def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign
     if asks:
         raise _decision_error(asks)
     me = jira.myself() if any(op["assignee"] != "none" for op in ops) else None
-    keys: Dict[str, str] = {}
+    # Each created key is saved before the next create: a failure halfway never loses them, and the same spec run
+    # again skips what already exists instead of duplicating it.
+    progress = _progress_path(project, epic_spec, conv)
+    keys: Dict[str, str] = json.loads(progress.read_text(encoding="utf-8"))["keys"] if progress.is_file() else {}
     for op in ops:
+        if op["ref"] in keys:
+            continue
         parent = keys[op["parent"]] if op["parent"] else None
         who = me if op["assignee"] != "none" else None
-        keys[op["ref"]] = jira.create(_fields(conv, who, op["kind"], op["summary"], op["description"], parent,
-                                              op.get("priority"), op.get("labels")))
+        try:
+            keys[op["ref"]] = jira.create(_fields(conv, who, op["kind"], op["summary"], op["description"], parent,
+                                                  op.get("priority"), op.get("labels")))
+        except Exception as exc:  # noqa: BLE001 — any rejection must keep what was already created
+            if "epic" in keys:
+                pull(jira, project, keys["epic"], conv)
+            created = ", ".join(keys[o["ref"]] for o in ops if o["ref"] in keys) or "none"
+            raise PartialCreate(f"Jira rejected \"{op['summary']}\" ({exc}). Already created: {created}. Fix the "
+                                f"cause and run the same command again: it resumes without duplicating.") from exc
+        progress.parent.mkdir(parents=True, exist_ok=True)
+        progress.write_text(json.dumps({"keys": keys}, indent=2), encoding="utf-8")
+    # A finished item goes to Done, children before parents, so a sub-task blocking condition never stops a story.
+    for op in reversed(ops):
+        if op.get("done") and op["kind"] != "epic":
+            jira.transition_done(keys[op["ref"]])
     pull(jira, project, keys["epic"], conv)
+    progress.unlink(missing_ok=True)
     return {"ops": ops, "epic": keys["epic"], "keys": keys}
 
 
@@ -146,7 +179,10 @@ def _local(epic: Path, epic_key: str) -> List[dict]:
 
 def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] = None,
          assign_open: Optional[bool] = None) -> dict:
-    conv = conv or config.load_conventions(project)
+    conv = dict(conv or config.load_conventions(project))
+    if not conv.get("project"):
+        # New issues go to the epic's project; the key says which, so nothing is configured or assumed.
+        conv["project"] = epic_key.split("-")[0]
     epic = kanban.epic_dir(project, epic_key)
     baseline = json.loads((epic / ".sync.json").read_text(encoding="utf-8"))
     changes, conflicts, new = [], [], []

@@ -26,11 +26,16 @@ def make_project() -> Path:
     return Path(tempfile.mkdtemp(prefix="jk-test-"))
 
 
+class FailingJira(Exception):
+    pass
+
+
 class FakeJira:
     """In-memory Jira: issues by key, a sequence for new keys, and a log of every write."""
 
-    def __init__(self, project: str = "PLATE", start: int = 600):
+    def __init__(self, project: str = "PLATE", start: int = 600, fail_on_create: Optional[int] = None):
         self.project = project
+        self.fail_on_create = fail_on_create  # the Nth create (1-based) raises, like a rejected issue
         self.seq = start
         self.issues: Dict[str, dict] = {}
         self.writes: List[tuple] = []
@@ -42,6 +47,9 @@ class FakeJira:
         return "acc-me"
 
     def create(self, fields: dict) -> str:
+        creates = sum(1 for w in self.writes if w[0] == "create") + 1
+        if self.fail_on_create is not None and creates == self.fail_on_create:
+            raise FailingJira(f"HTTP 400 on create #{creates}")
         key = f"{self.project}-{self.seq}"
         self.seq += 1
         parent = (fields.get("parent") or {}).get("key")
@@ -64,6 +72,12 @@ class FakeJira:
             if name in fields:
                 self.issues[key][name] = fields[name]
         self.writes.append(("update", key, fields))
+
+    def transition_done(self, key: str) -> Optional[str]:
+        self.issues[key]["status"] = "Done"
+        self.issues[key]["category"] = "done"
+        self.writes.append(("transition", key, "Done"))
+        return "Done"
 
     def transition(self, key: str, status: str) -> bool:
         self.issues[key]["status"] = status
