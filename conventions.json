@@ -1,0 +1,13 @@
+{
+  "project": "PLATE",
+  "issue_types": {"epic": "Epic", "story": "Story (migrated)", "task": "Tarea", "subtask": "Subtarea"},
+  "areas": ["FE", "BE", "BO", "QA", "DEVOPS", "INFRA", "BFF", "AI"],
+  "priorities": ["Highest", "High", "Medium", "Low", "Lowest"],
+  "default_priority": "Medium",
+  "assign_to_me": true,
+  "notes": [
+    "The area goes as a [AREA] title prefix; components are not used (PLATE is shared and classified as api/mcp/mfe).",
+    "PLATE has no story points field on its edit screen: estimates are not sent.",
+    "Jira levels: Epic (1) > Story (migrated) | Tarea | Error (0, siblings) > Subtarea (-1)."
+  ]
+}
