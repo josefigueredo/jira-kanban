@@ -33,8 +33,10 @@ class FailingJira(Exception):
 class FakeJira:
     """In-memory Jira: issues by key, a sequence for new keys, and a log of every write."""
 
-    def __init__(self, project: str = "PLATE", start: int = 600, fail_on_create: Optional[int] = None):
+    def __init__(self, project: str = "PLATE", start: int = 600, fail_on_create: Optional[int] = None,
+                 refuse_moves: Optional[Dict[str, str]] = None):
         self.project = project
+        self.refuse_moves = refuse_moves or {}  # key -> "raise" (HTTP error) or "none" (no transition to that category)
         self.fail_on_create = fail_on_create  # the Nth create (1-based) raises, like a rejected issue
         self.seq = start
         self.issues: Dict[str, dict] = {}
@@ -73,13 +75,23 @@ class FakeJira:
                 self.issues[key][name] = fields[name]
         self.writes.append(("update", key, fields))
 
+    def _refused(self, key: str) -> bool:
+        how = self.refuse_moves.get(key)
+        if how == "raise":
+            raise FailingJira(f"HTTP 400 on transition of {key}")
+        return how == "none"
+
     def transition_done(self, key: str) -> Optional[str]:
+        if self._refused(key):
+            return None
         self.issues[key]["status"] = "Done"
         self.issues[key]["category"] = "done"
         self.writes.append(("transition", key, "Done"))
         return "Done"
 
     def transition_start(self, key: str, avoid: List[str]) -> Optional[str]:
+        if self._refused(key):
+            return None
         self.issues[key]["status"] = "PROCESANDO"
         self.issues[key]["category"] = "in_progress"
         self.writes.append(("transition", key, "PROCESANDO"))

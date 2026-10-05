@@ -118,16 +118,24 @@ def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign
                                 f"cause and run the same command again: it resumes without duplicating.") from exc
         progress.parent.mkdir(parents=True, exist_ok=True)
         progress.write_text(json.dumps({"keys": keys}, indent=2), encoding="utf-8")
-    # A finished item goes to Done, children before parents, so a sub-task blocking condition never stops a story.
-    for op in reversed(ops):
-        if op.get("done") and op["kind"] != "epic":
-            jira.transition_done(keys[op["ref"]])
-    for op in ops:  # a started item is already being worked on: it begins in progress, not in the backlog
-        if op.get("started"):
-            jira.transition_start(keys[op["ref"]], conv.get("blocked_statuses") or [])
+    # Every issue exists from here on, so a rejected move never aborts: it is recorded, the rest still move, and the
+    # kanban is written. A finished item goes to Done, children before parents, so a sub-task blocking condition never
+    # stops a story; a started item is already being worked on, so it begins in progress, not in the backlog.
+    moves = [(op, "Done", jira.transition_done) for op in reversed(ops) if op.get("done") and op["kind"] != "epic"]
+    blocked = conv.get("blocked_statuses") or []
+    moves += [(op, "in progress", lambda key: jira.transition_start(key, blocked)) for op in ops if op.get("started")]
+    errors = []
+    for op, target, move in moves:
+        key = keys[op["ref"]]
+        try:
+            reason = None if move(key) else "no transition into that category"
+        except Exception as exc:  # noqa: BLE001 — one rejected move must not hide the others
+            reason = str(exc) or type(exc).__name__
+        if reason:
+            errors.append({"key": key, "to": target, "reason": reason})
     pull(jira, project, keys["epic"], conv)
     progress.unlink(missing_ok=True)
-    return {"ops": ops, "epic": keys["epic"], "keys": keys}
+    return {"ops": ops, "epic": keys["epic"], "keys": keys, "errors": errors}
 
 
 def _record(issue: dict, kind: str, url: str, conv: dict) -> dict:

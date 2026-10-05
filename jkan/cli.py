@@ -89,6 +89,13 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
                 print(f"dry run: nothing created; --apply creates {len(result['ops'])} issues in {conv['project']}")
             else:
                 print(f"created {result['epic']}; local kanban in .jira-kanban/{result['epic']}/")
+            errors = result.get("errors") or []
+            for error in errors:
+                sys.stderr.write(f"{error['key']}: not moved to {error['to']} ({error['reason']})\n")
+            if errors:
+                sys.stderr.write(f"Every issue was created; do not run create again. Set the status in the issue's .md and "
+                                 f"run jk push {result['epic']} (dry run), then with --apply.\n")
+                return FINDINGS
             return OK
         if args.cmd == "pull":
             result = sync.pull(jira, project, args.epic, conv)
