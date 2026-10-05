@@ -34,7 +34,8 @@ python3 ~/.agents/skills/jira-kanban/jk.py <create|pull|push|show|board> ... --p
      points: the project does not use them.
    - `"done": true` on an item the user already finished here (implemented, verified, merged); its subtasks inherit
      it unless they say otherwise. Complete issues are assigned to the user without asking and moved to Done after
-     creation (children before parents).
+     creation (children before parents). `"started": true` on one the user is working on now: assigned without asking
+     and moved to an in-progress status; its subtasks stay to do.
 5. **Preview:** `jk create --spec <file> --jira-project KEY --html <scratchpad>/vista.html` (dry run). Show the tree, open the
    HTML for the user (`open <path>`): a standalone, Jira-like view to navigate epic → items → subtasks. If any issue
    shows "a decidir", ask the user whether to assign the incomplete ones to them. Wait for an explicit yes.

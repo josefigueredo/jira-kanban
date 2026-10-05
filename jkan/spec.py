@@ -36,12 +36,22 @@ def validate(spec: dict, conv: dict) -> List[str]:
             findings.append(f"{ref}: priority {priority!r} is not one of {', '.join(priorities)}")
         if "done" in item and not isinstance(item["done"], bool):
             findings.append(f"{ref}: done must be true or false")
+        findings += _started_findings(ref, item)
         for j, sub in enumerate(item.get("subtasks") or []):
             if not (sub.get("summary") or "").strip():
                 findings.append(f"{ref}.subtasks[{j}]: summary is required")
             if "done" in sub and not isinstance(sub["done"], bool):
                 findings.append(f"{ref}.subtasks[{j}]: done must be true or false")
+            findings += _started_findings(f"{ref}.subtasks[{j}]", sub)
     return findings
+
+
+def _started_findings(ref: str, entry: dict) -> List[str]:
+    if "started" not in entry:
+        return []
+    if not isinstance(entry["started"], bool):
+        return [f"{ref}: started must be true or false"]
+    return [f"{ref}: started and done exclude each other"] if entry["started"] and entry.get("done") else []
 
 
 def title(area: str, summary: str) -> str:
@@ -75,11 +85,13 @@ def plan(spec: dict, conv: dict) -> List[dict]:
         item_done = bool(item.get("done"))
         ops.append({"ref": ref, "kind": item["type"], "parent": "epic", "summary": title(item.get("area"), item["summary"]),
                     "description": _description(item), "priority": item.get("priority") or default,
-                    "labels": list(item.get("labels") or []), "done": item_done})
+                    "labels": list(item.get("labels") or []), "done": item_done,
+                    "started": bool(item.get("started"))})
         for j, sub in enumerate(item.get("subtasks") or []):
             ops.append({"ref": f"{ref}.subtasks[{j}]", "kind": "subtask", "parent": ref,
                         "summary": title(sub.get("area"), sub["summary"]), "description": _description(sub),
                         "priority": sub.get("priority") or item.get("priority") or default,
-                        "labels": list(sub.get("labels") or []), "done": bool(sub.get("done", item_done))})
+                        "labels": list(sub.get("labels") or []), "done": bool(sub.get("done", item_done)),
+                        "started": bool(sub.get("started"))})  # a started parent does not start its subtasks
     ops[0]["done"] = all(op["done"] for op in ops[1:])  # the epic is complete only when everything under it is
     return ops

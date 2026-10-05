@@ -79,6 +79,12 @@ class FakeJira:
         self.writes.append(("transition", key, "Done"))
         return "Done"
 
+    def transition_start(self, key: str, avoid: List[str]) -> Optional[str]:
+        self.issues[key]["status"] = "PROCESANDO"
+        self.issues[key]["category"] = "in_progress"
+        self.writes.append(("transition", key, "PROCESANDO"))
+        return "PROCESANDO"
+
     def transition(self, key: str, status: str) -> bool:
         self.issues[key]["status"] = status
         self.issues[key]["category"] = STATUS_CATEGORY.get(status, "in_progress")

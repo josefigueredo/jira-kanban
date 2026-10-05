@@ -81,7 +81,7 @@ function show(){var id=location.hash.slice(1);if(ids.indexOf(id)<0)id=ids[0];
 window.scrollTo(0,0);}window.addEventListener('hashchange',show);show();})();
 """
 
-ASSIGNEE = {"me-done": ("Vos · completa", ""), "me": ("Vos", ""), "none": ("Sin asignar", " off"),
+ASSIGNEE = {"me-done": ("Vos · completa", ""), "me-started": ("Vos · en curso", ""), "me": ("Vos", ""), "none": ("Sin asignar", " off"),
             "ask": ("A decidir", " off")}
 
 e = html.escape
@@ -105,7 +105,12 @@ def _desc(text: str) -> str:
 def render(ops: List[dict], conv: dict) -> str:
     types: Dict[str, str] = conv["issue_types"]
     project = conv["project"]
-    status = conv.get("initial_status", "Backlog")
+    initial = conv.get("initial_status", "Backlog")
+
+    def status_of(op: dict) -> str:  # where the issue ends after this pass, not where Jira first puts it
+        if op.get("done") and op["kind"] != "epic":
+            return "Done"
+        return "En progreso" if op.get("started") else initial
     key = {op["ref"]: f"NUEVO-{i}" for i, op in enumerate(ops, 1)}
     by_ref = {op["ref"]: op for op in ops}
     children: Dict[str, List[dict]] = {}
@@ -134,7 +139,7 @@ def render(ops: List[dict], conv: dict) -> str:
         title = "Issues secundarios" if op["kind"] == "epic" else "Subtareas"
         rows = "".join(f'<tr><td>{ICON[k["kind"]]}</td><td class="key"><a href="#{key[k["ref"]]}">{key[k["ref"]]}</a></td>'
                        f'<td>{e(k["summary"])}</td><td class="pri">{PRIORITY.get(k.get("priority") or "", "")}</td>'
-                       f'<td class="st"><span class="lz">{e(status)}</span></td></tr>' for k in kids)
+                       f'<td class="st"><span class="lz">{e(status_of(k))}</span></td></tr>' for k in kids)
         table = f"<h3>{title}</h3><table>{rows}</table>" if kids else (
             f'<h3>{title}</h3><p class="muted">Ninguno.</p>' if op["kind"] != "subtask" else "")
         parent = by_ref.get(op["parent"]) if op["parent"] else None
@@ -153,7 +158,7 @@ def render(ops: List[dict], conv: dict) -> str:
       {table}
     </div>
     <div>
-      <div class="status">{e(status)} <span class="muted">▾</span></div>
+      <div class="status">{e(status_of(op))} <span class="muted">▾</span></div>
       <div class="panel"><h4>Detalles</h4>
         <div class="row"><span class="lbl">Tipo</span><span>{ICON[op['kind']]} {e(types[op['kind']])}</span></div>
         <div class="row"><span class="lbl">Responsable</span><span class="who"><span class="av{av_cls}"><svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="5.5" r="3" fill="#fff"/><path d="M2.5 14c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5z" fill="#fff"/></svg></span> {who}</span></div>

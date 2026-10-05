@@ -99,6 +99,19 @@ class Jira:
         self._journal({"action": "transition", "key": key, "to": target["to"].get("name")})
         return target["to"].get("name")
 
+    def transition_start(self, key: str, avoid: List[str]) -> Optional[str]:
+        """Apply a transition into Jira's in-progress category, skipping blocked and review statuses when it can."""
+        options = self._send("GET", f"/rest/api/3/issue/{key}/transitions").get("transitions", [])
+        going = [t for t in options
+                 if (((t.get("to") or {}).get("statusCategory") or {}).get("key")) == "indeterminate"]
+        skip = {name.lower() for name in avoid} | {"review", "revisión", "en revisión", "code review"}
+        target = next((t for t in going if (t["to"].get("name") or "").lower() not in skip), going[0] if going else None)
+        if target is None:
+            return None
+        self._send("POST", f"/rest/api/3/issue/{key}/transitions", {"transition": {"id": target["id"]}})
+        self._journal({"action": "transition", "key": key, "to": target["to"].get("name")})
+        return target["to"].get("name")
+
     def transition(self, key: str, status: str) -> bool:
         options = self._send("GET", f"/rest/api/3/issue/{key}/transitions").get("transitions", [])
         wanted = status.strip().lower()

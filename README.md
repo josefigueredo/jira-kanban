@@ -67,10 +67,13 @@ El agente lo arma desde la conversación. Un ejemplo con una historia, una tarea
   de la épica como hermanas, igual que en Jira; las subtareas cuelgan de cualquiera. No hay un cuarto nivel.
 - **Área:** se convierte en el prefijo del título, `[FE] Página de login`. No se usan componentes, labels ni story points.
 - **`done`:** el trabajo ya está terminado (hecho, verificado, mergeado). Ver la asignación, abajo.
+- **`started`:** lo estás haciendo ahora. Se crea y pasa a un estado de la categoría *En progreso* (evita los
+  bloqueados y los de revisión); sus subtareas no lo heredan. No puede ir junto con `done`.
 
 ## Asignación
 
-- Lo que está **completo** (`"done": true`) se te asigna sin preguntar: lo hiciste vos. Las subtareas heredan el `done` de
+- Lo que está **completo** (`"done": true`) o **en curso** (`"started": true`) se te asigna sin preguntar: lo hiciste
+  o lo estás haciendo vos. Las subtareas heredan el `done` de
   su padre salvo que digan otra cosa, y la épica está completa sólo si todo lo que cuelga de ella lo está.
 - Lo que **no** está completo necesita tu respuesta: `--assign-open` (asignármelas) o `--no-assign-open` (sin asignar).
   Sin ella, `--apply` se niega antes de llamar a Jira. La skill te lo pregunta.

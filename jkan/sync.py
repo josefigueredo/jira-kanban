@@ -32,13 +32,16 @@ class PartialCreate(Exception):
 
 
 def assignment(ops: List[dict], assign_open: Optional[bool], enabled: bool = True) -> int:
-    """Sets op["assignee"]: me-done (complete locally, assigned without asking), me, none, or ask. Returns asks."""
+    """Sets op["assignee"]: me-done (complete locally) or me-started (in progress), both assigned without asking;
+    otherwise me, none, or ask. Returns asks."""
     asks = 0
     for op in ops:
         if not enabled:
             op["assignee"] = "none"
         elif op.get("done"):
             op["assignee"] = "me-done"
+        elif op.get("started"):
+            op["assignee"] = "me-started"
         elif assign_open is None:
             op["assignee"] = "ask"
             asks += 1
@@ -119,6 +122,9 @@ def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign
     for op in reversed(ops):
         if op.get("done") and op["kind"] != "epic":
             jira.transition_done(keys[op["ref"]])
+    for op in ops:  # a started item is already being worked on: it begins in progress, not in the backlog
+        if op.get("started"):
+            jira.transition_start(keys[op["ref"]], conv.get("blocked_statuses") or [])
     pull(jira, project, keys["epic"], conv)
     progress.unlink(missing_ok=True)
     return {"ops": ops, "epic": keys["epic"], "keys": keys}

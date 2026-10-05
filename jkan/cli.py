@@ -80,7 +80,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
             for op in result["ops"]:
                 indent = {"epic": "", "story": "  ", "task": "  ", "subtask": "    "}[op["kind"]]
                 key = result.get("keys", {}).get(op["ref"], "")
-                who = {"me-done": "vos · completa", "me": "vos", "none": "sin asignar", "ask": "¿asignar? a decidir"}[op["assignee"]]
+                who = {"me-done": "vos · completa", "me-started": "vos · en curso", "me": "vos", "none": "sin asignar", "ask": "¿asignar? a decidir"}[op["assignee"]]
                 print(f"{indent}{key + ' ' if key else ''}[{conv['issue_types'][op['kind']]}] {op['summary']}  ({who})")
             if args.html:
                 Path(args.html).write_text(preview.render(result["ops"], conv), encoding="utf-8")
