@@ -8,6 +8,7 @@ import urllib.request
 from typing import Callable, List, Optional
 
 ISSUE_FIELDS = "summary,description,issuetype,status,parent"
+CATEGORY = {"new": "todo", "indeterminate": "in_progress", "done": "done"}  # Jira's fixed status categories
 
 
 class JiraError(RuntimeError):
@@ -20,6 +21,8 @@ class Jira:
         self._auth = base64.b64encode(f"{email}:{token}".encode()).decode()
         self._open = opener or urllib.request.urlopen
         self._timeout = timeout
+        self._flag_id: Optional[str] = None
+        self._flag_known = False
 
     def _send(self, method: str, path: str, body: Optional[dict] = None) -> dict:
         data = json.dumps(body).encode() if body is not None else None
@@ -41,12 +44,25 @@ class Jira:
     def create(self, fields: dict) -> str:
         return self._send("POST", "/rest/api/2/issue", {"fields": fields})["key"]
 
+    def _flag_field(self) -> Optional[str]:
+        """The id of the "Flagged" (impediment) custom field, looked up once by name; None if the site has none."""
+        if not self._flag_known:
+            fields = self._send("GET", "/rest/api/3/field")
+            self._flag_id = next((f["id"] for f in fields if (f.get("name") or "").lower() == "flagged"), None)
+            self._flag_known = True
+        return self._flag_id
+
     def get(self, key: str) -> dict:
-        issue = self._send("GET", f"/rest/api/2/issue/{key}?fields={ISSUE_FIELDS}")
+        flag = self._flag_field()
+        wanted = ISSUE_FIELDS + (f",{flag}" if flag else "")
+        issue = self._send("GET", f"/rest/api/2/issue/{key}?fields={wanted}")
         f = issue["fields"]
+        status = f.get("status") or {}
         return {"key": issue["key"], "summary": f.get("summary") or "", "description": f.get("description") or "",
-                "issuetype": (f.get("issuetype") or {}).get("name", ""), "status": (f.get("status") or {}).get("name", ""),
-                "parent": (f.get("parent") or {}).get("key")}
+                "issuetype": (f.get("issuetype") or {}).get("name", ""), "status": status.get("name", ""),
+                "parent": (f.get("parent") or {}).get("key"),
+                "category": CATEGORY.get((status.get("statusCategory") or {}).get("key", ""), ""),
+                "flagged": bool(f.get(flag)) if flag else False}
 
     def children(self, key: str) -> List[dict]:
         keys: List[str] = []

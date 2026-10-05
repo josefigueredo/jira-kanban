@@ -1,4 +1,4 @@
-"""jk: create | pull | push | show. Every Jira write is a dry run unless --apply is passed."""
+"""jk: create | pull | push | show | board. Every Jira write is a dry run unless --apply is passed."""
 from __future__ import annotations
 
 import argparse
@@ -35,7 +35,7 @@ def _show(project: Path, key: str) -> None:
 def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
     parser = argparse.ArgumentParser(prog="jk", description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
-    for name in ("create", "pull", "push", "show"):
+    for name in ("create", "pull", "push", "show", "board"):
         p = sub.add_parser(name)
         p.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
         if name == "create":
@@ -56,6 +56,15 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
     try:
         if args.cmd == "show":
             _show(project, args.epic)
+            return OK
+        if args.cmd == "board":
+            result = sync.board(project, args.epic, conv)
+            labels = {"blocked": "Bloqueado", "todo": "Por hacer", "in_progress": "En progreso", "done": "Hecho"}
+            print(f"{result['epic']}: {result['total']} issues")
+            for group in result["groups"]:
+                detail = ", ".join(f"{status} {n}" for status, n in sorted(group["statuses"].items()))
+                pct = f" · {result['done_pct']}%" if group["name"] == "done" else ""
+                print(f"  {labels[group['name']]} {group['count']}{pct}" + (f"  ({detail})" if detail else ""))
             return OK
         jira = client(project)
         if args.cmd == "create":

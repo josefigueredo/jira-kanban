@@ -91,8 +91,11 @@ def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign
     return {"ops": ops, "epic": keys["epic"], "keys": keys}
 
 
-def _record(issue: dict, kind: str, url: str) -> dict:
+def _record(issue: dict, kind: str, url: str, conv: dict) -> dict:
+    blocked_names = {name.lower() for name in conv.get("blocked_statuses") or []}
+    blocked = bool(issue.get("flagged")) or issue["status"].lower() in blocked_names
     return {"key": issue["key"], "kind": kind, "issuetype": issue["issuetype"], "status": issue["status"],
+            "category": issue.get("category") or "", "blocked": "true" if blocked else "false",
             "parent": issue.get("parent") or "", "summary": issue["summary"],
             "description": (issue.get("description") or "").strip(), "url": url}
 
@@ -103,14 +106,14 @@ def pull(jira, project: Path, epic_key: str, conv: Optional[dict] = None) -> dic
     synced = _now()
     written: Dict[Path, dict] = {}
     root = jira.get(epic_key)
-    written[epic / "epic.md"] = _record(root, "epic", jira.browse_url(epic_key))
+    written[epic / "epic.md"] = _record(root, "epic", jira.browse_url(epic_key), conv)
     for item in jira.children(epic_key):
         kind = _kind_of(item["issuetype"], conv)
         path = kanban.item_file(epic, kind, item["key"])
-        written[path] = _record(jira.get(item["key"]), kind, jira.browse_url(item["key"]))
+        written[path] = _record(jira.get(item["key"]), kind, jira.browse_url(item["key"]), conv)
         for sub in jira.children(item["key"]):
             written[kanban.subtask_file(path.parent, sub["key"])] = _record(jira.get(sub["key"]), "subtask",
-                                                                             jira.browse_url(sub["key"]))
+                                                                             jira.browse_url(sub["key"]), conv)
     keep = {path.parent for path in written}
     if epic.is_dir():  # an issue that left the epic leaves the kanban too; _new-* folders are never touched
         for folder in sorted(epic.rglob("*"), key=lambda p: len(p.parts), reverse=True):
@@ -155,7 +158,7 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
                 continue
             new.append({"path": entry["path"], "kind": entry["kind"], "parent": entry["parent"],
                         "summary": entry["summary"], "description": entry["description"],
-                        "done": entry["status"].strip().lower() in DONE_STATUSES})
+                        "done": entry["category"] == "done" or entry["status"].strip().lower() in DONE_STATUSES})
             continue
         base = baseline.get(entry["key"])
         if base is None:
@@ -192,3 +195,29 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
     pull(jira, project, epic_key, conv)
     return result
 
+
+GROUPS = ("blocked", "todo", "in_progress", "done")
+
+
+def board(project: Path, epic_key: str, conv: Optional[dict] = None) -> dict:
+    """Group the local kanban by Jira status category, blocked first; reads only local files, never Jira.
+
+    A done issue stays done even if flagged; anything else flagged or in a blocked status is blocked.
+    The epic is the frame, not a card. Issues with no category yet (new local folders) count as to do.
+    """
+    epic = kanban.epic_dir(project, epic_key)
+    groups = {name: {"name": name, "count": 0, "statuses": {}} for name in GROUPS}
+    total = 0
+    for entry in _local(epic, epic_key):
+        if entry["kind"] == "epic":
+            continue
+        total += 1
+        category = entry["category"] or "todo"
+        name = "blocked" if entry["blocked"] == "true" and category != "done" else category
+        group = groups.get(name, groups["todo"])
+        group["count"] += 1
+        status = entry["status"] or "nuevo"
+        group["statuses"][status] = group["statuses"].get(status, 0) + 1
+    done = groups["done"]["count"]
+    return {"epic": epic_key, "total": total, "done_pct": round(100 * done / total) if total else 0,
+            "groups": [groups[name] for name in GROUPS]}

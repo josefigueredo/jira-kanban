@@ -36,14 +36,17 @@ def client(answers):
 
 
 ISSUE_V2 = {"key": "PLATE-1", "fields": {"summary": "S", "description": "D", "issuetype": {"name": "Tarea"},
-                                         "status": {"name": "Backlog"}, "parent": {"key": "PLATE-0"}}}
+                                         "status": {"name": "Backlog", "statusCategory": {"key": "new"}},
+                                         "parent": {"key": "PLATE-0"}, "customfield_10023": [{"value": "Impediment"}]}}
+FIELDS = [{"id": "customfield_10023", "name": "Flagged"}, {"id": "summary", "name": "Summary"}]
 
 
 class JiraTest(unittest.TestCase):
-    def test_get_normalizes_a_v2_issue(self):
-        jira, _ = client({("GET", "/rest/api/2/issue/PLATE-1"): ISSUE_V2})
+    def test_get_normalizes_a_v2_issue_with_category_and_flag(self):
+        jira, _ = client({("GET", "/rest/api/2/issue/PLATE-1"): ISSUE_V2, ("GET", "/rest/api/3/field"): FIELDS})
         self.assertEqual(jira.get("PLATE-1"), {"key": "PLATE-1", "summary": "S", "description": "D",
-                                               "issuetype": "Tarea", "status": "Backlog", "parent": "PLATE-0"})
+                                               "issuetype": "Tarea", "status": "Backlog", "parent": "PLATE-0",
+                                               "category": "todo", "flagged": True})
 
     def test_create_posts_v2_fields_and_returns_the_key(self):
         jira, rec = client({("POST", "/rest/api/2/issue"): {"key": "PLATE-7"}})
@@ -53,6 +56,7 @@ class JiraTest(unittest.TestCase):
     def test_children_follow_the_search_pages(self):
         pages = [{"issues": [{"key": "PLATE-2"}], "nextPageToken": "n1"}, {"issues": [{"key": "PLATE-3"}]}]
         jira, rec = client({("POST", "/rest/api/3/search/jql"): lambda body: pages.pop(0),
+                            ("GET", "/rest/api/3/field"): FIELDS,
                             ("GET", "/rest/api/2/issue/PLATE-2"): dict(ISSUE_V2, key="PLATE-2"),
                             ("GET", "/rest/api/2/issue/PLATE-3"): dict(ISSUE_V2, key="PLATE-3")})
         self.assertEqual([c["key"] for c in jira.children("PLATE-0")], ["PLATE-2", "PLATE-3"])

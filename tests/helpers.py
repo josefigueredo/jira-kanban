@@ -15,7 +15,11 @@ CONVENTIONS = {
     "priorities": ["Highest", "High", "Medium", "Low", "Lowest"],
     "default_priority": "Medium",
     "assign_to_me": True,
+    "blocked_statuses": ["Blocked"],
 }
+
+STATUS_CATEGORY = {"Backlog": "todo", "Selected for Development": "todo", "PROCESANDO": "in_progress",
+                   "Review": "in_progress", "Blocked": "in_progress", "Done": "done"}
 
 
 def make_project() -> Path:
@@ -44,7 +48,8 @@ class FakeJira:
         self.issues[key] = {"key": key, "summary": fields["summary"], "description": fields.get("description", ""),
                             "issuetype": fields["issuetype"]["name"], "status": "Backlog", "parent": parent,
                             "priority": (fields.get("priority") or {}).get("name"), "labels": fields.get("labels", []),
-                            "assignee": (fields.get("assignee") or {}).get("accountId")}
+                            "assignee": (fields.get("assignee") or {}).get("accountId"),
+                            "category": "todo", "flagged": False}
         self.writes.append(("create", key, fields))
         return key
 
@@ -62,6 +67,7 @@ class FakeJira:
 
     def transition(self, key: str, status: str) -> bool:
         self.issues[key]["status"] = status
+        self.issues[key]["category"] = STATUS_CATEGORY.get(status, "in_progress")
         self.writes.append(("transition", key, status))
         return True
 

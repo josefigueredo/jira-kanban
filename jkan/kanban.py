@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Dict
 
 ROOT = ".jira-kanban"
-FRONT = ("key", "kind", "issuetype", "status", "parent", "url", "synced")
+FRONT = ("key", "kind", "issuetype", "status", "category", "blocked", "parent", "url", "synced")
 FOLDER = {"story": "stories", "task": "tasks"}
 
 

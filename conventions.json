@@ -5,9 +5,11 @@
   "priorities": ["Highest", "High", "Medium", "Low", "Lowest"],
   "default_priority": "Medium",
   "assign_to_me": true,
+  "blocked_statuses": ["Blocked"],
   "notes": [
     "The area goes as a [AREA] title prefix; components are not used (PLATE is shared and classified as api/mcp/mfe).",
     "PLATE has no story points field on its edit screen: estimates are not sent.",
-    "Jira levels: Epic (1) > Story (migrated) | Tarea | Error (0, siblings) > Subtarea (-1)."
+    "Jira levels: Epic (1) > Story (migrated) | Tarea | Error (0, siblings) > Subtarea (-1).",
+    "Grouping uses Jira status categories (To Do / In Progress / Done), never status names; blocked = a status in blocked_statuses or the Flagged field set."
   ]
 }

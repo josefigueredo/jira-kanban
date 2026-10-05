@@ -9,7 +9,7 @@ Create a Jira epic from the conversation and mirror it, both ways, as a local ka
 access goes through `jk`; never hand-roll Jira calls or another folder layout.
 
 ```bash
-python3 ~/.claude/skills/jira-kanban/jk.py <create|pull|push|show> ... --project .
+python3 ~/.claude/skills/jira-kanban/jk.py <create|pull|push|show|board> ... --project .
 ```
 
 ## Steps
@@ -53,5 +53,7 @@ python3 ~/.claude/skills/jira-kanban/jk.py <create|pull|push|show> ... --project
 ## Rules
 
 - Every Jira write needs `--apply` and the user's yes for that write.
+- Progress: `jk board KEY` (after a pull) groups by Jira status category, never by status names; blocked means a
+  status in `blocked_statuses` or the Flagged field.
 - A `conflict` from push means the field changed in Jira too: pull, re-apply the local edit, push again.
 - Project defaults live in `conventions.json`; a project overrides them in `./.jira-kanban/conventions.json`.
