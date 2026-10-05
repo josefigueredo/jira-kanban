@@ -7,18 +7,18 @@ import sys
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from . import config, kanban, preview, sync
+from . import config, journal, kanban, preview, sync
 from .jira import Jira, JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
 
 
-def _client(project: Path):
+def _client(project: Path, command: Optional[str] = None):
     creds = config.credentials(project)
     if creds is None:
         raise SystemExit("jk: Jira credentials not found (IC_JIRA_* or JIRA_* in the environment, ./.env.local, "
                          "./.spec-kit/.env)")
-    return Jira(*creds)
+    return Jira(*creds, journal=journal.journal(project, command) if command else None)
 
 
 def _show(project: Path, key: str) -> None:
@@ -69,7 +69,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
                 pct = f" · {result['done_pct']}%" if group["name"] == "done" else ""
                 print(f"  {labels[group['name']]} {group['count']}{pct}" + (f"  ({detail})" if detail else ""))
             return OK
-        jira = client(project)
+        jira = client(project) if client is not _client else _client(project, command=args.cmd)
         if args.cmd == "create":
             epic_spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
             try:

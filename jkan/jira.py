@@ -16,11 +16,14 @@ class JiraError(RuntimeError):
 
 
 class Jira:
-    def __init__(self, base_url: str, email: str, token: str, opener: Optional[Callable] = None, timeout: float = 20.0):
+    def __init__(self, base_url: str, email: str, token: str, opener: Optional[Callable] = None, timeout: float = 20.0,
+                 journal: Optional[Callable[[dict], None]] = None):
         self.base = base_url.rstrip("/")
         self._auth = base64.b64encode(f"{email}:{token}".encode()).decode()
         self._open = opener or urllib.request.urlopen
         self._timeout = timeout
+        # Receives every successful write (jkan/journal.py); reads are never reported.
+        self._journal = journal or (lambda entry: None)
         self._flag_id: Optional[str] = None
         self._flag_known = False
 
@@ -42,7 +45,9 @@ class Jira:
         return self._send("GET", "/rest/api/3/myself")["accountId"]
 
     def create(self, fields: dict) -> str:
-        return self._send("POST", "/rest/api/2/issue", {"fields": fields})["key"]
+        key = self._send("POST", "/rest/api/2/issue", {"fields": fields})["key"]
+        self._journal({"action": "create", "key": key, "fields": fields})
+        return key
 
     def _flag_field(self) -> Optional[str]:
         """The id of the "Flagged" (impediment) custom field, looked up once by name; None if the site has none."""
@@ -80,6 +85,7 @@ class Jira:
 
     def update(self, key: str, fields: dict) -> None:
         self._send("PUT", f"/rest/api/2/issue/{key}", {"fields": fields})
+        self._journal({"action": "update", "key": key, "fields": fields})
 
     def transition_done(self, key: str) -> Optional[str]:
         """Apply the transition that lands in Jira's done category, preferring a plain "Done" over "Won't Do"."""
@@ -90,6 +96,7 @@ class Jira:
         if target is None:
             return None
         self._send("POST", f"/rest/api/3/issue/{key}/transitions", {"transition": {"id": target["id"]}})
+        self._journal({"action": "transition", "key": key, "to": target["to"].get("name")})
         return target["to"].get("name")
 
     def transition(self, key: str, status: str) -> bool:
@@ -99,4 +106,5 @@ class Jira:
         if match is None:
             return False
         self._send("POST", f"/rest/api/3/issue/{key}/transitions", {"transition": {"id": match["id"]}})
+        self._journal({"action": "transition", "key": key, "to": match["to"].get("name")})
         return True
