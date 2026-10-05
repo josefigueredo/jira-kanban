@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from . import config, kanban, sync
+from . import config, kanban, preview, sync
 from .jira import Jira, JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
@@ -40,6 +40,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
         p.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
         if name == "create":
             p.add_argument("--spec", required=True, help="epic spec JSON (see SKILL.md)")
+            p.add_argument("--html", help="also write a standalone, navigable HTML preview to this path")
         else:
             p.add_argument("epic", help="epic key, e.g. PLATE-504")
         if name in ("create", "push"):
@@ -63,6 +64,9 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
                 indent = {"epic": "", "story": "  ", "task": "  ", "subtask": "    "}[op["kind"]]
                 key = result.get("keys", {}).get(op["ref"], "")
                 print(f"{indent}{key + ' ' if key else ''}[{conv['issue_types'][op['kind']]}] {op['summary']}")
+            if args.html:
+                Path(args.html).write_text(preview.render(result["ops"], conv), encoding="utf-8")
+                print(f"preview: {Path(args.html).resolve()}")
             if not args.apply:
                 print(f"dry run: nothing created; --apply creates {len(result['ops'])} issues in {conv['project']}")
             else:
