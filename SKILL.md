@@ -9,7 +9,7 @@ Create a Jira epic from the conversation and mirror it, both ways, as a local ka
 access goes through `jk`; never hand-roll Jira calls or another folder layout.
 
 ```bash
-python3 ~/.claude/skills/jira-kanban/jk.py <create|pull|push|show|board> ... --project .
+python3 ~/.agents/skills/jira-kanban/jk.py <create|pull|push|show|board> ... --project .
 ```
 
 ## Steps
