@@ -9,7 +9,8 @@ from pathlib import Path
 from typing import Dict
 
 ROOT = ".jira-kanban"
-FRONT = ("key", "kind", "issuetype", "status", "category", "blocked", "parent", "url", "synced")
+FRONT = ("key", "kind", "issuetype", "status", "category", "blocked", "parent", "url")  # no sync time: a pull with nothing new
+                                                                                     # leaves every file byte-identical
 FOLDER = {"story": "stories", "task": "tasks"}
 
 
@@ -25,9 +26,8 @@ def subtask_file(parent_dir: Path, key: str) -> Path:
     return parent_dir / "subtasks" / key / "subtask.md"
 
 
-def render(issue: dict, synced: str) -> str:
-    values = dict(issue, synced=synced)
-    lines = ["---"] + [f"{name}: {values.get(name) or ''}" for name in FRONT] + ["---", "", f"# {issue['summary']}", ""]
+def render(issue: dict) -> str:
+    lines = ["---"] + [f"{name}: {issue.get(name) or ''}" for name in FRONT] + ["---", "", f"# {issue['summary']}", ""]
     description = (issue.get("description") or "").strip()
     if description:
         lines += [description, ""]

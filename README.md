@@ -93,10 +93,10 @@ estado y panel de detalles con el responsable. Las claves son `NUEVO-1…n` en e
 .jira-kanban/<EPIC>/stories/<KEY>/story.md
 .jira-kanban/<EPIC>/tasks/<KEY>/task.md
 .jira-kanban/<EPIC>/<stories|tasks>/<KEY>/subtasks/<KEY>/subtask.md
-.jira-kanban/<EPIC>/.sync.json        # lo último que se leyó de Jira; push compara contra esto
+.jira-kanban/<EPIC>/.sync.json        # lo último que se leyó de Jira y cuándo; push compara contra esto
 ```
 
-Cada `.md` tiene un front matter (`key`, `kind`, `issuetype`, `status`, `category`, `blocked`, `parent`, `url`, `synced`),
+Cada `.md` tiene un front matter (`key`, `kind`, `issuetype`, `status`, `category`, `blocked`, `parent`, `url`),
 el título como `# …` y la descripción debajo.
 
 - **Editar:** cambiá `status`, el `# título` o el cuerpo y corré `jk push EPIC`. Si el mismo campo también cambió en Jira,

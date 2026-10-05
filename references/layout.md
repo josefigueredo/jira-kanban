@@ -11,8 +11,9 @@
 .jira-kanban/conventions.json           # optional project override of the skill's conventions.json
 ```
 
-Each `.md` has a front matter (`key`, `kind`, `issuetype`, `status`, `category`, `blocked`, `parent`, `url`,
-`synced`), the title as `# …` and the description below. The folder decides kind and parent; the front matter never
+Each `.md` has a front matter (`key`, `kind`, `issuetype`, `status`, `category`, `blocked`, `parent`, `url`),
+the title as `# …` and the description below. The last sync time lives only in `.sync.json`, so a pull with
+nothing new leaves every `.md` unchanged. The folder decides kind and parent; the front matter never
 moves an issue.
 
 - **Edit:** change `status`, the `# title` or the body, then `jk push KEY`.

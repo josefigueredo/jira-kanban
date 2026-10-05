@@ -150,7 +150,6 @@ def _record(issue: dict, kind: str, url: str, conv: dict) -> dict:
 def pull(jira, project: Path, epic_key: str, conv: Optional[dict] = None) -> dict:
     conv = conv or config.load_conventions(project)
     epic = kanban.epic_dir(project, epic_key)
-    synced = _now()
     written: Dict[Path, dict] = {}
     root = jira.get(epic_key)
     written[epic / "epic.md"] = _record(root, "epic", jira.browse_url(epic_key), conv)
@@ -169,9 +168,10 @@ def pull(jira, project: Path, epic_key: str, conv: Optional[dict] = None) -> dic
     baseline = {}
     for path, record in written.items():
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(kanban.render(record, synced), encoding="utf-8")
+        path.write_text(kanban.render(record), encoding="utf-8")
         baseline[record["key"]] = {name: record[name] for name in FIELDS}
-    (epic / ".sync.json").write_text(json.dumps(baseline, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    state = {"synced": _now(), "issues": baseline}  # the one place that records when the epic was last read
+    (epic / ".sync.json").write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return {"epic": epic_key, "issues": len(written), "dir": str(epic)}
 
 
@@ -198,7 +198,8 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
         # New issues go to the epic's project; the key says which, so nothing is configured or assumed.
         conv["project"] = epic_key.split("-")[0]
     epic = kanban.epic_dir(project, epic_key)
-    baseline = json.loads((epic / ".sync.json").read_text(encoding="utf-8"))
+    state = json.loads((epic / ".sync.json").read_text(encoding="utf-8"))
+    baseline = state["issues"] if "issues" in state else state  # a flat baseline predates the sync time
     changes, conflicts, new = [], [], []
     depth: Dict[str, int] = {}
     for entry in _local(epic, epic_key):

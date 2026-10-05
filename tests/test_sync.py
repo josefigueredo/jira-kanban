@@ -112,7 +112,7 @@ class PullTest(unittest.TestCase):
         self.assertTrue((epic / "stories/PLATE-601/subtasks/PLATE-602/subtask.md").is_file())
         self.assertTrue((epic / "tasks/PLATE-603/task.md").is_file())
         baseline = json.loads((epic / ".sync.json").read_text(encoding="utf-8"))
-        self.assertEqual(sorted(baseline), ["PLATE-600", "PLATE-601", "PLATE-602", "PLATE-603"])
+        self.assertEqual(sorted(baseline["issues"]), ["PLATE-600", "PLATE-601", "PLATE-602", "PLATE-603"])
 
     def test_pull_removes_folders_of_issues_no_longer_under_the_epic(self):
         jira, project = FakeJira(), make_project()

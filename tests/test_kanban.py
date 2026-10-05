@@ -12,15 +12,21 @@ ISSUE = {"key": "PLATE-601", "kind": "story", "issuetype": "Story (migrated)", "
 
 class FormatTest(unittest.TestCase):
     def test_render_and_parse_round_trip(self):
-        text = kanban.render(ISSUE, synced="2026-10-05T19:00:00Z")
+        text = kanban.render(ISSUE)
         self.assertTrue(text.startswith("---\nkey: PLATE-601\nkind: story\n"))
         self.assertIn("\n# [FE] Ver el tablero\n", text)
         parsed = kanban.parse(text)
         for field in ("key", "kind", "issuetype", "status", "summary", "parent", "description", "url"):
             self.assertEqual(parsed[field], ISSUE[field], field)
 
+    def test_no_sync_time_in_the_file_and_old_files_still_parse(self):
+        text = kanban.render(ISSUE)
+        self.assertNotIn("synced", text)
+        old = text.replace("url: ", "synced: 2026-10-05T19:00:00Z\nurl: ", 1)
+        self.assertEqual(kanban.parse(old)["key"], "PLATE-601")
+
     def test_title_edited_in_the_heading_wins(self):
-        text = kanban.render(ISSUE, synced="t").replace("# [FE] Ver el tablero", "# [FE] Ver el tablero nuevo")
+        text = kanban.render(ISSUE).replace("# [FE] Ver el tablero", "# [FE] Ver el tablero nuevo")
         self.assertEqual(kanban.parse(text)["summary"], "[FE] Ver el tablero nuevo")
 
 
