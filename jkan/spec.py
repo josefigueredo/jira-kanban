@@ -37,12 +37,16 @@ def validate(spec: dict, conv: dict) -> List[str]:
         if "done" in item and not isinstance(item["done"], bool):
             findings.append(f"{ref}: done must be true or false")
         findings += _started_findings(ref, item)
+        findings += _evidence_findings(ref, item, item.get("done") is True)
         for j, sub in enumerate(item.get("subtasks") or []):
             if not (sub.get("summary") or "").strip():
                 findings.append(f"{ref}.subtasks[{j}]: summary is required")
             if "done" in sub and not isinstance(sub["done"], bool):
                 findings.append(f"{ref}.subtasks[{j}]: done must be true or false")
             findings += _started_findings(f"{ref}.subtasks[{j}]", sub)
+            inherits = item.get("done") is True and "done" not in sub  # it shows through its parent's evidence
+            if not inherits:
+                findings += _evidence_findings(f"{ref}.subtasks[{j}]", sub, sub.get("done") is True)
     return findings
 
 
@@ -52,6 +56,15 @@ def _started_findings(ref: str, entry: dict) -> List[str]:
     if not isinstance(entry["started"], bool):
         return [f"{ref}: started must be true or false"]
     return [f"{ref}: started and done exclude each other"] if entry["started"] and entry.get("done") else []
+
+
+def _evidence_findings(ref: str, entry: dict, done: bool) -> List[str]:
+    found = entry.get("evidence")
+    if found is not None and not (isinstance(found, list) and all(isinstance(e, str) and e.strip() for e in found)):
+        return [f"{ref}: evidence must be a list of commits, branches or URLs"]
+    if done and not found:
+        return [f"{ref}: done needs evidence: the commits, branch or URL that show it (\"evidence\": [...])"]
+    return []
 
 
 def title(area: str, summary: str) -> str:
@@ -86,12 +99,14 @@ def plan(spec: dict, conv: dict) -> List[dict]:
         ops.append({"ref": ref, "kind": item["type"], "parent": "epic", "summary": title(item.get("area"), item["summary"]),
                     "description": _description(item), "priority": item.get("priority") or default,
                     "labels": list(item.get("labels") or []), "done": item_done,
-                    "started": bool(item.get("started"))})
+                    "started": bool(item.get("started")), "evidence": list(item.get("evidence") or [])})
         for j, sub in enumerate(item.get("subtasks") or []):
             ops.append({"ref": f"{ref}.subtasks[{j}]", "kind": "subtask", "parent": ref,
                         "summary": title(sub.get("area"), sub["summary"]), "description": _description(sub),
                         "priority": sub.get("priority") or item.get("priority") or default,
                         "labels": list(sub.get("labels") or []), "done": bool(sub.get("done", item_done)),
-                        "started": bool(sub.get("started"))})  # a started parent does not start its subtasks
+                        "started": bool(sub.get("started")),
+                        "evidence": list(sub.get("evidence") or (item.get("evidence") if "done" not in sub else None)
+                                         or [])})  # a started parent does not start its subtasks
     ops[0]["done"] = all(op["done"] for op in ops[1:])  # the epic is complete only when everything under it is
     return ops

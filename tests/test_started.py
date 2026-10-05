@@ -9,7 +9,7 @@ from test_jira import client
 
 SPEC = {"epic": {"summary": "e"}, "items": [
     {"type": "task", "summary": "Repo", "started": True, "subtasks": [{"summary": "Crear el repo"}]},
-    {"type": "task", "summary": "Hecha", "done": True},
+    {"type": "task", "summary": "Hecha", "done": True, "evidence": ["https://example.com/pr/1"]},
     {"type": "task", "summary": "Abierta"}]}
 
 

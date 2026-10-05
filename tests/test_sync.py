@@ -39,7 +39,7 @@ class CreateTest(unittest.TestCase):
 
     def test_done_items_are_assigned_to_me_and_open_ones_follow_the_decision(self):
         done = {"epic": {"summary": "e"}, "items": [
-            {"type": "task", "summary": "Hecha", "done": True, "subtasks": [{"summary": "hereda"}]},
+            {"type": "task", "summary": "Hecha", "done": True, "evidence": ["https://example.com/pr/1"], "subtasks": [{"summary": "hereda"}]},
             {"type": "task", "summary": "Abierta", "subtasks": [{"summary": "abierta", "done": False}]}]}
         jira = FakeJira()
         sync.create(jira, make_project(), done, CONVENTIONS, apply=True, assign_open=False)
@@ -48,7 +48,7 @@ class CreateTest(unittest.TestCase):
                                     "Abierta": None, "abierta": None})
 
     def test_all_done_assigns_everything_without_asking(self):
-        done = {"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True}]}
+        done = {"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True, "evidence": ["https://example.com/pr/1"]}]}
         jira = FakeJira()
         sync.create(jira, make_project(), done, CONVENTIONS, apply=True)
         self.assertTrue(all(w[2]["assignee"] == {"accountId": "acc-me"} for w in jira.writes if w[0] == "create"))
@@ -76,7 +76,7 @@ class CreateTest(unittest.TestCase):
 
     def test_done_items_are_moved_to_done_children_before_parents(self):
         done = {"epic": {"summary": "e"}, "items": [
-            {"type": "story", "summary": "Hecha", "user_story": "Como dev quiero x para y", "done": True,
+            {"type": "story", "summary": "Hecha", "user_story": "Como dev quiero x para y", "done": True, "evidence": ["https://example.com/pr/1"],
              "acceptance": ["AC1: Dado a Cuando b Entonces c"], "subtasks": [{"summary": "hereda"}]},
             {"type": "task", "summary": "Abierta"}]}
         jira = FakeJira()

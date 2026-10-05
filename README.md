@@ -57,7 +57,7 @@ El agente lo arma desde la conversación. Un ejemplo con una historia, una tarea
     {"type": "story", "area": "FE", "summary": "Página de login",
      "user_story": "Como analista quiero ingresar con mi cuenta corporativa para no gestionar credenciales aparte",
      "acceptance": ["AC1: Dado un analista sin sesión Cuando abre el back office Entonces ve el login"],
-     "done": true,
+     "done": true, "evidence": ["1d93d8d"],
      "subtasks": [{"summary": "Formulario con SSO"}]},
     {"type": "task", "area": "DEVOPS", "summary": "Job de CI con los e2e del login", "description": "…"}
   ]
@@ -68,6 +68,10 @@ El agente lo arma desde la conversación. Un ejemplo con una historia, una tarea
   de la épica como hermanas, igual que en Jira; las subtareas cuelgan de cualquiera. No hay un cuarto nivel.
 - **Área:** se convierte en el prefijo del título, `[FE] Página de login`. No se usan componentes, labels ni story points.
 - **`done`:** el trabajo ya está terminado (hecho, verificado, mergeado). Ver la asignación, abajo.
+- **`evidence`:** obligatoria con `done`. Commits (alcanzables desde la branch principal del remoto, o sea mergeados y
+  pusheados), una branch de `origin` o URLs (un PR, un deploy). jk los resuelve antes de escribir, también en seco, y los
+  agrega a la descripción como permalinks bajo `Evidencia:`. Si alguno no resuelve, `create` no escribe nada. Una
+  subtarea que hereda el `done` hereda también la evidencia.
 - **`started`:** lo estás haciendo ahora. Se crea y pasa a un estado de la categoría *En progreso* (evita los
   bloqueados y los de revisión); sus subtareas no lo heredan. No puede ir junto con `done`.
 
@@ -129,6 +133,7 @@ python3 -m unittest discover -s tests          # con Jira falso: nunca sale a la
 
 | Módulo | Responsabilidad |
 |---|---|
+| `jkan/evidence.py` | Resuelve la evidencia (commits, branches, URLs) a permalinks |
 | `jkan/spec.py` | Valida el spec y arma el plan de creación en orden |
 | `jkan/sync.py` | `create`, `pull`, `push`, `board` y la regla de asignación |
 | `jkan/kanban.py` | Árbol local y formato de cada `.md` |

@@ -29,7 +29,7 @@ class PreviewTest(unittest.TestCase):
         self.assertIn("Backlog", story)
 
     def test_assignee_shows_the_rule(self):
-        ops = spec.plan({"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True},
+        ops = spec.plan({"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True, "evidence": ["https://example.com/pr/1"]},
                                                              {"type": "task", "summary": "u"}]}, CONVENTIONS)
         from jkan import sync
         sync.assignment(ops, None)

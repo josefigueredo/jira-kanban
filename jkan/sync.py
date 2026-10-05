@@ -15,7 +15,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from . import config, kanban, spec
+from . import config, evidence, kanban, spec
 
 KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]+-\d+$")
 FIELDS = ("summary", "status", "description")
@@ -84,6 +84,21 @@ def _progress_path(project: Path, epic_spec: dict, conv: dict) -> Path:
     return project / ".jira-kanban" / f".create-progress-{digest}.json"
 
 
+def attach_evidence(ops: List[dict], repo: Path) -> None:
+    """Resolve every op's evidence to links and append them to its description; any that does not resolve refuses
+    the whole create, before a single write, in the dry run too."""
+    findings = []
+    for op in ops:
+        if not op.get("evidence"):
+            continue
+        links, problems = evidence.resolve(op["evidence"], repo)
+        findings += [f"{op['ref']}: {problem}" for problem in problems]
+        section = "Evidencia:\n" + "\n".join(f"- {link}" for link in links)
+        op["description"] = f"{op['description']}\n\n{section}" if op["description"] else section
+    if findings:
+        raise ValueError("\n".join(findings))
+
+
 def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign_open: Optional[bool] = None) -> dict:
     if not conv.get("project"):
         raise ValueError("no Jira project configured: ask the user which one, then pass --jira-project KEY or set "
@@ -92,6 +107,7 @@ def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign
     if findings:
         raise ValueError("\n".join(findings))
     ops = spec.plan(epic_spec, conv)
+    attach_evidence(ops, project)
     asks = assignment(ops, assign_open, bool(conv.get("assign_to_me")))
     if not apply:
         return {"ops": ops}
