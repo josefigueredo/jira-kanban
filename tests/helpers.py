@@ -98,6 +98,11 @@ class FakeJira:
         return "PROCESANDO"
 
     def transition(self, key: str, status: str) -> bool:
+        if self._refused(key):
+            return False
+        open_children = [i for i in self.issues.values() if i["parent"] == key and i["category"] != "done"]
+        if STATUS_CATEGORY.get(status) == "done" and open_children:  # like a workflow that guards on sub-tasks
+            raise FailingJira(f"HTTP 400: {key} has open sub-tasks")
         self.issues[key]["status"] = status
         self.issues[key]["category"] = STATUS_CATEGORY.get(status, "in_progress")
         self.writes.append(("transition", key, status))

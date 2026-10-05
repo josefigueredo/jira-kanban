@@ -200,7 +200,9 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
     epic = kanban.epic_dir(project, epic_key)
     baseline = json.loads((epic / ".sync.json").read_text(encoding="utf-8"))
     changes, conflicts, new = [], [], []
+    depth: Dict[str, int] = {}
     for entry in _local(epic, epic_key):
+        depth[entry["key"]] = {"subtask": 0, "epic": 2}.get(entry["kind"], 1)
         folder = entry["path"].parent.name
         if folder.startswith("_new") or not entry["key"]:
             if entry["parent"] and not KEY_RE.match(entry["parent"]):
@@ -228,12 +230,15 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
         return result
     if asks:
         raise _decision_error(asks)
-    for change in changes:
-        if change["field"] == "status":
-            if not jira.transition(change["key"], change["to"]):
+    # Status moves go deepest first, so a parent closes after its sub-tasks; one rejected write never stops the rest.
+    for change in sorted(changes, key=lambda c: depth.get(c["key"], 1) if c["field"] == "status" else -1):
+        try:
+            if change["field"] != "status":
+                jira.update(change["key"], {change["field"]: change["to"]})
+            elif not jira.transition(change["key"], change["to"]):
                 result["errors"].append(f"{change['key']}: no transition to {change['to']!r}")
-        else:
-            jira.update(change["key"], {change["field"]: change["to"]})
+        except Exception as exc:  # noqa: BLE001
+            result["errors"].append(f"{change['key']}: {change['field']} not written ({exc})")
     if new:
         me = jira.myself() if any(item["assignee"] != "none" for item in new) else None
         for item in new:
