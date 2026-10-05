@@ -1,4 +1,4 @@
 __pycache__/
 *.pyc
-.jira-kanban/jira-writes.jsonl
-.jira-kanban/.create-progress-*.json
+# the skill's own epic (PLATE-520) is tracked in Jira; its local kanban is not part of the skill
+.jira-kanban/
