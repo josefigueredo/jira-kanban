@@ -37,7 +37,7 @@ queda en `./.jira-kanban/jira-writes.jsonl` (hora, comando, issue y cambio).
 | Comando | Qué hace |
 |---|---|
 | `jk create --spec spec.json [--html vista.html]` | Vista previa de lo que crearía; con `--html`, la página navegable |
-| `jk create --spec spec.json --jira-project KEY --apply [--assign-open \| --no-assign-open]` | Crea en Jira (primero los padres), pasa a Done lo terminado y escribe el kanban local. Si Jira rechaza un issue a mitad de camino, conserva lo creado y el mismo comando retoma sin duplicar |
+| `jk create --spec spec.json --jira-project KEY --apply [--assign-open \| --no-assign-open]` | Crea en Jira (primero los padres), pasa a Done lo terminado y escribe el kanban local. Si Jira rechaza un issue a mitad de camino, conserva lo creado y el mismo comando retoma sin duplicar. Si sólo falla un cambio de estado, sigue con los demás, escribe el kanban y lo informa: se termina con `push`, nunca repitiendo `create` |
 | `jk pull EPIC` | Trae la épica y sus hijos de Jira al kanban local |
 | `jk push EPIC [--apply] [--assign-open \| --no-assign-open]` | Manda a Jira los cambios locales: estado, título, descripción, subtareas nuevas |
 | `jk show EPIC` | Lista el kanban local como árbol |
@@ -102,7 +102,8 @@ el título como `# …` y la descripción debajo.
   push lo informa como **conflicto** y no lo pisa: `jk pull`, volvé a aplicar tu cambio y repetí el push.
 - **Subtarea nueva:** creá `…/subtasks/_new-<algo>/subtask.md` con un `# título`; push la crea bajo el padre del folder y
   le pone su clave.
-- **Versionarlo o no** queda a criterio de cada proyecto.
+- **Versionarlo o no** queda a criterio de cada proyecto. Si se versiona, `jira-writes.jsonl` (evidencia local, trae
+  el accountId) y `.create-progress-*.json` (transitorio) van al `.gitignore`.
 
 ## Estados y bloqueo
 
