@@ -11,7 +11,8 @@ cambiaste localmente.
 ## Instalación
 
 ```bash
-./install.sh
+git clone git@github.com:josefigueredo/skill-kanban-jira.git jira-kanban
+cd jira-kanban && ./install.sh
 ```
 
 Sigue el mismo layout que WayOfWork: `~/.agents/skills/jira-kanban` apunta a este repo, y `~/.claude/skills/jira-kanban`
