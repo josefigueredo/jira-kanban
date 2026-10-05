@@ -28,6 +28,15 @@ class PreviewTest(unittest.TestCase):
         self.assertIn('href="#NUEVO-3"', story)
         self.assertIn("Backlog", story)
 
+    def test_assignee_shows_the_rule(self):
+        ops = spec.plan({"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True},
+                                                             {"type": "task", "summary": "u"}]}, CONVENTIONS)
+        from jkan import sync
+        sync.assignment(ops, None)
+        html = preview.render(ops, CONVENTIONS)
+        self.assertIn("Vos · completa", html)
+        self.assertIn("A decidir", html)
+
     def test_standalone_and_marked_as_a_preview(self):
         self.assertNotRegex(self.html, r'(src|href)="https?://')
         self.assertIn("Vista previa", self.html)

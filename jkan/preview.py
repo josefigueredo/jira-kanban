@@ -66,7 +66,7 @@ td.key{white-space:nowrap;width:1%}td.pri,td.st{width:1%;white-space:nowrap}
 .status{display:inline-flex;gap:6px;align-items:center;background:#091E420F;border-radius:3px;padding:6px 12px;font-weight:600;color:#44546F;margin-bottom:16px}
 .panel{border:1px solid #DCDFE4;border-radius:3px}.panel h4{margin:0;padding:12px;border-bottom:1px solid #DCDFE4;font-size:14px}
 .row{display:grid;grid-template-columns:120px 1fr;gap:8px;padding:8px 12px;align-items:center}.row .lbl{color:#44546F;font-weight:600;font-size:12px}
-.who{display:inline-flex;gap:6px;align-items:center}.av{width:24px;height:24px;border-radius:50%;background:#8270DB;color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}
+.who{display:inline-flex;gap:6px;align-items:center}.av.off{background:#8590A2}.av{width:24px;height:24px;border-radius:50%;background:#8270DB;color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}
 .ti{width:16px;height:16px;flex:none;vertical-align:-3px}.pi{width:16px;height:16px;vertical-align:-3px}
 .foot{color:#626F86;font-size:12px;padding:12px}
 .tag{display:inline-block;background:#091E420F;border-radius:3px;padding:0 6px;margin:0 4px 4px 0}
@@ -80,6 +80,9 @@ function show(){var id=location.hash.slice(1);if(ids.indexOf(id)<0)id=ids[0];
 [].forEach.call(document.querySelectorAll('.side a'),function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+id)});
 window.scrollTo(0,0);}window.addEventListener('hashchange',show);show();})();
 """
+
+ASSIGNEE = {"me-done": ("Vos · completa", ""), "me": ("Vos", ""), "none": ("Sin asignar", " off"),
+            "ask": ("A decidir", " off")}
 
 e = html.escape
 
@@ -137,6 +140,7 @@ def render(ops: List[dict], conv: dict) -> str:
         parent = by_ref.get(op["parent"]) if op["parent"] else None
         labels = "".join(f'<span class="tag">{e(lb)}</span>' for lb in op.get("labels") or []) or '<span class="muted">Ninguno</span>'
         prio = op.get("priority") or ""
+        who, av_cls = ASSIGNEE.get(op.get("assignee") or "ask", ASSIGNEE["ask"])
         order = (f"Se crea primero (paso 1 de {len(ops)}): el resto cuelga de esta épica." if not parent
                  else f"Se crea en el paso {n} de {len(ops)}, después de {key[parent['ref']]}.")
         pages.append(f"""
@@ -152,7 +156,7 @@ def render(ops: List[dict], conv: dict) -> str:
       <div class="status">{e(status)} <span class="muted">▾</span></div>
       <div class="panel"><h4>Detalles</h4>
         <div class="row"><span class="lbl">Tipo</span><span>{ICON[op['kind']]} {e(types[op['kind']])}</span></div>
-        <div class="row"><span class="lbl">Responsable</span><span class="who"><span class="av"><svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="5.5" r="3" fill="#fff"/><path d="M2.5 14c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5z" fill="#fff"/></svg></span> Quien crea</span></div>
+        <div class="row"><span class="lbl">Responsable</span><span class="who"><span class="av{av_cls}"><svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="5.5" r="3" fill="#fff"/><path d="M2.5 14c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5z" fill="#fff"/></svg></span> {who}</span></div>
         <div class="row"><span class="lbl">Prioridad</span><span>{PRIORITY.get(prio, '')} {e(prio)}</span></div>
         <div class="row"><span class="lbl">Etiquetas</span><span>{labels}</span></div>
         <div class="row"><span class="lbl">Principal</span><span>{link(parent) if parent else '<span class="muted">Ninguno</span>'}</span></div>

@@ -28,11 +28,14 @@ python3 ~/.claude/skills/jira-kanban/jk.py <create|pull|push|show> ... --project
      siblings; `subtasks` hang from either. There is no fourth level.
    - `area` becomes the `[AREA]` title prefix (`conventions.json` lists them). Do not add components, labels or story
      points: the project does not use them.
+   - `"done": true` on an item the user already finished here (implemented, verified, merged); its subtasks inherit
+     it unless they say otherwise. Complete issues are assigned to the user without asking.
 3. **Preview:** `jk create --spec <file> --html <scratchpad>/vista.html` (dry run). Show the tree, open the
-   HTML for the user (`open <path>`): a standalone, Jira-like view to navigate epic → items → subtasks. Wait for an
-   explicit yes.
-4. **Create:** `jk create --spec <file> --apply`. Issues are created parents first and assigned to the caller; the
-   local kanban is written with the real keys.
+   HTML for the user (`open <path>`): a standalone, Jira-like view to navigate epic → items → subtasks. If any issue
+   shows "a decidir", ask the user whether to assign the incomplete ones to them. Wait for an explicit yes.
+4. **Create:** `jk create --spec <file> --apply`, plus `--assign-open` or `--no-assign-open` with the user's answer
+   when some issue is not complete (without it, `--apply` refuses). Parents are created first; the local kanban is
+   written with the real keys.
 5. **Sync:** `jk pull KEY` refreshes from Jira. Local edits (front-matter status, `# title`, body) go back with
    `jk push KEY`, then `--apply` once the user agrees. A new subtask is `…/subtasks/_new-<slug>/subtask.md` with a
    `# title`; push creates it under its folder's parent.

@@ -34,9 +34,13 @@ def validate(spec: dict, conv: dict) -> List[str]:
         priority = item.get("priority")
         if priority and priority not in priorities:
             findings.append(f"{ref}: priority {priority!r} is not one of {', '.join(priorities)}")
+        if "done" in item and not isinstance(item["done"], bool):
+            findings.append(f"{ref}: done must be true or false")
         for j, sub in enumerate(item.get("subtasks") or []):
             if not (sub.get("summary") or "").strip():
                 findings.append(f"{ref}.subtasks[{j}]: summary is required")
+            if "done" in sub and not isinstance(sub["done"], bool):
+                findings.append(f"{ref}.subtasks[{j}]: done must be true or false")
     return findings
 
 
@@ -68,12 +72,14 @@ def plan(spec: dict, conv: dict) -> List[dict]:
             "labels": list(epic.get("labels") or [])}]
     for i, item in enumerate(spec["items"]):
         ref = f"items[{i}]"
+        item_done = bool(item.get("done"))
         ops.append({"ref": ref, "kind": item["type"], "parent": "epic", "summary": title(item.get("area"), item["summary"]),
                     "description": _description(item), "priority": item.get("priority") or default,
-                    "labels": list(item.get("labels") or [])})
+                    "labels": list(item.get("labels") or []), "done": item_done})
         for j, sub in enumerate(item.get("subtasks") or []):
             ops.append({"ref": f"{ref}.subtasks[{j}]", "kind": "subtask", "parent": ref,
                         "summary": title(sub.get("area"), sub["summary"]), "description": _description(sub),
                         "priority": sub.get("priority") or item.get("priority") or default,
-                        "labels": list(sub.get("labels") or [])})
+                        "labels": list(sub.get("labels") or []), "done": bool(sub.get("done", item_done))})
+    ops[0]["done"] = all(op["done"] for op in ops[1:])  # the epic is complete only when everything under it is
     return ops

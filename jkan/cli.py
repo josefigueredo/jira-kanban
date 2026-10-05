@@ -45,6 +45,11 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
             p.add_argument("epic", help="epic key, e.g. PLATE-504")
         if name in ("create", "push"):
             p.add_argument("--apply", action="store_true", help="write to Jira (default: dry run)")
+            group = p.add_mutually_exclusive_group()
+            group.add_argument("--assign-open", dest="assign_open", action="store_true", default=None,
+                               help="also assign to me the issues that are not complete locally")
+            group.add_argument("--no-assign-open", dest="assign_open", action="store_false",
+                               help="leave unassigned the issues that are not complete locally")
     args = parser.parse_args(argv)
     project = Path(args.project).resolve()
     conv = config.load_conventions(project)
@@ -56,14 +61,15 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
         if args.cmd == "create":
             epic_spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
             try:
-                result = sync.create(jira, project, epic_spec, conv, apply=args.apply)
-            except ValueError as exc:
+                result = sync.create(jira, project, epic_spec, conv, apply=args.apply, assign_open=args.assign_open)
+            except (ValueError, sync.NeedsDecision) as exc:
                 sys.stderr.write(f"{exc}\n")
                 return FINDINGS
             for op in result["ops"]:
                 indent = {"epic": "", "story": "  ", "task": "  ", "subtask": "    "}[op["kind"]]
                 key = result.get("keys", {}).get(op["ref"], "")
-                print(f"{indent}{key + ' ' if key else ''}[{conv['issue_types'][op['kind']]}] {op['summary']}")
+                who = {"me-done": "vos · completa", "me": "vos", "none": "sin asignar", "ask": "¿asignar? a decidir"}[op["assignee"]]
+                print(f"{indent}{key + ' ' if key else ''}[{conv['issue_types'][op['kind']]}] {op['summary']}  ({who})")
             if args.html:
                 Path(args.html).write_text(preview.render(result["ops"], conv), encoding="utf-8")
                 print(f"preview: {Path(args.html).resolve()}")
@@ -76,7 +82,11 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
             result = sync.pull(jira, project, args.epic, conv)
             print(f"{result['epic']}: {result['issues']} issues -> {result['dir']}")
             return OK
-        result = sync.push(jira, project, args.epic, apply=args.apply, conv=conv)
+        try:
+            result = sync.push(jira, project, args.epic, apply=args.apply, conv=conv, assign_open=args.assign_open)
+        except sync.NeedsDecision as exc:
+            sys.stderr.write(f"{exc}\n")
+            return FINDINGS
         for c in result["changes"]:
             print(f"{c['key']} {c['field']}: {str(c['from'])[:60]} -> {str(c['to'])[:60]}")
         for n in result["new"]:

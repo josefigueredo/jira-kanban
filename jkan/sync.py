@@ -18,6 +18,32 @@ from . import config, kanban, spec
 
 KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]+-\d+$")
 FIELDS = ("summary", "status", "description")
+DONE_STATUSES = ("done", "hecho", "listo", "finalizada", "finalizado", "cerrada", "cerrado")
+
+
+class NeedsDecision(Exception):
+    """Some issues are not complete locally: the user decides whether they are assigned to them."""
+
+
+def assignment(ops: List[dict], assign_open: Optional[bool], enabled: bool = True) -> int:
+    """Sets op["assignee"]: me-done (complete locally, assigned without asking), me, none, or ask. Returns asks."""
+    asks = 0
+    for op in ops:
+        if not enabled:
+            op["assignee"] = "none"
+        elif op.get("done"):
+            op["assignee"] = "me-done"
+        elif assign_open is None:
+            op["assignee"] = "ask"
+            asks += 1
+        else:
+            op["assignee"] = "me" if assign_open else "none"
+    return asks
+
+
+def _decision_error(asks: int) -> NeedsDecision:
+    return NeedsDecision(f"{asks} issue(s) are not complete locally: ask the user whether to assign them, then pass "
+                         f"--assign-open or --no-assign-open (complete ones are assigned to the user without asking)")
 
 
 def _now() -> str:
@@ -44,18 +70,22 @@ def _fields(conv: dict, me: Optional[str], kind: str, summary: str, description:
     return fields
 
 
-def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool) -> dict:
+def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign_open: Optional[bool] = None) -> dict:
     findings = spec.validate(epic_spec, conv)
     if findings:
         raise ValueError("\n".join(findings))
     ops = spec.plan(epic_spec, conv)
+    asks = assignment(ops, assign_open, bool(conv.get("assign_to_me")))
     if not apply:
         return {"ops": ops}
-    me = jira.myself() if conv.get("assign_to_me") else None
+    if asks:
+        raise _decision_error(asks)
+    me = jira.myself() if any(op["assignee"] != "none" for op in ops) else None
     keys: Dict[str, str] = {}
     for op in ops:
         parent = keys[op["parent"]] if op["parent"] else None
-        keys[op["ref"]] = jira.create(_fields(conv, me, op["kind"], op["summary"], op["description"], parent,
+        who = me if op["assignee"] != "none" else None
+        keys[op["ref"]] = jira.create(_fields(conv, who, op["kind"], op["summary"], op["description"], parent,
                                               op.get("priority"), op.get("labels")))
     pull(jira, project, keys["epic"], conv)
     return {"ops": ops, "epic": keys["epic"], "keys": keys}
@@ -111,7 +141,8 @@ def _local(epic: Path, epic_key: str) -> List[dict]:
     return parsed
 
 
-def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] = None) -> dict:
+def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] = None,
+         assign_open: Optional[bool] = None) -> dict:
     conv = conv or config.load_conventions(project)
     epic = kanban.epic_dir(project, epic_key)
     baseline = json.loads((epic / ".sync.json").read_text(encoding="utf-8"))
@@ -123,7 +154,8 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
                 conflicts.append({"key": folder, "field": "parent", "reason": "create its parent first"})
                 continue
             new.append({"path": entry["path"], "kind": entry["kind"], "parent": entry["parent"],
-                        "summary": entry["summary"], "description": entry["description"]})
+                        "summary": entry["summary"], "description": entry["description"],
+                        "done": entry["status"].strip().lower() in DONE_STATUSES})
             continue
         base = baseline.get(entry["key"])
         if base is None:
@@ -137,9 +169,12 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
                 conflicts.append({"key": entry["key"], "field": field, "local": entry[field], "jira": remote.get(field)})
             else:
                 changes.append({"key": entry["key"], "field": field, "from": base[field], "to": entry[field]})
+    asks = assignment(new, assign_open, bool(conv.get("assign_to_me")))
     result = {"changes": changes, "conflicts": conflicts, "new": new, "errors": []}
     if not apply:
         return result
+    if asks:
+        raise _decision_error(asks)
     for change in changes:
         if change["field"] == "status":
             if not jira.transition(change["key"], change["to"]):
@@ -147,11 +182,13 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
         else:
             jira.update(change["key"], {change["field"]: change["to"]})
     if new:
-        me = jira.myself() if conv.get("assign_to_me") else None
+        me = jira.myself() if any(item["assignee"] != "none" for item in new) else None
         for item in new:
-            key = jira.create(_fields(conv, me, item["kind"], item["summary"], item["description"], item["parent"],
+            who = me if item["assignee"] != "none" else None
+            key = jira.create(_fields(conv, who, item["kind"], item["summary"], item["description"], item["parent"],
                                       conv.get("default_priority")))
             item["key"] = key
             shutil.rmtree(item["path"].parent, ignore_errors=True)
     pull(jira, project, epic_key, conv)
     return result
+

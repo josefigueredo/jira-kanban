@@ -18,7 +18,7 @@ class CreateTest(unittest.TestCase):
 
     def test_apply_creates_parents_first_assigns_me_and_writes_the_kanban(self):
         jira, project = FakeJira(), make_project()
-        result = sync.create(jira, project, GOOD, CONVENTIONS, apply=True)
+        result = sync.create(jira, project, GOOD, CONVENTIONS, apply=True, assign_open=True)
         self.assertEqual(result["epic"], "PLATE-600")
         created = [(w[1], w[2]["issuetype"]["name"], (w[2].get("parent") or {}).get("key")) for w in jira.writes]
         self.assertEqual(created, [("PLATE-600", "Epic", None), ("PLATE-601", "Story (migrated)", "PLATE-600"),
@@ -29,6 +29,33 @@ class CreateTest(unittest.TestCase):
         self.assertTrue((epic / "epic.md").is_file())
         self.assertTrue((epic / "stories/PLATE-601/subtasks/PLATE-602/subtask.md").is_file())
         self.assertTrue((epic / "tasks/PLATE-603/task.md").is_file())
+
+    def test_open_items_need_a_decision_before_any_write(self):
+        jira = FakeJira()
+        with self.assertRaises(sync.NeedsDecision) as caught:
+            sync.create(jira, make_project(), GOOD, CONVENTIONS, apply=True)
+        self.assertEqual(jira.writes, [])
+        self.assertIn("4", str(caught.exception))  # epic, story, its subtask and the task are all open
+
+    def test_done_items_are_assigned_to_me_and_open_ones_follow_the_decision(self):
+        done = {"epic": {"summary": "e"}, "items": [
+            {"type": "task", "summary": "Hecha", "done": True, "subtasks": [{"summary": "hereda"}]},
+            {"type": "task", "summary": "Abierta", "subtasks": [{"summary": "abierta", "done": False}]}]}
+        jira = FakeJira()
+        sync.create(jira, make_project(), done, CONVENTIONS, apply=True, assign_open=False)
+        assigned = {w[2]["summary"]: w[2].get("assignee") for w in jira.writes}
+        self.assertEqual(assigned, {"e": None, "Hecha": {"accountId": "acc-me"}, "hereda": {"accountId": "acc-me"},
+                                    "Abierta": None, "abierta": None})
+
+    def test_all_done_assigns_everything_without_asking(self):
+        done = {"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True}]}
+        jira = FakeJira()
+        sync.create(jira, make_project(), done, CONVENTIONS, apply=True)
+        self.assertTrue(all(w[2]["assignee"] == {"accountId": "acc-me"} for w in jira.writes))
+
+    def test_dry_run_marks_what_still_needs_a_decision(self):
+        result = sync.create(FakeJira(), make_project(), GOOD, CONVENTIONS, apply=False)
+        self.assertEqual({op["assignee"] for op in result["ops"]}, {"ask"})
 
     def test_invalid_spec_is_refused_before_any_write(self):
         jira = FakeJira()
@@ -95,8 +122,11 @@ class PushTest(unittest.TestCase):
         plan = sync.push(self.jira, self.project, self.key, apply=False)
         self.assertEqual([(n["kind"], n["parent"], n["summary"]) for n in plan["new"]],
                          [("subtask", "PLATE-601", "Escribir los tests")])
-        sync.push(self.jira, self.project, self.key, apply=True)
+        with self.assertRaises(sync.NeedsDecision):
+            sync.push(self.jira, self.project, self.key, apply=True)
+        sync.push(self.jira, self.project, self.key, apply=True, assign_open=False)
         self.assertEqual(self.jira.issues["PLATE-604"]["parent"], "PLATE-601")
+        self.assertIsNone(self.jira.issues["PLATE-604"]["assignee"])
         self.assertFalse(new.exists())
         self.assertTrue((self.epic / "stories/PLATE-601/subtasks/PLATE-604/subtask.md").is_file())
 
