@@ -8,6 +8,8 @@ from __future__ import annotations
 import html
 from typing import Dict, List
 
+from . import description, template
+
 ICON = {
     "epic": '<svg viewBox="0 0 16 16" class="ti"><rect width="16" height="16" rx="3" fill="#904EE2"/>'
             '<path d="M9.2 3 5 9h2.6L6.8 13 11 7H8.4z" fill="#fff"/></svg>',
@@ -58,6 +60,7 @@ main{flex:1;min-width:0;padding:24px 32px}
 h1{font-size:24px;line-height:28px;font-weight:500;margin:0 0 16px}
 .cols{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:32px}
 h3{font-size:14px;font-weight:600;margin:24px 0 8px}
+.desc h4{font-size:12px;color:#44546F;text-transform:uppercase;letter-spacing:.04em;margin:16px 0 4px}.desc h4:first-child{margin-top:0}
 .desc p{margin:0 0 10px;white-space:pre-wrap}.desc ul{margin:0 0 10px;padding-left:20px}.muted{color:#626F86}
 table{width:100%;border-collapse:collapse;border:1px solid #DCDFE4;border-radius:3px}
 td{padding:6px 8px;border-top:1px solid #DCDFE4;vertical-align:middle}tr:first-child td{border-top:0}
@@ -100,6 +103,13 @@ def _desc(text: str) -> str:
         if bullets:
             out.append("<ul>" + "".join(f"<li>{e(b[2:])}</li>" for b in bullets) + "</ul>")
     return "".join(out)
+
+
+def _description_html(text: str) -> str:
+    """By section, with its label as a heading, when the description follows templates/description.md."""
+    if description.check(text):
+        return _desc(text)
+    return "".join((f"<h4>{e(label)}</h4>" if label else "") + _desc(content) for label, content in description.blocks(text))
 
 
 def render(ops: List[dict], conv: dict) -> str:
@@ -148,28 +158,13 @@ def render(ops: List[dict], conv: dict) -> str:
         who, av_cls = ASSIGNEE.get(op.get("assignee") or "ask", ASSIGNEE["ask"])
         order = (f"Se crea primero (paso 1 de {len(ops)}): el resto cuelga de esta épica." if not parent
                  else f"Se crea en el paso {n} de {len(ops)}, después de {key[parent['ref']]}.")
-        pages.append(f"""
-<section class="issue" id="{key[op['ref']]}">
-  <div class="crumbs">{' <span class="sep">/</span> '.join(crumbs)}</div>
-  <h1>{e(op['summary'])}</h1>
-  <div class="cols">
-    <div>
-      <h3>Descripción</h3><div class="desc">{_desc(op.get('description') or '')}</div>
-      {table}
-    </div>
-    <div>
-      <div class="status">{e(status_of(op))} <span class="muted">▾</span></div>
-      <div class="panel"><h4>Detalles</h4>
-        <div class="row"><span class="lbl">Tipo</span><span>{ICON[op['kind']]} {e(types[op['kind']])}</span></div>
-        <div class="row"><span class="lbl">Responsable</span><span class="who"><span class="av{av_cls}"><svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="5.5" r="3" fill="#fff"/><path d="M2.5 14c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5z" fill="#fff"/></svg></span> {who}</span></div>
-        <div class="row"><span class="lbl">Prioridad</span><span>{PRIORITY.get(prio, '')} {e(prio)}</span></div>
-        <div class="row"><span class="lbl">Etiquetas</span><span>{labels}</span></div>
-        <div class="row"><span class="lbl">Principal</span><span>{link(parent) if parent else '<span class="muted">Ninguno</span>'}</span></div>
-        <div class="foot">{order}</div>
-      </div>
-    </div>
-  </div>
-</section>""")
+        pages.append(template.render(template.load("card.html"), {
+            "key": key[op["ref"]], "crumbs_html": ' <span class="sep">/</span> '.join(crumbs), "summary": op["summary"],
+            "description_html": _description_html(op.get("description") or ""), "children_html": table,
+            "status": status_of(op), "type_icon_html": ICON[op["kind"]], "type": types[op["kind"]],
+            "assignee_class": av_cls, "assignee": who, "priority_icon_html": PRIORITY.get(prio, ""), "priority": prio,
+            "labels_html": labels, "parent_html": link(parent) if parent else '<span class="muted">Ninguno</span>',
+            "order": order}, escape=template.html_escape))
 
     return f"""<!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">

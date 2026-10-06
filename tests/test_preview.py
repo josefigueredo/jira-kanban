@@ -38,6 +38,24 @@ class PreviewTest(unittest.TestCase):
         self.assertIn("Vos · completa", html)
         self.assertIn("A decidir", html)
 
+    def test_the_description_shows_its_sections_as_headings(self):
+        story = re.search(r'id="NUEVO-2".*?</section>', self.html, re.S).group(0)
+        desc = re.search(r'<div class="desc">(.*?)</div>', story, re.S).group(1)
+        self.assertEqual(re.findall(r"<h4>(.*?)</h4>", desc), ["Por qué", "Qué", "Hecho cuando", "Criterios de aceptación"])
+        self.assertTrue(desc.startswith("<p>Como analista quiero ver el tablero para decidir</p>"))
+
+    def test_each_page_comes_from_the_card_template(self):
+        from unittest import mock
+        from jkan import template
+        shipped = template.load
+
+        def marked(name):
+            text = shipped(name)
+            return text.replace('<h1>{{summary}}</h1>', '<h1 data-card>{{summary}}</h1>') if name == "card.html" else text
+        with mock.patch.object(template, "load", marked):
+            html = preview.render(spec.plan(GOOD, CONVENTIONS), CONVENTIONS)
+        self.assertEqual(html.count("<h1 data-card>"), 4)
+
     def test_sidebar_lists_keys_only_with_the_title_on_hover(self):
         side = re.search(r'<aside class="side">.*?</aside>', self.html, re.S).group(0)
         self.assertNotIn(">[FE] Ver el tablero<", side)

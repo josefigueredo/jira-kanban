@@ -21,7 +21,7 @@ python3 ~/.agents/skills/jira-kanban/jk.py <create|pull|push|show|board> ... --p
 3. **Existing epic first:** a `**Jira Epic:** KEY` in `specs/*/spec.md`, a key in the conversation or the branch. If one
    covers the work, ask before creating anything; to mirror it, run `jk pull KEY`.
 4. **Draft the spec** (JSON, in the scratchpad) from the conversation. Read `references/spec.md` first: it has the
-   format, the description every issue needs (prose a person can follow and correct: why, what, done when), and when an item is a story or a task, finished (`done`, with its `evidence`: the commits, branch or URL), in progress (`started`) or open.
+   format, the `why` / `what` / `done_when` every issue needs (prose a person can follow and correct; jk renders them through `templates/description.md`), and when an item is a story or a task, finished (`done`, with its `evidence`: the commits, branch or URL), in progress (`started`) or open.
 5. **Preview:** `jk create --spec <file> --jira-project KEY --html <scratchpad>/vista.html` (dry run). Show the tree and
    `open` the HTML, a Jira-like view of what this pass does. If any issue shows "a decidir", ask the user whether to
    assign the open ones to them. Wait for an explicit yes.
@@ -40,3 +40,6 @@ python3 ~/.agents/skills/jira-kanban/jk.py <create|pull|push|show|board> ... --p
 - Progress: `jk board KEY` (after a pull) groups by Jira status category, never by status names; blocked means a
   status in `blocked_statuses` or the Flagged field.
 - Project defaults live in `conventions.json`; a project overrides them in `./.jira-kanban/conventions.json`.
+- The shape of every card lives in `templates/` (`description.md`, `issue.md`, `card.html`); edit a template, never the
+  Python that fills it. Placeholders: `{{name}}` required, `{{?name}}` drops its paragraph when empty, `{{~name}}` may be
+  empty.

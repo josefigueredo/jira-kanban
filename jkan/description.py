@@ -50,6 +50,14 @@ def parse(text: str) -> Dict[str, str]:
             if "\n".join(lines).strip()}
 
 
+def blocks(text: str) -> List[Tuple[str, str]]:
+    """(label, content) in template order for the sections present; the intro has an empty label."""
+    sections, intro = _layout()
+    parsed = parse(text)
+    out = [("", parsed[intro])] if intro in parsed else []
+    return out + [(label.rstrip(":"), parsed[field]) for label, field, _ in sections if field in parsed]
+
+
 def check(text: str) -> List[str]:
     """What keeps a description from being a card a person can follow: a required section missing, empty or left as
     its placeholder. Braces inside prose are content, not placeholders."""
