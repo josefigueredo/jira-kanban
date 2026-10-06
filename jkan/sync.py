@@ -272,6 +272,15 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
                                       conv.get("default_priority")))
             item["key"] = key
             shutil.rmtree(item["path"].parent, ignore_errors=True)
+            if item["done"]:  # a card written as finished is created and then moved, like create does
+                try:
+                    moved = jira.transition_done(key)
+                except Exception as exc:  # noqa: BLE001 — the issue exists: report the move, never lose the rest
+                    moved, reason = None, str(exc)
+                else:
+                    reason = "no transition to Done"
+                if not moved:
+                    result["errors"].append(f"{key}: created, but {reason}")
     pull(jira, project, epic_key, conv)
     return result
 

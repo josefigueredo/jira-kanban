@@ -193,6 +193,26 @@ class PushTest(unittest.TestCase):
         self.assertFalse(new.exists())
         self.assertTrue((self.epic / "stories/PLATE-601/subtasks/PLATE-604/subtask.md").is_file())
 
+    def test_a_new_local_item_marked_done_is_moved_to_done(self):
+        # Found loading PLATE-520: push created new items but never moved a done one, so it landed in Backlog.
+        new = self.epic / "tasks/_new-salida/task.md"
+        new.parent.mkdir(parents=True)
+        new.write_text("---\nstatus: Done\n---\n# [AI] Salida de push\n\nPor qué: x.\n\nQué: y.\n\nHecho cuando: z.\n",
+                       encoding="utf-8")
+        sync.push(self.jira, self.project, self.key, apply=True)
+        key = next(k for k, i in self.jira.issues.items() if i["summary"] == "[AI] Salida de push")
+        self.assertEqual(self.jira.issues[key]["status"], "Done")
+        self.assertEqual(self.jira.issues[key]["assignee"], "acc-me")
+
+    def test_a_rejected_move_of_a_new_item_is_reported_not_raised(self):
+        new = self.epic / "tasks/_new-salida/task.md"
+        new.parent.mkdir(parents=True)
+        new.write_text("---\nstatus: Done\n---\n# [AI] Salida\n\nPor qué: x.\n\nQué: y.\n\nHecho cuando: z.\n",
+                       encoding="utf-8")
+        self.jira.refuse_moves["PLATE-604"] = "none"
+        result = sync.push(self.jira, self.project, self.key, apply=True)
+        self.assertEqual(result["errors"], ["PLATE-604: created, but no transition to Done"])
+
 
 if __name__ == "__main__":
     unittest.main()
