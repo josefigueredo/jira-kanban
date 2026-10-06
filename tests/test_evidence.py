@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 import unittest
 
-from helpers import CONVENTIONS, FakeJira, make_project
+from helpers import CONVENTIONS, FakeJira, described, make_project
 from jkan import evidence, spec, sync
 
 REMOTE = "git@github.com:org/repo.git"
@@ -66,11 +66,11 @@ class ResolveTest(unittest.TestCase):
 
 class EvidenceSpecTest(unittest.TestCase):
     def test_done_needs_evidence_and_a_subtask_inherits_its_parents(self):
-        bad = {"epic": {"summary": "e"}, "items": [
+        bad = described({"epic": {"summary": "e"}, "items": [
             {"type": "task", "summary": "sin", "done": True},
             {"type": "task", "summary": "con", "done": True, "evidence": ["abc1234"], "subtasks": [{"summary": "hereda"}]},
             {"type": "task", "summary": "abierta", "subtasks": [{"summary": "hecha sola", "done": True}]},
-            {"type": "task", "summary": "mal", "evidence": "abc1234"}]}
+            {"type": "task", "summary": "mal", "evidence": "abc1234"}]})
         findings = spec.validate(bad, CONVENTIONS)
         self.assertEqual(findings, [
             "items[0]: done needs evidence: the commits, branch or URL that show it (\"evidence\": [...])",
@@ -85,14 +85,14 @@ class EvidenceCreateTest(unittest.TestCase):
         self.repo, self.pushed, self.local_only = repo_with_remote()
 
     def test_the_description_gets_the_permalinks_in_the_dry_run_too(self):
-        one = {"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True,
-                                                    "evidence": [self.pushed[:7]]}]}
+        one = described({"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True,
+                                                    "evidence": [self.pushed[:7]]}]})
         result = sync.create(FakeJira(), self.repo, one, CONVENTIONS, apply=False)
         self.assertTrue(result["ops"][1]["description"].endswith(f"Evidencia:\n- {WEB}/commit/{self.pushed}"))
 
     def test_unresolved_evidence_refuses_before_any_write(self):
-        one = {"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True,
-                                                    "evidence": [self.local_only[:7]]}]}
+        one = described({"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True,
+                                                    "evidence": [self.local_only[:7]]}]})
         jira = FakeJira()
         with self.assertRaises(ValueError) as caught:
             sync.create(jira, self.repo, one, CONVENTIONS, apply=True, assign_open=True)

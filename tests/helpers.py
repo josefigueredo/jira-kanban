@@ -120,3 +120,11 @@ def epic_with_children(jira: FakeJira) -> str:
                  "parent": {"key": epic}})
     jira.writes.clear()
     return epic
+
+
+def described(spec: dict) -> dict:
+    """Give every issue of a spec a description, for tests about something else: jk refuses issues without one."""
+    entries = [spec["epic"]] + spec["items"] + [sub for item in spec["items"] for sub in item.get("subtasks") or []]
+    for entry in entries:
+        entry.setdefault("description", f"Por qué y qué hay que hacer en «{entry.get('summary', '')}».")
+    return spec

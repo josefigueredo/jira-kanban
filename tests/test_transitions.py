@@ -3,15 +3,15 @@ from __future__ import annotations
 import json
 import unittest
 
-from helpers import CONVENTIONS, FakeJira, make_project
+from helpers import CONVENTIONS, FakeJira, described, make_project
 from jkan import sync
 from test_cli import run
 
 # Creation order: epic PLATE-600, Hecha 601, its subtask 602, En curso 603, Otra hecha 604.
-SPEC = {"epic": {"summary": "e"}, "items": [
+SPEC = described({"epic": {"summary": "e"}, "items": [
     {"type": "task", "summary": "Hecha", "done": True, "evidence": ["https://example.com/pr/1"], "subtasks": [{"summary": "hija"}]},
     {"type": "task", "summary": "En curso", "started": True},
-    {"type": "task", "summary": "Otra hecha", "done": True, "evidence": ["https://example.com/pr/1"]}]}
+    {"type": "task", "summary": "Otra hecha", "done": True, "evidence": ["https://example.com/pr/1"]}]})
 
 
 class TransitionFailureTest(unittest.TestCase):

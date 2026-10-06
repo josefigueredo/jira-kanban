@@ -2,16 +2,18 @@ from __future__ import annotations
 
 import unittest
 
-from helpers import CONVENTIONS
+from helpers import CONVENTIONS, described
 from jkan import spec
 
 GOOD = {
-    "epic": {"summary": "Kanban local de Jira", "description": "Objetivo y alcance"},
+    "epic": {"summary": "Kanban local de Jira",
+             "description": "El equipo sigue el trabajo en Jira pero lo edita desde el repo. Alcance: la épica y sus hijos."},
     "items": [
         {"type": "story", "area": "FE", "summary": "Ver el tablero",
          "user_story": "Como analista quiero ver el tablero para decidir",
+         "description": "Hoy el avance solo se ve entrando a Jira issue por issue.",
          "acceptance": ["AC1: Dado un tablero Cuando lo abro Entonces veo las columnas"],
-         "subtasks": [{"summary": "Armar la vista"}]},
+         "subtasks": [{"summary": "Armar la vista", "description": "Una columna por estado; termina cuando se ve el tablero."}]},
         {"type": "task", "area": "DEVOPS", "summary": "Pipeline", "description": "CI con gate"},
     ],
 }
@@ -21,14 +23,22 @@ class ValidateTest(unittest.TestCase):
     def test_good_spec_has_no_findings(self):
         self.assertEqual(spec.validate(GOOD, CONVENTIONS), [])
 
+    def test_every_issue_needs_a_description_a_person_can_follow(self):
+        bare = {"epic": {"summary": "e"},
+                "items": [{"type": "task", "summary": "t", "description": "  ", "subtasks": [{"summary": "s"}]}]}
+        findings = spec.validate(bare, CONVENTIONS)
+        for ref in ("epic", "items[0]", "items[0].subtasks[0]"):
+            self.assertIn(f"{ref}: description is required: why it matters, what to do and how to tell it is done",
+                          findings)
+
     def test_story_needs_a_user_story_and_task_does_not(self):
-        bad = {"epic": {"summary": "x"}, "items": [{"type": "story", "summary": "Sin historia"}]}
+        bad = described({"epic": {"summary": "x"}, "items": [{"type": "story", "summary": "Sin historia"}]})
         self.assertIn("items[0]: a story needs user_story (Como … quiero … para …); use a task if no one benefits",
                       spec.validate(bad, CONVENTIONS))
 
     def test_unknown_type_area_and_priority(self):
-        bad = {"epic": {"summary": "x"}, "items": [{"type": "subtask", "summary": "y"},
-                                                    {"type": "task", "summary": "z", "area": "UX", "priority": "Urgent"}]}
+        bad = described({"epic": {"summary": "x"}, "items": [{"type": "subtask", "summary": "y"},
+                                                    {"type": "task", "summary": "z", "area": "UX", "priority": "Urgent"}]})
         findings = spec.validate(bad, CONVENTIONS)
         self.assertIn("items[0]: type must be story or task, not 'subtask'", findings)
         self.assertIn("items[1]: area 'UX' is not one of FE, BE, BO, QA, DEVOPS, INFRA, BFF, AI", findings)
@@ -36,7 +46,9 @@ class ValidateTest(unittest.TestCase):
 
     def test_needs_an_epic_summary_and_items(self):
         self.assertEqual(spec.validate({"epic": {}, "items": []}, CONVENTIONS),
-                         ["epic: summary is required", "items: at least one story or task"])
+                         ["epic: summary is required",
+                          "epic: description is required: why it matters, what to do and how to tell it is done",
+                          "items: at least one story or task"])
 
 
 class PlanTest(unittest.TestCase):
@@ -54,7 +66,7 @@ class PlanTest(unittest.TestCase):
         self.assertEqual(story["priority"], "Medium")
 
     def test_existing_prefix_is_not_doubled(self):
-        one = {"epic": {"summary": "e"}, "items": [{"type": "task", "area": "FE", "summary": "[FE] Ya prefijada"}]}
+        one = described({"epic": {"summary": "e"}, "items": [{"type": "task", "area": "FE", "summary": "[FE] Ya prefijada"}]})
         self.assertEqual(spec.plan(one, CONVENTIONS)[1]["summary"], "[FE] Ya prefijada")
 
 

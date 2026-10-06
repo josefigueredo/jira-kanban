@@ -3,14 +3,14 @@ from __future__ import annotations
 import re
 import unittest
 
-from helpers import CONVENTIONS, FakeJira, make_project
+from helpers import CONVENTIONS, FakeJira, described, make_project
 from jkan import preview, spec, sync
 from test_jira import client
 
-SPEC = {"epic": {"summary": "e"}, "items": [
+SPEC = described({"epic": {"summary": "e"}, "items": [
     {"type": "task", "summary": "Repo", "started": True, "subtasks": [{"summary": "Crear el repo"}]},
     {"type": "task", "summary": "Hecha", "done": True, "evidence": ["https://example.com/pr/1"]},
-    {"type": "task", "summary": "Abierta"}]}
+    {"type": "task", "summary": "Abierta"}]})
 
 
 class StartedSpecTest(unittest.TestCase):
@@ -21,8 +21,8 @@ class StartedSpecTest(unittest.TestCase):
         self.assertFalse(ops["items[2]"]["started"])
 
     def test_started_and_done_together_or_not_bool_are_findings(self):
-        bad = {"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "x", "started": True, "done": True},
-                                                    {"type": "task", "summary": "y", "started": "yes"}]}
+        bad = described({"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "x", "started": True, "done": True},
+                                                    {"type": "task", "summary": "y", "started": "yes"}]})
         findings = spec.validate(bad, CONVENTIONS)
         self.assertIn("items[0]: started and done exclude each other", findings)
         self.assertIn("items[1]: started must be true or false", findings)

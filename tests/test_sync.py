@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from helpers import CONVENTIONS, FailingJira, FakeJira, epic_with_children, make_project
+from helpers import CONVENTIONS, FailingJira, FakeJira, described, epic_with_children, make_project
 from jkan import kanban, sync
 from test_spec import GOOD
 
@@ -38,9 +38,9 @@ class CreateTest(unittest.TestCase):
         self.assertIn("4", str(caught.exception))  # epic, story, its subtask and the task are all open
 
     def test_done_items_are_assigned_to_me_and_open_ones_follow_the_decision(self):
-        done = {"epic": {"summary": "e"}, "items": [
+        done = described({"epic": {"summary": "e"}, "items": [
             {"type": "task", "summary": "Hecha", "done": True, "evidence": ["https://example.com/pr/1"], "subtasks": [{"summary": "hereda"}]},
-            {"type": "task", "summary": "Abierta", "subtasks": [{"summary": "abierta", "done": False}]}]}
+            {"type": "task", "summary": "Abierta", "subtasks": [{"summary": "abierta", "done": False}]}]})
         jira = FakeJira()
         sync.create(jira, make_project(), done, CONVENTIONS, apply=True, assign_open=False)
         assigned = {w[2]["summary"]: w[2].get("assignee") for w in jira.writes if w[0] == "create"}
@@ -48,7 +48,7 @@ class CreateTest(unittest.TestCase):
                                     "Abierta": None, "abierta": None})
 
     def test_all_done_assigns_everything_without_asking(self):
-        done = {"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True, "evidence": ["https://example.com/pr/1"]}]}
+        done = described({"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True, "evidence": ["https://example.com/pr/1"]}]})
         jira = FakeJira()
         sync.create(jira, make_project(), done, CONVENTIONS, apply=True)
         self.assertTrue(all(w[2]["assignee"] == {"accountId": "acc-me"} for w in jira.writes if w[0] == "create"))
@@ -75,10 +75,10 @@ class CreateTest(unittest.TestCase):
         self.assertEqual(list((project / ".jira-kanban").glob(".create-progress-*.json")), [])
 
     def test_done_items_are_moved_to_done_children_before_parents(self):
-        done = {"epic": {"summary": "e"}, "items": [
+        done = described({"epic": {"summary": "e"}, "items": [
             {"type": "story", "summary": "Hecha", "user_story": "Como dev quiero x para y", "done": True, "evidence": ["https://example.com/pr/1"],
              "acceptance": ["AC1: Dado a Cuando b Entonces c"], "subtasks": [{"summary": "hereda"}]},
-            {"type": "task", "summary": "Abierta"}]}
+            {"type": "task", "summary": "Abierta"}]})
         jira = FakeJira()
         result = sync.create(jira, make_project(), done, CONVENTIONS, apply=True, assign_open=False)
         moved = [w[1] for w in jira.writes if w[0] == "transition"]

@@ -11,10 +11,17 @@ def _story_ok(text: str) -> bool:
     return lowered.startswith("como ") and " quiero " in lowered and " para " in lowered
 
 
+def _description_findings(ref: str, entry: dict) -> List[str]:
+    if (entry.get("description") or "").strip():
+        return []
+    return [f"{ref}: description is required: why it matters, what to do and how to tell it is done"]
+
+
 def validate(spec: dict, conv: dict) -> List[str]:
     findings: List[str] = []
     if not (spec.get("epic") or {}).get("summary", "").strip():
         findings.append("epic: summary is required")
+    findings += _description_findings("epic", spec.get("epic") or {})
     items = spec.get("items") or []
     if not items:
         findings.append("items: at least one story or task")
@@ -26,6 +33,7 @@ def validate(spec: dict, conv: dict) -> List[str]:
             findings.append(f"{ref}: type must be story or task, not {kind!r}")
         if not (item.get("summary") or "").strip():
             findings.append(f"{ref}: summary is required")
+        findings += _description_findings(ref, item)
         if kind == "story" and not _story_ok(item.get("user_story", "")):
             findings.append(f"{ref}: a story needs user_story (Como … quiero … para …); use a task if no one benefits")
         area = item.get("area")
@@ -41,6 +49,7 @@ def validate(spec: dict, conv: dict) -> List[str]:
         for j, sub in enumerate(item.get("subtasks") or []):
             if not (sub.get("summary") or "").strip():
                 findings.append(f"{ref}.subtasks[{j}]: summary is required")
+            findings += _description_findings(f"{ref}.subtasks[{j}]", sub)
             if "done" in sub and not isinstance(sub["done"], bool):
                 findings.append(f"{ref}.subtasks[{j}]: done must be true or false")
             findings += _started_findings(f"{ref}.subtasks[{j}]", sub)
