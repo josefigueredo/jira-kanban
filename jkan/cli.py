@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Callable, List, Optional
@@ -11,6 +12,21 @@ from . import config, journal, kanban, preview, sync
 from .jira import Jira, JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
+
+
+def excerpt(before: str, after: str, width: int = 60) -> tuple:
+    """Both values on one line, cut around their first difference so the change itself is what shows.
+
+    The first characters of two long descriptions are usually the same, so printing them hides the edit. Each side
+    keeps a third of the width before the difference and marks a cut with an ellipsis.
+    """
+    flat = [re.sub(r"\s*\n\s*", " ", str(v or "")).strip() for v in (before, after)]
+    if all(len(v) <= width for v in flat):
+        return flat[0], flat[1]
+    first = next((i for i, (a, b) in enumerate(zip(*flat)) if a != b), min(map(len, flat)))
+    start = max(0, first - width // 3)
+    return tuple(("…" if start else "") + v[start:start + width] + ("…" if start + width < len(v) else "")
+                 for v in flat)
 
 
 def _client(project: Path, command: Optional[str] = None):
@@ -107,7 +123,8 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
             sys.stderr.write(f"{exc}\n")
             return FINDINGS
         for c in result["changes"]:
-            print(f"{c['key']} {c['field']}: {str(c['from'])[:60]} -> {str(c['to'])[:60]}")
+            before, after = excerpt(c["from"], c["to"])
+            print(f"{c['key']} {c['field']}: {before} -> {after}")
         for n in result["new"]:
             print(f"new {n['kind']} under {n['parent']}: {n['summary']}")
         for c in result["conflicts"]:
@@ -116,6 +133,10 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
             print(f"error: {e}")
         if not args.apply:
             print("dry run: nothing written; --apply sends these to Jira")
+        else:
+            rejected = len(result["errors"])
+            print(f"pushed: {len(result['changes']) - rejected} written, {rejected} rejected, "
+                  f"{len(result['new'])} created, {len(result['conflicts'])} conflicts")
         return FINDINGS if result["conflicts"] or result["errors"] else OK
     except (JiraError, OSError, KeyError) as exc:
         sys.stderr.write(f"jk: {exc}\n")
