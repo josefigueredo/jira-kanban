@@ -37,6 +37,12 @@ class PreviewTest(unittest.TestCase):
         self.assertIn("Vos · completa", html)
         self.assertIn("A decidir", html)
 
+    def test_sidebar_lists_keys_only_with_the_title_on_hover(self):
+        side = re.search(r'<aside class="side">.*?</aside>', self.html, re.S).group(0)
+        self.assertNotIn(">[FE] Ver el tablero<", side)
+        self.assertIn('title="[FE] Ver el tablero"', side)
+        self.assertIn(">NUEVO-2<", side)
+
     def test_standalone_and_marked_as_a_preview(self):
         self.assertNotRegex(self.html, r'(src|href)="https?://')
         self.assertIn("Vista previa", self.html)

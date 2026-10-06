@@ -42,14 +42,14 @@ a{color:#0C66E4;text-decoration:none}a:hover{text-decoration:underline}
 .pill{background:#E9F2FF;color:#0055CC;border-radius:3px;padding:2px 8px;font-size:12px;font-weight:600;text-transform:uppercase}
 .banner{background:#FFF7D6;border-bottom:1px solid #F8E6A0;padding:8px 16px;color:#533F04}
 .shell{display:flex;min-height:calc(100% - 96px)}
-.side{width:260px;flex:none;background:#F7F8F9;border-right:1px solid #DCDFE4;padding:16px 8px}
+.side{width:190px;flex:none;background:#F7F8F9;border-right:1px solid #DCDFE4;padding:16px 8px}
 .side .proj{display:flex;gap:10px;align-items:center;padding:0 8px 16px}
 .side .proj b{display:block}.side .proj span{color:#626F86;font-size:12px}
 .avatar-p{width:32px;height:32px;border-radius:4px;background:#1D7AFC;color:#fff;display:grid;place-items:center;font-weight:700}
 .side h4{font-size:11px;color:#626F86;text-transform:uppercase;letter-spacing:.04em;margin:8px 8px 6px}
 .side a{display:flex;gap:8px;align-items:center;color:#44546F;padding:5px 8px;border-radius:3px;font-size:13px}
 .side a:hover{background:#091E420F;text-decoration:none}.side a.on{background:#E9F2FF;color:#0C66E4}
-.side a .k{color:#626F86;white-space:nowrap}.side a .s{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side a .k{color:#626F86;white-space:nowrap}
 .l1{padding-left:24px!important}.l2{padding-left:40px!important}
 main{flex:1;min-width:0;padding:24px 32px}
 .issue{display:none}.issue.on{display:block}
@@ -125,8 +125,8 @@ def render(ops: List[dict], conv: dict) -> str:
     side = []
     for op in ops:
         level = {"epic": "", "story": "l1", "task": "l1", "subtask": "l2"}[op["kind"]]
-        side.append(f'<a class="{level}" href="#{key[op["ref"]]}">{ICON[op["kind"]]}<span class="k">{key[op["ref"]]}</span>'
-                    f'<span class="s">{e(op["summary"])}</span></a>')
+        side.append(f'<a class="{level}" href="#{key[op["ref"]]}" title="{e(op["summary"])}">{ICON[op["kind"]]}'
+                    f'<span class="k">{key[op["ref"]]}</span></a>')  # el título no entra: queda en el tooltip
 
     pages = []
     for n, op in enumerate(ops, 1):
