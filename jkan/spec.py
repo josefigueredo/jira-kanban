@@ -3,7 +3,11 @@ from __future__ import annotations
 
 from typing import List
 
+from . import description
+
 ITEM_TYPES = ("story", "task")
+SECTIONS = (("why", "the problem or need, as observed"), ("what", "the change, its scope and what stays out"),
+            ("done_when", "how a person checks it without asking"))
 
 
 def _story_ok(text: str) -> bool:
@@ -12,9 +16,11 @@ def _story_ok(text: str) -> bool:
 
 
 def _description_findings(ref: str, entry: dict) -> List[str]:
-    if (entry.get("description") or "").strip():
-        return []
-    return [f"{ref}: description is required: why it matters, what to do and how to tell it is done"]
+    """The description is built from templates/description.md; the spec gives its fields, never free text."""
+    if "description" in entry:
+        return [f"{ref}: description is built from why, what and done_when (templates/description.md); "
+                f"split it into those fields"]
+    return [f"{ref}: {name} is required ({hint})" for name, hint in SECTIONS if not str(entry.get(name) or "").strip()]
 
 
 def validate(spec: dict, conv: dict) -> List[str]:
@@ -83,16 +89,15 @@ def title(area: str, summary: str) -> str:
     return f"[{area}] {summary}"
 
 
+def sections(item: dict) -> dict:
+    """The fields templates/description.md takes, from one spec entry."""
+    return {"intro": (item.get("user_story") or "").strip(),
+            **{name: str(item.get(name) or "").strip() for name, _ in SECTIONS},
+            "acceptance": "\n".join(f"- {ac.strip()}" for ac in item.get("acceptance") or [])}
+
+
 def _description(item: dict) -> str:
-    parts = []
-    if item.get("user_story"):
-        parts.append(item["user_story"].strip())
-    if item.get("description"):
-        parts.append(item["description"].strip())
-    acceptance = item.get("acceptance") or []
-    if acceptance:
-        parts.append("Criterios de aceptación:\n" + "\n".join(f"- {ac.strip()}" for ac in acceptance))
-    return "\n\n".join(parts)
+    return description.render(sections(item))
 
 
 def plan(spec: dict, conv: dict) -> List[dict]:
@@ -100,18 +105,20 @@ def plan(spec: dict, conv: dict) -> List[dict]:
     default = conv.get("default_priority")
     epic = spec["epic"]
     ops = [{"ref": "epic", "kind": "epic", "parent": None, "summary": epic["summary"].strip(),
-            "description": (epic.get("description") or "").strip(), "priority": epic.get("priority") or default,
+            "description": _description(epic), "sections": sections(epic), "priority": epic.get("priority") or default,
             "labels": list(epic.get("labels") or [])}]
     for i, item in enumerate(spec["items"]):
         ref = f"items[{i}]"
         item_done = bool(item.get("done"))
         ops.append({"ref": ref, "kind": item["type"], "parent": "epic", "summary": title(item.get("area"), item["summary"]),
-                    "description": _description(item), "priority": item.get("priority") or default,
+                    "description": _description(item), "sections": sections(item),
+                    "priority": item.get("priority") or default,
                     "labels": list(item.get("labels") or []), "done": item_done,
                     "started": bool(item.get("started")), "evidence": list(item.get("evidence") or [])})
         for j, sub in enumerate(item.get("subtasks") or []):
             ops.append({"ref": f"{ref}.subtasks[{j}]", "kind": "subtask", "parent": ref,
                         "summary": title(sub.get("area"), sub["summary"]), "description": _description(sub),
+                        "sections": sections(sub),
                         "priority": sub.get("priority") or item.get("priority") or default,
                         "labels": list(sub.get("labels") or []), "done": bool(sub.get("done", item_done)),
                         "started": bool(sub.get("started")),

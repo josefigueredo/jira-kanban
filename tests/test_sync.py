@@ -143,7 +143,8 @@ class PushTest(unittest.TestCase):
         sync.pull(jira, project, key, conv)
         new = kanban.epic_dir(project, key) / "tasks" / "_new-docs" / "task.md"
         new.parent.mkdir(parents=True)
-        new.write_text("# [FE] Docs\n", encoding="utf-8")
+        new.write_text("# [FE] Docs\n\nPor qué: no hay guía.\n\nQué: un README.\n\nHecho cuando: se publica.\n",
+                       encoding="utf-8")
         sync.push(jira, project, key, apply=True, conv=conv, assign_open=False)
         [created] = [w for w in jira.writes if w[0] == "create"]
         self.assertEqual(created[2]["project"], {"key": "ACME"})
@@ -179,7 +180,8 @@ class PushTest(unittest.TestCase):
     def test_new_local_item_is_created_under_its_folder_parent(self):
         new = self.epic / "stories/PLATE-601/subtasks/_new-tests/subtask.md"
         new.parent.mkdir(parents=True)
-        new.write_text("---\nkind: subtask\n---\n# Escribir los tests\n\nCubrir el tablero\n", encoding="utf-8")
+        new.write_text("---\nkind: subtask\n---\n# Escribir los tests\n\nPor qué: el tablero no tiene tests.\n\n"
+                       "Qué: Cubrir el tablero\n\nHecho cuando: la suite los corre.\n", encoding="utf-8")
         plan = sync.push(self.jira, self.project, self.key, apply=False)
         self.assertEqual([(n["kind"], n["parent"], n["summary"]) for n in plan["new"]],
                          [("subtask", "PLATE-601", "Escribir los tests")])

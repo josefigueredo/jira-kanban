@@ -129,6 +129,8 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
             print(f"new {n['kind']} under {n['parent']}: {n['summary']}")
         for c in result["conflicts"]:
             print(f"conflict {c['key']} {c['field']}: changed locally and in Jira; pull, reapply the local edit, push")
+        for i in result["invalid"]:
+            print(f"invalid {i['key']} {i['field']}: {i['problem']} (see templates/description.md)")
         for e in result["errors"]:
             print(f"error: {e}")
         if not args.apply:
@@ -136,8 +138,9 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
         else:
             rejected = len(result["errors"])
             print(f"pushed: {len(result['changes']) - rejected} written, {rejected} rejected, "
-                  f"{len(result['new'])} created, {len(result['conflicts'])} conflicts")
-        return FINDINGS if result["conflicts"] or result["errors"] else OK
+                  f"{len(result['new'])} created, {len(result['conflicts'])} conflicts"
+                  + (f", {len(result['invalid'])} invalid" if result["invalid"] else ""))
+        return FINDINGS if result["conflicts"] or result["errors"] or result["invalid"] else OK
     except (JiraError, OSError, KeyError) as exc:
         sys.stderr.write(f"jk: {exc}\n")
         return CANNOT

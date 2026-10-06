@@ -123,8 +123,10 @@ def epic_with_children(jira: FakeJira) -> str:
 
 
 def described(spec: dict) -> dict:
-    """Give every issue of a spec a description, for tests about something else: jk refuses issues without one."""
+    """Give every issue of a spec its why / what / done_when, for tests about something else: jk refuses issues without."""
     entries = [spec["epic"]] + spec["items"] + [sub for item in spec["items"] for sub in item.get("subtasks") or []]
     for entry in entries:
-        entry.setdefault("description", f"Por qué y qué hay que hacer en «{entry.get('summary', '')}».")
+        entry.setdefault("why", f"Hace falta «{entry.get('summary', '')}».")
+        entry.setdefault("what", "Lo que dice el título.")
+        entry.setdefault("done_when", "Se ve hecho.")
     return spec

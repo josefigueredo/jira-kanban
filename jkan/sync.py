@@ -15,7 +15,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from . import config, evidence, kanban, spec
+from . import config, description, evidence, kanban, spec
 
 KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]+-\d+$")
 FIELDS = ("summary", "status", "description")
@@ -85,7 +85,7 @@ def _progress_path(project: Path, epic_spec: dict, conv: dict) -> Path:
 
 
 def attach_evidence(ops: List[dict], repo: Path) -> None:
-    """Resolve every op's evidence to links and append them to its description; any that does not resolve refuses
+    """Resolve every op's evidence to links and fill the description's Evidencia section; any that does not resolve refuses
     the whole create, before a single write, in the dry run too."""
     findings = []
     for op in ops:
@@ -93,8 +93,8 @@ def attach_evidence(ops: List[dict], repo: Path) -> None:
             continue
         links, problems = evidence.resolve(op["evidence"], repo)
         findings += [f"{op['ref']}: {problem}" for problem in problems]
-        section = "Evidencia:\n" + "\n".join(f"- {link}" for link in links)
-        op["description"] = f"{op['description']}\n\n{section}" if op["description"] else section
+        op["sections"]["evidence"] = "\n".join(f"- {link}" for link in links)
+        op["description"] = description.render(op["sections"])
     if findings:
         raise ValueError("\n".join(findings))
 
@@ -217,7 +217,7 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
     epic = kanban.epic_dir(project, epic_key)
     state = json.loads((epic / ".sync.json").read_text(encoding="utf-8"))
     baseline = state["issues"] if "issues" in state else state  # a flat baseline predates the sync time
-    changes, conflicts, new = [], [], []
+    changes, conflicts, new, invalid = [], [], [], []
     depth: Dict[str, int] = {}
     for entry in _local(epic, epic_key):
         depth[entry["key"]] = {"subtask": 0, "epic": 2}.get(entry["kind"], 1)
@@ -225,6 +225,10 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
         if folder.startswith("_new") or not entry["key"]:
             if entry["parent"] and not KEY_RE.match(entry["parent"]):
                 conflicts.append({"key": folder, "field": "parent", "reason": "create its parent first"})
+                continue
+            problems = description.check(entry["description"])
+            if problems:  # a new card is created only once its description follows templates/description.md
+                invalid += [{"key": folder, "field": "description", "problem": p} for p in problems]
                 continue
             new.append({"path": entry["path"], "kind": entry["kind"], "parent": entry["parent"],
                         "summary": entry["summary"], "description": entry["description"],
@@ -240,10 +244,13 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
             remote = remote or jira.get(entry["key"])
             if (remote.get(field) or "").strip() != base[field]:
                 conflicts.append({"key": entry["key"], "field": field, "local": entry[field], "jira": remote.get(field)})
+            elif field == "description" and description.check(entry[field]):
+                # only an edited description is checked: a card mirrored with free text can still move or be renamed
+                invalid += [{"key": entry["key"], "field": field, "problem": p} for p in description.check(entry[field])]
             else:
                 changes.append({"key": entry["key"], "field": field, "from": base[field], "to": entry[field]})
     asks = assignment(new, assign_open, bool(conv.get("assign_to_me")))
-    result = {"changes": changes, "conflicts": conflicts, "new": new, "errors": []}
+    result = {"changes": changes, "conflicts": conflicts, "new": new, "invalid": invalid, "errors": []}
     if not apply:
         return result
     if asks:

@@ -1,0 +1,21 @@
+<section class="issue" id="{{key}}">
+  <div class="crumbs">{{crumbs_html}}</div>
+  <h1>{{summary}}</h1>
+  <div class="cols">
+    <div>
+      <h3>Descripción</h3><div class="desc">{{description_html}}</div>
+      {{~children_html}}
+    </div>
+    <div>
+      <div class="status">{{status}} <span class="muted">▾</span></div>
+      <div class="panel"><h4>Detalles</h4>
+        <div class="row"><span class="lbl">Tipo</span><span>{{type_icon_html}} {{type}}</span></div>
+        <div class="row"><span class="lbl">Responsable</span><span class="who"><span class="av{{~assignee_class}}"><svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="5.5" r="3" fill="#fff"/><path d="M2.5 14c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5z" fill="#fff"/></svg></span> {{assignee}}</span></div>
+        <div class="row"><span class="lbl">Prioridad</span><span>{{~priority_icon_html}} {{~priority}}</span></div>
+        <div class="row"><span class="lbl">Etiquetas</span><span>{{labels_html}}</span></div>
+        <div class="row"><span class="lbl">Principal</span><span>{{parent_html}}</span></div>
+        <div class="foot">{{order}}</div>
+      </div>
+    </div>
+  </div>
+</section>

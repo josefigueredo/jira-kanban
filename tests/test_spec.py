@@ -3,18 +3,21 @@ from __future__ import annotations
 import unittest
 
 from helpers import CONVENTIONS, described
-from jkan import spec
+from jkan import description, spec
 
 GOOD = {
-    "epic": {"summary": "Kanban local de Jira",
-             "description": "El equipo sigue el trabajo en Jira pero lo edita desde el repo. Alcance: la épica y sus hijos."},
+    "epic": {"summary": "Kanban local de Jira", "why": "El equipo sigue el trabajo en Jira pero lo edita desde el repo.",
+             "what": "La épica y sus hijos, como carpetas locales.", "done_when": "Un pull y un push dejan Jira igual."},
     "items": [
         {"type": "story", "area": "FE", "summary": "Ver el tablero",
          "user_story": "Como analista quiero ver el tablero para decidir",
-         "description": "Hoy el avance solo se ve entrando a Jira issue por issue.",
+         "why": "Hoy el avance solo se ve entrando a Jira issue por issue.", "what": "Un tablero por categoría de estado.",
+         "done_when": "Los criterios de aceptación se cumplen.",
          "acceptance": ["AC1: Dado un tablero Cuando lo abro Entonces veo las columnas"],
-         "subtasks": [{"summary": "Armar la vista", "description": "Una columna por estado; termina cuando se ve el tablero."}]},
-        {"type": "task", "area": "DEVOPS", "summary": "Pipeline", "description": "CI con gate"},
+         "subtasks": [{"summary": "Armar la vista", "why": "La historia necesita una vista.", "what": "Una columna por estado.",
+                       "done_when": "Se ve el tablero."}]},
+        {"type": "task", "area": "DEVOPS", "summary": "Pipeline", "why": "Nada corre los tests.", "what": "CI con gate.",
+         "done_when": "Un PR rojo no se puede mergear."},
     ],
 }
 
@@ -23,13 +26,20 @@ class ValidateTest(unittest.TestCase):
     def test_good_spec_has_no_findings(self):
         self.assertEqual(spec.validate(GOOD, CONVENTIONS), [])
 
-    def test_every_issue_needs_a_description_a_person_can_follow(self):
+    def test_every_issue_needs_why_what_and_done_when(self):
         bare = {"epic": {"summary": "e"},
-                "items": [{"type": "task", "summary": "t", "description": "  ", "subtasks": [{"summary": "s"}]}]}
+                "items": [{"type": "task", "summary": "t", "why": "  ", "subtasks": [{"summary": "s"}]}]}
         findings = spec.validate(bare, CONVENTIONS)
         for ref in ("epic", "items[0]", "items[0].subtasks[0]"):
-            self.assertIn(f"{ref}: description is required: why it matters, what to do and how to tell it is done",
-                          findings)
+            self.assertIn(f"{ref}: why is required (the problem or need, as observed)", findings)
+            self.assertIn(f"{ref}: what is required (the change, its scope and what stays out)", findings)
+            self.assertIn(f"{ref}: done_when is required (how a person checks it without asking)", findings)
+
+    def test_a_free_description_is_refused_with_the_fields_to_use(self):
+        loose = described({"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t"}]})
+        loose["items"][0]["description"] = "Rama fix/telemetria."
+        self.assertIn("items[0]: description is built from why, what and done_when (templates/description.md); "
+                      "split it into those fields", spec.validate(loose, CONVENTIONS))
 
     def test_story_needs_a_user_story_and_task_does_not(self):
         bad = described({"epic": {"summary": "x"}, "items": [{"type": "story", "summary": "Sin historia"}]})
@@ -47,7 +57,9 @@ class ValidateTest(unittest.TestCase):
     def test_needs_an_epic_summary_and_items(self):
         self.assertEqual(spec.validate({"epic": {}, "items": []}, CONVENTIONS),
                          ["epic: summary is required",
-                          "epic: description is required: why it matters, what to do and how to tell it is done",
+                          "epic: why is required (the problem or need, as observed)",
+                          "epic: what is required (the change, its scope and what stays out)",
+                          "epic: done_when is required (how a person checks it without asking)",
                           "items: at least one story or task"])
 
 
@@ -61,8 +73,12 @@ class PlanTest(unittest.TestCase):
             ("items[1]", "task", "epic", "[DEVOPS] Pipeline"),
         ])
         story = ops[1]
-        self.assertTrue(story["description"].startswith("Como analista quiero ver el tablero para decidir"))
-        self.assertIn("- AC1: Dado un tablero Cuando lo abro Entonces veo las columnas", story["description"])
+        self.assertEqual(story["description"], description.render({
+            "intro": "Como analista quiero ver el tablero para decidir",
+            "why": "Hoy el avance solo se ve entrando a Jira issue por issue.", "what": "Un tablero por categoría de estado.",
+            "done_when": "Los criterios de aceptación se cumplen.",
+            "acceptance": "- AC1: Dado un tablero Cuando lo abro Entonces veo las columnas"}))
+        self.assertEqual(description.check(story["description"]), [])
         self.assertEqual(story["priority"], "Medium")
 
     def test_existing_prefix_is_not_doubled(self):

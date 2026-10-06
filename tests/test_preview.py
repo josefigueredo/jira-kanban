@@ -29,8 +29,9 @@ class PreviewTest(unittest.TestCase):
         self.assertIn("Backlog", story)
 
     def test_assignee_shows_the_rule(self):
-        ops = spec.plan({"epic": {"summary": "e"}, "items": [{"type": "task", "summary": "t", "done": True, "evidence": ["https://example.com/pr/1"]},
-                                                             {"type": "task", "summary": "u"}]}, CONVENTIONS)
+        ops = spec.plan(described({"epic": {"summary": "e"}, "items": [
+            {"type": "task", "summary": "t", "done": True, "evidence": ["https://example.com/pr/1"]},
+            {"type": "task", "summary": "u"}]}), CONVENTIONS)
         from jkan import sync
         sync.assignment(ops, None)
         html = preview.render(ops, CONVENTIONS)
@@ -55,8 +56,8 @@ class PreviewTest(unittest.TestCase):
         self.assertIn("nada se creó en Jira", self.html)
 
     def test_text_is_escaped(self):
-        hostile = {"epic": {"summary": "<script>alert(1)</script>"},
-                   "items": [{"type": "task", "summary": "a & b", "description": "<b>x</b>"}]}
+        hostile = described({"epic": {"summary": "<script>alert(1)</script>"},
+                             "items": [{"type": "task", "summary": "a & b", "why": "<b>x</b>", "what": "y", "done_when": "z"}]})
         html = preview.render(spec.plan(hostile, CONVENTIONS), CONVENTIONS)
         self.assertNotIn("<script>alert(1)</script>", html)
         self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", html)

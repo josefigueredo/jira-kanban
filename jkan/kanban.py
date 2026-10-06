@@ -8,6 +8,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict
 
+from . import template
+
 ROOT = ".jira-kanban"
 FRONT = ("key", "kind", "issuetype", "status", "category", "blocked", "parent", "url")  # no sync time: a pull with nothing new
                                                                                      # leaves every file byte-identical
@@ -27,11 +29,10 @@ def subtask_file(parent_dir: Path, key: str) -> Path:
 
 
 def render(issue: dict) -> str:
-    lines = ["---"] + [f"{name}: {issue.get(name) or ''}" for name in FRONT] + ["---", "", f"# {issue['summary']}", ""]
-    description = (issue.get("description") or "").strip()
-    if description:
-        lines += [description, ""]
-    return "\n".join(lines)
+    """The card's file, from templates/issue.md."""
+    values = {name: str(issue.get(name) or "") for name in FRONT + ("summary",)}
+    values["description"] = (issue.get("description") or "").strip()
+    return template.render(template.load("issue.md"), values).rstrip("\n") + "\n"
 
 
 def parse(text: str) -> Dict[str, str]:

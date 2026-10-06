@@ -11,7 +11,7 @@ from helpers import FakeJira, epic_with_children, make_project
 from jkan import cli
 from test_cli import run
 
-HEAD = "Por qué: al exportar una épica a Jira, Product Brain manda los story points a otro campo. "
+HEAD = "Por qué: al exportar una épica a Jira, Product Brain manda los story points a otro campo.\n\nQué: elegir por nombre.\n\n"
 
 
 class ExcerptTest(unittest.TestCase):
