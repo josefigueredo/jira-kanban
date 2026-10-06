@@ -4,7 +4,7 @@ import json
 import re
 import unittest
 
-from helpers import CONVENTIONS, FakeJira, make_project
+from helpers import CONVENTIONS, FakeJira, described, make_project
 from jkan import preview, spec
 from test_cli import run
 from test_spec import GOOD
@@ -42,6 +42,12 @@ class PreviewTest(unittest.TestCase):
         self.assertNotIn(">[FE] Ver el tablero<", side)
         self.assertIn('title="[FE] Ver el tablero"', side)
         self.assertIn(">NUEVO-2<", side)
+
+    def test_an_epic_with_everything_done_shows_done(self):
+        ops = spec.plan(described({"epic": {"summary": "e"}, "items": [
+            {"type": "task", "summary": "t", "done": True, "evidence": ["https://example.com/pr/1"]}]}), CONVENTIONS)
+        epic = re.search(r'id="NUEVO-1".*?</section>', preview.render(ops, CONVENTIONS), re.S).group(0)
+        self.assertIn('<div class="status">Done', epic)
 
     def test_standalone_and_marked_as_a_preview(self):
         self.assertNotRegex(self.html, r'(src|href)="https?://')

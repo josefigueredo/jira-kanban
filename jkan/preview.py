@@ -108,7 +108,7 @@ def render(ops: List[dict], conv: dict) -> str:
     initial = conv.get("initial_status", "Backlog")
 
     def status_of(op: dict) -> str:  # where the issue ends after this pass, not where Jira first puts it
-        if op.get("done") and op["kind"] != "epic":
+        if op.get("done"):  # an epic is done only when everything under it is (spec.plan)
             return "Done"
         return "En progreso" if op.get("started") else initial
     key = {op["ref"]: f"NUEVO-{i}" for i, op in enumerate(ops, 1)}

@@ -135,9 +135,10 @@ def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign
         progress.parent.mkdir(parents=True, exist_ok=True)
         progress.write_text(json.dumps({"keys": keys}, indent=2), encoding="utf-8")
     # Every issue exists from here on, so a rejected move never aborts: it is recorded, the rest still move, and the
-    # kanban is written. A finished item goes to Done, children before parents, so a sub-task blocking condition never
+    # kanban is written. A finished item goes to Done, children before parents and the epic last (spec.plan marks it
+    # done only when everything under it is), so a sub-task blocking condition never
     # stops a story; a started item is already being worked on, so it begins in progress, not in the backlog.
-    moves = [(op, "Done", jira.transition_done) for op in reversed(ops) if op.get("done") and op["kind"] != "epic"]
+    moves = [(op, "Done", jira.transition_done) for op in reversed(ops) if op.get("done")]
     blocked = conv.get("blocked_statuses") or []
     moves += [(op, "in progress", lambda key: jira.transition_start(key, blocked)) for op in ops if op.get("started")]
     errors = []

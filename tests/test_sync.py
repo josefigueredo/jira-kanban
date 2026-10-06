@@ -86,6 +86,18 @@ class CreateTest(unittest.TestCase):
         self.assertEqual(moved, [subtask, story])
         self.assertEqual(jira.issues[story]["status"], "Done")
 
+    def test_an_epic_whose_items_are_all_done_closes_last(self):
+        done = described({"epic": {"summary": "e"}, "items": [
+            {"type": "task", "summary": "t", "done": True, "evidence": ["https://example.com/pr/1"],
+             "subtasks": [{"summary": "hereda"}]}]})
+        jira = FakeJira()
+        result = sync.create(jira, make_project(), done, CONVENTIONS, apply=True)
+        moved = [w[1] for w in jira.writes if w[0] == "transition"]
+        keys = result["keys"]
+        self.assertEqual(moved, [keys["items[0].subtasks[0]"], keys["items[0]"], keys["epic"]])
+        self.assertEqual(jira.issues[keys["epic"]]["status"], "Done")
+        self.assertEqual(result["errors"], [])
+
     def test_create_needs_a_jira_project_and_never_assumes_one(self):
         conv = {k: v for k, v in CONVENTIONS.items() if k != "project"}
         jira = FakeJira()
