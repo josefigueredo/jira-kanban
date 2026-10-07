@@ -32,7 +32,7 @@ class ValidateTest(unittest.TestCase):
         findings = spec.validate(bare, CONVENTIONS)
         for ref in ("epic", "items[0]", "items[0].subtasks[0]"):
             self.assertIn(f"{ref}: why is required (the problem or need, as observed)", findings)
-            self.assertIn(f"{ref}: what is required (the change, its scope and what stays out)", findings)
+            self.assertIn(f"{ref}: what is required (the change and its scope; what stays out goes in out_of_scope)", findings)
             self.assertIn(f"{ref}: done_when is required (how a person checks it without asking)", findings)
 
     def test_a_free_description_is_refused_with_the_fields_to_use(self):
@@ -58,9 +58,35 @@ class ValidateTest(unittest.TestCase):
         self.assertEqual(spec.validate({"epic": {}, "items": []}, CONVENTIONS),
                          ["epic: summary is required",
                           "epic: why is required (the problem or need, as observed)",
-                          "epic: what is required (the change, its scope and what stays out)",
+                          "epic: what is required (the change and its scope; what stays out goes in out_of_scope)",
                           "epic: done_when is required (how a person checks it without asking)",
                           "items: at least one story or task"])
+
+
+class OptionalSectionsTest(unittest.TestCase):
+    def test_the_cheap_sections_are_optional(self):
+        self.assertEqual(spec.validate(GOOD, CONVENTIONS), [])
+
+    def test_a_list_becomes_bullets_and_prose_stays_as_written(self):
+        fields = spec.sections({"why": "a", "what": "b", "done_when": "c", "how": "Leer el preflight.",
+                                "out_of_scope": ["El epic", "Los labels"], "assumptions": ["PLATE tiene el campo"],
+                                "edge_cases": ["Sin campo"], "references": ["jira.exporter.ts:594"]})
+        self.assertEqual(fields["how"], "Leer el preflight.")
+        self.assertEqual(fields["out_of_scope"], "- El epic\n- Los labels")
+        self.assertEqual(fields["assumptions"], "- PLATE tiene el campo")
+        self.assertEqual(fields["edge_cases"], "- Sin campo")
+        self.assertEqual(fields["references"], "- jira.exporter.ts:594")
+
+    def test_they_reach_the_description(self):
+        item = dict(GOOD["items"][1], how="Un job de CI.", out_of_scope=["Deploy"])
+        text = spec.plan(dict(GOOD, items=[item]), CONVENTIONS)[1]["description"]
+        self.assertIn("Cómo: Un job de CI.", text)
+        self.assertIn("Fuera de alcance:\n- Deploy", text)
+
+    def test_a_wrong_type_is_reported(self):
+        item = dict(GOOD["items"][1], references={"a": 1})
+        self.assertIn("items[0]: references must be text or a list of strings",
+                      spec.validate(dict(GOOD, items=[item]), CONVENTIONS))
 
 
 class PlanTest(unittest.TestCase):

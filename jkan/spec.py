@@ -6,8 +6,16 @@ from typing import List
 from . import description
 
 ITEM_TYPES = ("story", "task")
-SECTIONS = (("why", "the problem or need, as observed"), ("what", "the change, its scope and what stays out"),
+SECTIONS = (("why", "the problem or need, as observed"), ("what", "the change and its scope; what stays out goes in out_of_scope"),
             ("done_when", "how a person checks it without asking"))
+# Cheap to fill from the conversation, so optional: left out of the card when empty. Text, or a list for bullets.
+OPTIONAL = ("how", "out_of_scope", "assumptions", "edge_cases", "references")
+
+
+def _optional_text(value) -> str:
+    if isinstance(value, list):
+        return "\n".join(f"- {str(v).strip()}" for v in value if str(v).strip())
+    return str(value or "").strip()
 
 
 def _story_ok(text: str) -> bool:
@@ -20,7 +28,11 @@ def _description_findings(ref: str, entry: dict) -> List[str]:
     if "description" in entry:
         return [f"{ref}: description is built from why, what and done_when (templates/description.md); "
                 f"split it into those fields"]
-    return [f"{ref}: {name} is required ({hint})" for name, hint in SECTIONS if not str(entry.get(name) or "").strip()]
+    wrong = [f"{ref}: {name} must be text or a list of strings" for name in OPTIONAL
+             if not isinstance(entry.get(name), (str, list, type(None)))
+             or (isinstance(entry.get(name), list) and not all(isinstance(v, str) for v in entry[name]))]
+    return [f"{ref}: {name} is required ({hint})" for name, hint in SECTIONS
+            if not str(entry.get(name) or "").strip()] + wrong
 
 
 def validate(spec: dict, conv: dict) -> List[str]:
@@ -93,6 +105,7 @@ def sections(item: dict) -> dict:
     """The fields templates/description.md takes, from one spec entry."""
     return {"intro": (item.get("user_story") or "").strip(),
             **{name: str(item.get(name) or "").strip() for name, _ in SECTIONS},
+            **{name: _optional_text(item.get(name)) for name in OPTIONAL},
             "acceptance": "\n".join(f"- {ac.strip()}" for ac in item.get("acceptance") or [])}
 
 

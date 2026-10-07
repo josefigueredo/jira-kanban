@@ -36,10 +36,29 @@ class RenderTest(unittest.TestCase):
         self.assertIn("done_when", str(caught.exception))
 
 
+    def test_optional_sections_render_in_order_when_given(self):
+        text = description.render(dict(FIELDS, how="Leer el campo del preflight.", out_of_scope="Los otros campos.",
+                                       assumptions="- El campo existe en PLATE.", edge_cases="- Un proyecto sin el campo.",
+                                       references="- jira.exporter.ts:594", acceptance="- AC1: a",
+                                       evidence="- abc1234"))
+        labels = [line.split(":")[0] for line in text.split("\n\n")]
+        self.assertEqual(labels, ["Por qué", "Qué", "Cómo", "Fuera de alcance", "Supuestos", "Casos borde",
+                                  "Hecho cuando", "Criterios de aceptación", "Referencias", "Evidencia"])
+
+    def test_optional_sections_left_empty_are_omitted(self):
+        self.assertEqual(description.render(dict(FIELDS, how="", out_of_scope="", references="")),
+                         description.render(FIELDS))
+
+
 class ParseTest(unittest.TestCase):
     def test_parse_reads_back_what_render_wrote(self):
         fields = dict(FIELDS, intro="Como analista quiero x para y", acceptance="- AC1: a\n- AC2: b",
                       evidence="- abc1234")
+        self.assertEqual(description.parse(description.render(fields)), fields)
+
+    def test_parse_reads_back_the_optional_sections(self):
+        fields = dict(FIELDS, how="Leer el preflight.", out_of_scope="Los otros campos.", assumptions="- uno",
+                      edge_cases="- dos", references="- tres")
         self.assertEqual(description.parse(description.render(fields)), fields)
 
     def test_a_section_may_span_lines_and_bullets(self):
@@ -57,6 +76,9 @@ class CheckTest(unittest.TestCase):
     def test_a_complete_description_passes_even_with_braces_in_prose(self):
         text = description.render(dict(FIELDS, why="B quedó en {{api_b_name}} en el panel."))
         self.assertEqual(description.check(text), [])
+
+    def test_a_card_without_the_optional_sections_still_passes(self):
+        self.assertEqual(description.check("Por qué: x\n\nQué: y\n\nHecho cuando: z"), [])
 
     def test_missing_and_empty_sections_are_reported(self):
         self.assertEqual(description.check("Notas sueltas\n\nPor qué: x\n\nQué:"),
