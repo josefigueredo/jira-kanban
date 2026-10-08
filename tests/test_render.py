@@ -53,7 +53,7 @@ class NextAndBlockedTest(unittest.TestCase):
         self.assertIn("### Para hacer ya", text)
         self.assertIn("| PLATE-1 | Summary of PLATE-1 | High | 2026-10-05 | Backlog |", text)
         self.assertIn("### Vence hasta 2026-10-10", text)
-        self.assertIn("vencido 2026-10-05", text)
+        self.assertIn("| PLATE-1 | Summary of PLATE-1 | High | vencido 2026-10-05 | Backlog |", text)
         self.assertIn("Blocked (bloqueado)", text)
         self.assertIn("### Sin dueño en sus épicas (para tomar)", text)
         self.assertIn("| PLATE-7 | Summary of PLATE-7 | PLATE-100 | Medium |", text)
@@ -63,8 +63,9 @@ class NextAndBlockedTest(unittest.TestCase):
             issue("PLATE-1", blocked_by=[{"key": "PLATE-8", "summary": "Okta", "status": "En curso", "category": "in_progress", "assignee": "Ana"}]),
             issue("PLATE-2", flagged=True)], CONVENTIONS)
         text = render.render_blocked(HEAD, rows, lambda k: f"<{k}>")
-        self.assertIn("| <PLATE-1> | Summary of PLATE-1 | <PLATE-8> Okta | En curso | Ana |", text)
-        self.assertIn("| <PLATE-2> | Summary of PLATE-2 | Flagged, sin link | – | – |", text)
+        self.assertIn("| Key | Título | Prioridad | Vence | Estado | Bloqueado por | Estado del bloqueador | Dueño del bloqueador |", text)
+        self.assertIn("| <PLATE-1> | Summary of PLATE-1 | Medium | – | Backlog | <PLATE-8> Okta | En curso | Ana |", text)
+        self.assertIn("| <PLATE-2> | Summary of PLATE-2 | Medium | – | Backlog | Flagged, sin link | – | – |", text)
         self.assertIn("_Nada bloqueado._", render.render_blocked(HEAD, [], plain))
 
 

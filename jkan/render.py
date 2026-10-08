@@ -74,8 +74,8 @@ def render_next(head_text: str, tables: dict, until: _dt.date, link: Link) -> st
     ready = table(["Key", "Título", "Prioridad", "Vence", "Estado"],
                   [[link(i["key"]), i["summary"], i["priority"], i["duedate"], i["status"]] for i in tables["ready"]],
                   "_Nada para hacer ya._")
-    due = table(["Key", "Título", "Vence", "Estado"],
-                [[link(r["issue"]["key"]), r["issue"]["summary"],
+    due = table(["Key", "Título", "Prioridad", "Vence", "Estado"],
+                [[link(r["issue"]["key"]), r["issue"]["summary"], r["issue"]["priority"],
                   ("vencido " if r["overdue"] else "") + r["issue"]["duedate"],
                   r["issue"]["status"] + (" (bloqueado)" if r["blocked"] else "")] for r in tables["due"]],
                 "_Nada con fecha en la ventana._")
@@ -91,8 +91,10 @@ def _by(row: dict, link: Link) -> str:
 
 
 def render_blocked(head_text: str, rows: List[dict], link: Link) -> str:
-    body = table(["Key", "Título", "Bloqueado por", "Estado del bloqueador", "Dueño del bloqueador"],
-                 [[link(r["issue"]["key"]), r["issue"]["summary"], _by(r, link), r["status"], r["owner"]] for r in rows],
+    body = table(["Key", "Título", "Prioridad", "Vence", "Estado", "Bloqueado por", "Estado del bloqueador",
+                  "Dueño del bloqueador"],
+                 [[link(r["issue"]["key"]), r["issue"]["summary"], r["issue"]["priority"], r["issue"]["duedate"],
+                   r["issue"]["status"], _by(r, link), r["status"], r["owner"]] for r in rows],
                  "_Nada bloqueado._")
     return head_text + "\n\n" + body
 

@@ -47,6 +47,13 @@ class ReportCliTest(unittest.TestCase):
             self.assertTrue(err.strip(), args)
             self.assertEqual(jira.jqls, [], args)
 
+    def test_a_bad_window_with_a_person_asks_jira_nothing_at_all(self):
+        for args in (["done", "--since", "ayer"], ["next", "--until", "2026-10-01"], ["stats", "--weeks", "0"]):
+            jira = FakeJira()
+            code, _, _ = run(args + ["--person", "Ana Gómez"], jira)
+            self.assertEqual(code, 1, args)
+            self.assertEqual((jira.jqls, jira.searches), ([], []), args)
+
     def test_a_unique_person_is_queried_by_account_id(self):
         jira = FakeJira()
         jira.search_answer = lambda jql: [issue("PLATE-1", assignee={"id": "acc-ana", "name": "Ana Gómez"})]

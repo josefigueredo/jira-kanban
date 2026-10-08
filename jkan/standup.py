@@ -131,8 +131,8 @@ def gather_done(jira, person: Optional[str], since: _dt.date, until: _dt.date, c
     issues = search(jira, queries.changed_in(person, since, until, conv.get("project")), conv)
     types = conv["issue_types"]
     have = {i["key"] for i in issues}
-    need = sorted({i["parent"]["key"] for i in issues
-                   if i["issuetype"] == types["subtask"] and i["parent"] and i["parent"]["key"] not in have})
+    need = sorted({i["parent"]["key"] for i in issues  # any child of a non-epic: the subtask type name varies by project
+                   if i["parent"] and i["parent"]["issuetype"] != types["epic"] and i["parent"]["key"] not in have})
     parents = {i["key"]: i for i in search(jira, queries.by_keys(need), conv)} if need else {}
     work = [i for i in issues if i["issuetype"] != types["epic"]]
     return {"done": sum(1 for i in work if i["category"] == "done"),

@@ -58,6 +58,14 @@ class GatherDoneTest(unittest.TestCase):
         self.assertEqual(jira.jqls[1], "key in (PLATE-102)")
         self.assertEqual(len(jira.jqls), 2)
 
+    def test_a_subtask_of_any_type_name_still_reaches_the_epic(self):
+        sub = issue("PLATE-103", issuetype="Sub-task", category="done", changed="2026-10-06", parent=TASK)
+        parent_task = issue("PLATE-102", parent=EPIC)
+        jira = FakeJira()
+        jira.search_answer = lambda jql: [parent_task] if jql.startswith("key in") else [sub]
+        result = standup.gather_done(jira, None, date(2026, 10, 1), date(2026, 10, 7), CONVENTIONS)
+        self.assertEqual(shape(result["tree"]), [("PLATE-100", True, [("PLATE-102", True, [("PLATE-103", False, [])])])])
+
     def test_empty_window(self):
         jira = FakeJira()
         result = standup.gather_done(jira, None, date(2026, 10, 1), date(2026, 10, 7), CONVENTIONS)

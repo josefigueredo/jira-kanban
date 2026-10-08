@@ -94,16 +94,20 @@ def _emit(args, payload, text: str) -> None:
 def _report(jira, args, conv: dict, today: _dt.date) -> int:
     """done | next | blocked | load | stats: read only, for the user or, with --person, for a teammate."""
     try:
+        if args.cmd == "done":  # the window is checked before Jira is asked anything, even who the person is
+            since, until = window.span(args.since, args.until, today)
+        elif args.cmd == "next":
+            until = window.horizon(args.until, today)
+        elif args.cmd in ("load", "stats"):
+            weeks = window.weeks(args.weeks)
         person = people.resolve(jira, args.person, conv.get("project")) if args.person else None
         pid, owner = (person["id"], person["name"]) if person else (None, "vos")
         link = lambda key: f"[{key}]({jira.browse_url(key)})"  # noqa: E731
         project = conv.get("project")
         if args.cmd == "done":
-            since, until = window.span(args.since, args.until, today)
             result = standup.gather_done(jira, pid, since, until, conv)
             _emit(args, result, render.render_done(render.head("Hecho", owner, today, (since, until), project), result))
         elif args.cmd == "next":
-            until = window.horizon(args.until, today)
             tables = standup.gather_next(jira, pid, until, today, conv)
             _emit(args, tables, render.render_next(render.head("Para hacer", owner, today, (today, until), project),
                                                    tables, until, link))
@@ -112,7 +116,6 @@ def _report(jira, args, conv: dict, today: _dt.date) -> int:
             _emit(args, {"rows": rows}, render.render_blocked(render.head("Bloqueos", owner, today, None, project),
                                                               rows, link))
         else:
-            weeks = window.weeks(args.weeks)
             done, open_issues = stats.gather_history(jira, pid, today, weeks, conv)
             if args.cmd == "stats":
                 result = stats.compute(done, open_issues, today, weeks, conv)
