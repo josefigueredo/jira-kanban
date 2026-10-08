@@ -74,3 +74,67 @@ def gather_next(jira, person: Optional[str], until: _dt.date, today: _dt.date, c
 
 def gather_blocked(jira, person: Optional[str], conv: dict) -> List[dict]:
     return blocked_rows(_open(jira, person, conv)[0], conv)
+
+
+NO_EPIC = {"key": "", "summary": "Sin épica", "issuetype": "", "status": "", "category": "", "changed": None,
+           "parent": None}
+
+
+def _stub(parent: dict) -> dict:
+    """What is known of an ancestor Jira did not return: only its key, summary and type."""
+    return {"key": parent["key"], "summary": parent["summary"], "issuetype": parent["issuetype"], "status": "",
+            "category": "", "changed": None, "parent": None}
+
+
+def _number(key: str) -> tuple:
+    prefix, _, digits = key.rpartition("-")
+    return (prefix, int(digits) if digits.isdigit() else 0)
+
+
+def _sorted(nodes: List[dict]) -> List[dict]:
+    for node in nodes:
+        node["children"] = _sorted(node["children"])
+    return sorted(nodes, key=lambda n: _number(n["issue"]["key"]))
+
+
+def done_tree(issues: List[dict], parents: dict, epic_type: str) -> List[dict]:
+    """Epic -> story/task -> subtask for the issues that changed. `parents` maps the key of a story or task that did
+    not change to its issue, so a subtask can still reach its epic. Ancestors outside the window are `context`."""
+    known = {i["key"]: i for i in issues}
+    known.update({k: v for k, v in parents.items() if k not in known})
+    in_window = {i["key"] for i in issues}
+    nodes: dict = {}
+    linked: set = set()
+    order: List[str] = []
+    for issue in issues:
+        chain = [issue]
+        while chain[-1]["parent"] and len(chain) < 4:
+            up = chain[-1]["parent"]
+            chain.append(known.get(up["key"]) or _stub(up))
+        below = None
+        for item in chain:  # the issue first, its epic last
+            if item["key"] not in nodes:
+                nodes[item["key"]] = {"issue": item, "context": item["key"] not in in_window, "children": []}
+                order.append(item["key"])
+            current = nodes[item["key"]]
+            if below is not None and below["issue"]["key"] not in linked:
+                current["children"].append(below)
+                linked.add(below["issue"]["key"])
+            below = current
+    roots = [nodes[k] for k in order if k not in linked]
+    tree = _sorted([r for r in roots if r["issue"]["issuetype"] == epic_type])
+    loose = _sorted([r for r in roots if r["issue"]["issuetype"] != epic_type])
+    return tree + ([{"issue": NO_EPIC, "context": True, "children": loose}] if loose else [])
+
+
+def gather_done(jira, person: Optional[str], since: _dt.date, until: _dt.date, conv: dict) -> dict:
+    issues = search(jira, queries.changed_in(person, since, until, conv.get("project")), conv)
+    types = conv["issue_types"]
+    have = {i["key"] for i in issues}
+    need = sorted({i["parent"]["key"] for i in issues
+                   if i["issuetype"] == types["subtask"] and i["parent"] and i["parent"]["key"] not in have})
+    parents = {i["key"]: i for i in search(jira, queries.by_keys(need), conv)} if need else {}
+    work = [i for i in issues if i["issuetype"] != types["epic"]]
+    return {"done": sum(1 for i in work if i["category"] == "done"),
+            "in_progress": sum(1 for i in work if i["category"] == "in_progress"),
+            "tree": done_tree(issues, parents, types["epic"])}
