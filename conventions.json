@@ -27,11 +27,14 @@
   "blocked_statuses": [
     "Blocked"
   ],
+  "blocked_link": "is blocked by",
+  "timezone": "America/Argentina/Buenos_Aires",
   "notes": [
     "There is no default Jira project: create needs --jira-project KEY or \"project\" in ./.jira-kanban/conventions.json; pull and push take it from the epic key.",
     "The area goes as a [AREA] title prefix; components are not used (PLATE is shared and classified as api/mcp/mfe).",
     "PLATE has no story points field on its edit screen: estimates are not sent.",
     "Jira levels: Epic (1) > Story (migrated) | Tarea | Error (0, siblings) > Subtarea (-1).",
-    "Grouping uses Jira status categories (To Do / In Progress / Done), never status names; blocked = a status in blocked_statuses or the Flagged field set."
+    "Grouping uses Jira status categories (To Do / In Progress / Done), never status names; blocked = a status in blocked_statuses or the Flagged field set.",
+    "Reports (jk done|next|blocked|load|stats) read Jira live. wip_limit (optional, a number) turns jk load into a verdict; without it the command shows only measured numbers."
   ]
 }
