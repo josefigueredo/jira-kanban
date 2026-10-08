@@ -1,14 +1,15 @@
-"""jk: create | pull | push | show | board | who | assign. Every Jira write is a dry run unless --apply is passed."""
+"""jk: create | pull | push | show | board | who | assign | done | next | blocked | load | stats. Every Jira write is a dry run unless --apply is passed; the reports only read."""
 from __future__ import annotations
 
 import argparse
+import datetime as _dt
 import json
 import re
 import sys
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from . import config, journal, kanban, people, preview, sync
+from . import config, journal, kanban, people, preview, render, standup, stats, sync, window
 from .jira import Jira, JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
@@ -83,7 +84,55 @@ def _assign(jira, key: str, who: str, tree: bool, apply: bool) -> int:
     return FINDINGS if result["errors"] else OK
 
 
-def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
+REPORTS = ("done", "next", "blocked", "load", "stats")
+
+
+def _emit(args, payload, text: str) -> None:
+    print(json.dumps(payload, ensure_ascii=False, indent=2, default=str) if args.json else text)
+
+
+def _report(jira, args, conv: dict, today: _dt.date) -> int:
+    """done | next | blocked | load | stats: read only, for the user or, with --person, for a teammate."""
+    try:
+        person = people.resolve(jira, args.person, conv.get("project")) if args.person else None
+        pid, owner = (person["id"], person["name"]) if person else (None, "vos")
+        link = lambda key: f"[{key}]({jira.browse_url(key)})"  # noqa: E731
+        project = conv.get("project")
+        if args.cmd == "done":
+            since, until = window.span(args.since, args.until, today)
+            result = standup.gather_done(jira, pid, since, until, conv)
+            _emit(args, result, render.render_done(render.head("Hecho", owner, today, (since, until), project), result))
+        elif args.cmd == "next":
+            until = window.horizon(args.until, today)
+            tables = standup.gather_next(jira, pid, until, today, conv)
+            _emit(args, tables, render.render_next(render.head("Para hacer", owner, today, (today, until), project),
+                                                   tables, until, link))
+        elif args.cmd == "blocked":
+            rows = standup.gather_blocked(jira, pid, conv)
+            _emit(args, {"rows": rows}, render.render_blocked(render.head("Bloqueos", owner, today, None, project),
+                                                              rows, link))
+        else:
+            weeks = window.weeks(args.weeks)
+            done, open_issues = stats.gather_history(jira, pid, today, weeks, conv)
+            if args.cmd == "stats":
+                result = stats.compute(done, open_issues, today, weeks, conv)
+                _emit(args, result, render.render_stats(render.head("Métricas", owner, today, None, project), result, link))
+            else:
+                numbers = stats.load_numbers(done, open_issues, today, weeks, conv)
+                mine = None
+                if person:
+                    mine = stats.load_numbers(*stats.gather_history(jira, None, today, weeks, conv), today, weeks, conv)
+                _emit(args, {"person": numbers, "me": mine},
+                      render.render_load(render.head("Carga", owner, today, None, project), owner, numbers,
+                                         "vos" if mine else None, mine))
+        return OK
+    except (people.NotResolved, window.BadWindow, ValueError) as exc:
+        sys.stderr.write(f"{exc}\n")
+        return FINDINGS
+
+
+def main(argv: Optional[List[str]] = None, client: Callable = _client,
+         today: Optional[Callable[[], _dt.date]] = None) -> int:
     parser = argparse.ArgumentParser(prog="jk", description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("create", "pull", "push", "show", "board"):
@@ -113,6 +162,23 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
     give.add_argument("--tree", action="store_true", help="also assign every issue under it")
     give.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
     give.add_argument("--apply", action="store_true", help="write to Jira (default: dry run)")
+    for name, text in (("done", "what you (or --person) moved to In Progress or Done in a period"),
+                       ("next", "what you can do now: open work by priority, what is due, what is unowned in your epics"),
+                       ("blocked", "what is blocked: by link, by flag or by a blocked status"),
+                       ("load", "how loaded a person is, in measured numbers (compared with you when --person is given)"),
+                       ("stats", "delivery metrics: throughput, lead time, WIP age, on-time rate, mix (no estimates)")):
+        r = sub.add_parser(name, help=text + " (read only)")
+        r.add_argument("--person", help="a teammate: name, email or accountId (default: you)")
+        r.add_argument("--jira-project", help="only this Jira project, e.g. PLATE")
+        r.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
+        r.add_argument("--json", action="store_true", help="machine-readable output")
+        if name == "done":
+            r.add_argument("--since", required=True, help="first day, YYYY-MM-DD")
+            r.add_argument("--until", help="last day, YYYY-MM-DD (default: today)")
+        if name == "next":
+            r.add_argument("--until", help="last day of the window, YYYY-MM-DD (default: today)")
+        if name in ("load", "stats"):
+            r.add_argument("--weeks", type=int, default=4, help="how many weeks of history, 1 to 52 (default: 4)")
     args = parser.parse_args(argv)
     project = Path(args.project).resolve()
     conv = config.load_conventions(project)
@@ -136,6 +202,8 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
             return _who(jira, args.name, conv.get("project"), args.json)
         if args.cmd == "assign":
             return _assign(jira, args.key, args.who, args.tree, args.apply)
+        if args.cmd in REPORTS:
+            return _report(jira, args, conv, (today or (lambda: window.today_in(conv.get("timezone"))))())
         if args.cmd == "create":
             epic_spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
             try:
