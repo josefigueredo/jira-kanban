@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import sys
 import tempfile
+import unicodedata
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -17,6 +18,19 @@ CONVENTIONS = {
     "assign_to_me": True,
     "blocked_statuses": ["Blocked"],
 }
+
+def _fold(text: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFKD", text or "") if not unicodedata.combining(c)).lower()
+
+
+# What Jira's assignable-user search returns for PLATE, reduced to what jk uses.
+PEOPLE = [
+    {"id": "acc-matias", "name": "Matías Andrés Fernandez", "email": "matias.fernandez@example.com"},
+    {"id": "acc-martin-d", "name": "Martin Daniel Fernandez", "email": "martin.fernandez@example.com"},
+    {"id": "acc-martin-l", "name": "Martin Fernandez Lopez", "email": "martin.lopez@example.com"},
+    {"id": "acc-maria", "name": "María Celeste Fernández", "email": "maria.fernandez@example.com"},
+    {"id": "acc-ana", "name": "Ana Gómez", "email": "ana.gomez@example.com"},
+]
 
 STATUS_CATEGORY = {"Backlog": "todo", "Selected for Development": "todo", "PROCESANDO": "in_progress",
                    "Review": "in_progress", "Blocked": "in_progress", "Done": "done"}
@@ -34,8 +48,11 @@ class FakeJira:
     """In-memory Jira: issues by key, a sequence for new keys, and a log of every write."""
 
     def __init__(self, project: str = "PLATE", start: int = 600, fail_on_create: Optional[int] = None,
-                 refuse_moves: Optional[Dict[str, str]] = None):
+                 refuse_moves: Optional[Dict[str, str]] = None, users: Optional[List[dict]] = None):
         self.project = project
+        self.users = [dict(u) for u in (PEOPLE if users is None else users)]
+        self.searches: List[str] = []
+        self.search_projects: List[Optional[str]] = []
         self.refuse_moves = refuse_moves or {}  # key -> "raise" (HTTP error) or "none" (no transition to that category)
         self.fail_on_create = fail_on_create  # the Nth create (1-based) raises, like a rejected issue
         self.seq = start
@@ -62,6 +79,25 @@ class FakeJira:
                             "category": "todo", "flagged": False}
         self.writes.append(("create", key, fields))
         return key
+
+    def search_users(self, query: str, project: Optional[str] = None, limit: int = 100) -> List[dict]:
+        """Like Jira: a user matches when the query is a prefix of one word of the name, or of the email. No fuzziness."""
+        self.searches.append(query)
+        self.search_projects.append(project)
+        q = _fold(query).strip()
+        found = []
+        for user in self.users:
+            words = _fold(user["name"]).split() + [_fold(user["email"])]
+            if q and (any(w.startswith(q) for w in words) or _fold(user["name"]).startswith(q)):
+                found.append(dict(user))
+        return found[:limit]
+
+    def user(self, account_id: str) -> Optional[dict]:
+        return next((dict(u) for u in self.users if u["id"] == account_id), None)
+
+    def assign(self, key: str, account_id: str) -> None:
+        self.issues[key]["assignee"] = account_id
+        self.writes.append(("assign", key, account_id))
 
     def get(self, key: str) -> dict:
         return dict(self.issues[key])

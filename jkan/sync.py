@@ -15,7 +15,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from . import config, description, evidence, kanban, spec
+from . import config, description, evidence, kanban, people, spec
 
 KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]+-\d+$")
 FIELDS = ("summary", "status", "description")
@@ -31,12 +31,40 @@ class PartialCreate(Exception):
     progress file lets the same command resume without creating anything twice."""
 
 
+def resolve_people(jira, ops: List[dict], conv: dict) -> None:
+    """Give every op that names an assignee its person ({id, name, email}), looking each name up once.
+
+    Reads only, so it runs in the dry run too: a name that matches nobody or several people refuses the whole create
+    before a single write, listing who it could be. It never picks between two people.
+    """
+    found: Dict[str, object] = {}
+    refs: Dict[str, List[str]] = {}
+    for op in ops:
+        query = op.get("assignee_query")
+        if not query:
+            continue
+        refs.setdefault(query, []).append(op["ref"])
+        if query not in found:
+            try:
+                found[query] = people.resolve(jira, query, conv.get("project"))
+            except people.NotResolved as exc:
+                found[query] = exc
+    problems = [f"{', '.join(refs[q])}: {found[q]}" for q in found if isinstance(found[q], people.NotResolved)]
+    if problems:
+        raise ValueError("\n".join(problems))
+    for op in ops:
+        if op.get("assignee_query"):
+            op["person"] = found[op["assignee_query"]]
+
+
 def assignment(ops: List[dict], assign_open: Optional[bool], enabled: bool = True) -> int:
-    """Sets op["assignee"]: me-done (complete locally) or me-started (in progress), both assigned without asking;
-    otherwise me, none, or ask. Returns asks."""
+    """Sets op["assignee"]: person (the spec names one, which wins over everything), me-done (complete locally) or
+    me-started (in progress), both assigned without asking; otherwise me, none, or ask. Returns asks."""
     asks = 0
     for op in ops:
-        if not enabled:
+        if op.get("person"):
+            op["assignee"] = "person"
+        elif not enabled:
             op["assignee"] = "none"
         elif op.get("done"):
             op["assignee"] = "me-done"
@@ -108,12 +136,13 @@ def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign
         raise ValueError("\n".join(findings))
     ops = spec.plan(epic_spec, conv)
     attach_evidence(ops, project)
+    resolve_people(jira, ops, conv)
     asks = assignment(ops, assign_open, bool(conv.get("assign_to_me")))
     if not apply:
         return {"ops": ops}
     if asks:
         raise _decision_error(asks)
-    me = jira.myself() if any(op["assignee"] != "none" for op in ops) else None
+    me = jira.myself() if any(op["assignee"] not in ("none", "person") for op in ops) else None
     # Each created key is saved before the next create: a failure halfway never loses them, and the same spec run
     # again skips what already exists instead of duplicating it.
     progress = _progress_path(project, epic_spec, conv)
@@ -122,7 +151,7 @@ def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign
         if op["ref"] in keys:
             continue
         parent = keys[op["parent"]] if op["parent"] else None
-        who = me if op["assignee"] != "none" else None
+        who = op["person"]["id"] if op["assignee"] == "person" else (me if op["assignee"] != "none" else None)
         try:
             keys[op["ref"]] = jira.create(_fields(conv, who, op["kind"], op["summary"], op["description"], parent,
                                                   op.get("priority"), op.get("labels")))
@@ -283,6 +312,28 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
                     result["errors"].append(f"{key}: created, but {reason}")
     pull(jira, project, epic_key, conv)
     return result
+
+
+def descendants(jira, key: str) -> List[dict]:
+    """Every issue under `key`, parents before their children."""
+    found: List[dict] = []
+    for child in jira.children(key):
+        found.append(child)
+        found += descendants(jira, child["key"])
+    return found
+
+
+def assign(jira, key: str, person: dict, tree: bool = False, apply: bool = False) -> dict:
+    """Assign `key` (and, with tree, everything under it) to a person. One rejected issue never stops the rest."""
+    issues = [jira.get(key)] + (descendants(jira, key) if tree else [])
+    errors: List[str] = []
+    if apply:
+        for issue in issues:
+            try:
+                jira.assign(issue["key"], person["id"])
+            except Exception as exc:  # noqa: BLE001 — report it and keep going
+                errors.append(f"{issue['key']}: not assigned ({exc})")
+    return {"issues": issues, "person": person, "errors": errors}
 
 
 GROUPS = ("blocked", "todo", "in_progress", "done")

@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import json
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Callable, List, Optional
 
@@ -43,6 +44,43 @@ class Jira:
 
     def myself(self) -> str:
         return self._send("GET", "/rest/api/3/myself")["accountId"]
+
+    @staticmethod
+    def _person(raw: dict) -> dict:
+        return {"id": raw["accountId"], "name": raw.get("displayName") or "", "email": raw.get("emailAddress") or ""}
+
+    def search_users(self, query: str, project: Optional[str] = None, limit: int = 100, page: int = 100) -> List[dict]:
+        """Active people whose name or email starts with the query, as {id, name, email}.
+
+        With a project, only people who can be assigned issues there. Bots and deactivated accounts are left out.
+        Jira matches the start of a word, so it forgives no typo: that is people.py's job.
+        """
+        path = "/rest/api/3/user/assignable/search" if project else "/rest/api/3/user/search"
+        found: List[dict] = []
+        start = 0
+        while len(found) < limit:
+            params = {"query": query, "startAt": start, "maxResults": page}
+            if project:
+                params["project"] = project
+            batch = self._send("GET", f"{path}?{urllib.parse.urlencode(params)}")
+            found += [self._person(u) for u in batch if u.get("active") and u.get("accountType") == "atlassian"]
+            if len(batch) < page:
+                break
+            start += page
+        return found[:limit]
+
+    def user(self, account_id: str) -> Optional[dict]:
+        """The person behind an account id, or None when Jira does not know that id."""
+        try:
+            return self._person(self._send("GET", "/rest/api/3/user?" + urllib.parse.urlencode({"accountId": account_id})))
+        except JiraError as exc:
+            if "HTTP 404" in str(exc) or "HTTP 400" in str(exc):
+                return None
+            raise
+
+    def assign(self, key: str, account_id: str) -> None:
+        self._send("PUT", f"/rest/api/3/issue/{key}/assignee", {"accountId": account_id})
+        self._journal({"action": "assign", "key": key, "accountId": account_id})
 
     def create(self, fields: dict) -> str:
         key = self._send("POST", "/rest/api/2/issue", {"fields": fields})["key"]

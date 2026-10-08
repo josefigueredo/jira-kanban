@@ -1,4 +1,4 @@
-"""jk: create | pull | push | show | board. Every Jira write is a dry run unless --apply is passed."""
+"""jk: create | pull | push | show | board | who | assign. Every Jira write is a dry run unless --apply is passed."""
 from __future__ import annotations
 
 import argparse
@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from . import config, journal, kanban, preview, sync
+from . import config, journal, kanban, people, preview, sync
 from .jira import Jira, JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
@@ -48,6 +48,41 @@ def _show(project: Path, key: str) -> None:
         print(f"{'  ' * depth}{label} [{entry['kind']}] {entry['status'] or 'new'} · {entry['summary']}")
 
 
+def _who(jira, name: str, project: Optional[str], as_json: bool) -> int:
+    result = people.find(jira, name, project)
+    if as_json:
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    else:
+        found = result["candidates"]
+        print(f"{result['status']}: {len(found)} candidate(s) for {name!r}" if found
+              else f"{result['status']}: nobody in Jira matches {name!r}")
+        for c in found:
+            near = "  (approximate match: check it is who you mean)" if result["status"] != "none" and not c["exact"] else ""
+            print(f"  {c['name']} <{c['email'] or 'email hidden'}> {c['id']}{near}")
+    return OK if result["status"] == "unique" else FINDINGS
+
+
+def _assign(jira, key: str, who: str, tree: bool, apply: bool) -> int:
+    try:
+        person = people.resolve(jira, who, key.split("-")[0])
+    except people.NotResolved as exc:
+        sys.stderr.write(f"{exc}\n")
+        return FINDINGS
+    if not person.get("exact", True):
+        print(f"approximate match: {who!r} -> {person['name']} <{person['email'] or 'email hidden'}>; "
+              f"check it is who you mean")
+    result = sync.assign(jira, key, person, tree=tree, apply=apply)
+    for issue in result["issues"]:
+        print(f"{issue['key']} [{issue['issuetype']}] {issue['summary']} -> {person['name']}")
+    for error in result["errors"]:
+        sys.stderr.write(f"{error}\n")
+    if not apply:
+        print(f"dry run: nothing written; --apply assigns {len(result['issues'])} issue(s) to {person['name']}")
+    else:
+        print(f"assigned {len(result['issues']) - len(result['errors'])} issue(s) to {person['name']}")
+    return FINDINGS if result["errors"] else OK
+
+
 def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
     parser = argparse.ArgumentParser(prog="jk", description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -67,6 +102,17 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
                                help="also assign to me the issues that are not complete locally")
             group.add_argument("--no-assign-open", dest="assign_open", action="store_false",
                                help="leave unassigned the issues that are not complete locally")
+    who = sub.add_parser("who", help="find a person in Jira by name, email or account id (read only)")
+    who.add_argument("name", help="a name (accents and small typos are fine), an email or an accountId")
+    who.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
+    who.add_argument("--jira-project", help="only people assignable in this Jira project, e.g. PLATE")
+    who.add_argument("--json", action="store_true", help="machine-readable output")
+    give = sub.add_parser("assign", help="assign an issue (and with --tree everything under it) to a person")
+    give.add_argument("key", help="issue key, e.g. PLATE-639")
+    give.add_argument("who", help="the person: a name, email or accountId (run jk who first if unsure)")
+    give.add_argument("--tree", action="store_true", help="also assign every issue under it")
+    give.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
+    give.add_argument("--apply", action="store_true", help="write to Jira (default: dry run)")
     args = parser.parse_args(argv)
     project = Path(args.project).resolve()
     conv = config.load_conventions(project)
@@ -86,6 +132,10 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
                 print(f"  {labels[group['name']]} {group['count']}{pct}" + (f"  ({detail})" if detail else ""))
             return OK
         jira = client(project) if client is not _client else _client(project, command=args.cmd)
+        if args.cmd == "who":
+            return _who(jira, args.name, conv.get("project"), args.json)
+        if args.cmd == "assign":
+            return _assign(jira, args.key, args.who, args.tree, args.apply)
         if args.cmd == "create":
             epic_spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
             try:
@@ -96,7 +146,9 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client) -> int:
             for op in result["ops"]:
                 indent = {"epic": "", "story": "  ", "task": "  ", "subtask": "    "}[op["kind"]]
                 key = result.get("keys", {}).get(op["ref"], "")
-                who = {"me-done": "vos · completa", "me-started": "vos · en curso", "me": "vos", "none": "sin asignar", "ask": "¿asignar? a decidir"}[op["assignee"]]
+                who = (op["person"]["name"] + ("" if op["person"].get("exact", True) else " · approximate match")
+                       if op["assignee"] == "person" else
+                       {"me-done": "vos · completa", "me-started": "vos · en curso", "me": "vos", "none": "sin asignar", "ask": "¿asignar? a decidir"}[op["assignee"]])
                 print(f"{indent}{key + ' ' if key else ''}[{conv['issue_types'][op['kind']]}] {op['summary']}  ({who})")
             if args.html:
                 Path(args.html).write_text(preview.render(result["ops"], conv), encoding="utf-8")

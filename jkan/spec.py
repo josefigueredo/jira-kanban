@@ -1,7 +1,7 @@
 """The epic spec an agent drafts from the conversation: validation against the conventions, and the ordered create plan."""
 from __future__ import annotations
 
-from typing import List
+from typing import List, Optional
 
 from . import description
 
@@ -40,6 +40,7 @@ def validate(spec: dict, conv: dict) -> List[str]:
     if not (spec.get("epic") or {}).get("summary", "").strip():
         findings.append("epic: summary is required")
     findings += _description_findings("epic", spec.get("epic") or {})
+    findings += _assignee_findings("epic", spec.get("epic") or {})
     items = spec.get("items") or []
     if not items:
         findings.append("items: at least one story or task")
@@ -52,6 +53,7 @@ def validate(spec: dict, conv: dict) -> List[str]:
         if not (item.get("summary") or "").strip():
             findings.append(f"{ref}: summary is required")
         findings += _description_findings(ref, item)
+        findings += _assignee_findings(ref, item)
         if kind == "story" and not _story_ok(item.get("user_story", "")):
             findings.append(f"{ref}: a story needs user_story (Como … quiero … para …); use a task if no one benefits")
         area = item.get("area")
@@ -68,6 +70,7 @@ def validate(spec: dict, conv: dict) -> List[str]:
             if not (sub.get("summary") or "").strip():
                 findings.append(f"{ref}.subtasks[{j}]: summary is required")
             findings += _description_findings(f"{ref}.subtasks[{j}]", sub)
+            findings += _assignee_findings(f"{ref}.subtasks[{j}]", sub)
             if "done" in sub and not isinstance(sub["done"], bool):
                 findings.append(f"{ref}.subtasks[{j}]: done must be true or false")
             findings += _started_findings(f"{ref}.subtasks[{j}]", sub)
@@ -75,6 +78,15 @@ def validate(spec: dict, conv: dict) -> List[str]:
             if not inherits:
                 findings += _evidence_findings(f"{ref}.subtasks[{j}]", sub, sub.get("done") is True)
     return findings
+
+
+def _assignee_findings(ref: str, entry: dict) -> List[str]:
+    if "assignee" not in entry:
+        return []
+    value = entry["assignee"]
+    if isinstance(value, str) and value.strip():
+        return []
+    return [f"{ref}: assignee must be the name, email or accountId of a person"]
 
 
 def _started_findings(ref: str, entry: dict) -> List[str]:
@@ -113,13 +125,19 @@ def _description(item: dict) -> str:
     return description.render(sections(item))
 
 
+def _assignee_query(entry: dict, inherited: Optional[str] = None) -> Optional[str]:
+    """Who the spec names for this issue (a name, email or accountId), or what its parent names, or None."""
+    value = entry.get("assignee")
+    return value.strip() if isinstance(value, str) and value.strip() else inherited
+
+
 def plan(spec: dict, conv: dict) -> List[dict]:
     """Create operations in dependency order: the epic, then each item followed by its subtasks."""
     default = conv.get("default_priority")
     epic = spec["epic"]
     ops = [{"ref": "epic", "kind": "epic", "parent": None, "summary": epic["summary"].strip(),
             "description": _description(epic), "sections": sections(epic), "priority": epic.get("priority") or default,
-            "labels": list(epic.get("labels") or [])}]
+            "labels": list(epic.get("labels") or []), "assignee_query": _assignee_query(epic)}]
     for i, item in enumerate(spec["items"]):
         ref = f"items[{i}]"
         item_done = bool(item.get("done"))
@@ -127,6 +145,7 @@ def plan(spec: dict, conv: dict) -> List[dict]:
                     "description": _description(item), "sections": sections(item),
                     "priority": item.get("priority") or default,
                     "labels": list(item.get("labels") or []), "done": item_done,
+                    "assignee_query": _assignee_query(item),
                     "started": bool(item.get("started")), "evidence": list(item.get("evidence") or [])})
         for j, sub in enumerate(item.get("subtasks") or []):
             ops.append({"ref": f"{ref}.subtasks[{j}]", "kind": "subtask", "parent": ref,
@@ -134,6 +153,7 @@ def plan(spec: dict, conv: dict) -> List[dict]:
                         "sections": sections(sub),
                         "priority": sub.get("priority") or item.get("priority") or default,
                         "labels": list(sub.get("labels") or []), "done": bool(sub.get("done", item_done)),
+                        "assignee_query": _assignee_query(sub, _assignee_query(item)),
                         "started": bool(sub.get("started")),
                         "evidence": list(sub.get("evidence") or (item.get("evidence") if "done" not in sub else None)
                                          or [])})  # a started parent does not start its subtasks

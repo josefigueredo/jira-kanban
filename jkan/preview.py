@@ -155,7 +155,11 @@ def render(ops: List[dict], conv: dict) -> str:
         parent = by_ref.get(op["parent"]) if op["parent"] else None
         labels = "".join(f'<span class="tag">{e(lb)}</span>' for lb in op.get("labels") or []) or '<span class="muted">Ninguno</span>'
         prio = op.get("priority") or ""
-        who, av_cls = ASSIGNEE.get(op.get("assignee") or "ask", ASSIGNEE["ask"])
+        if op.get("assignee") == "person":
+            near = "" if op["person"].get("exact", True) else " · coincidencia aproximada"
+            who, av_cls = e(op["person"]["name"] + near), ""
+        else:
+            who, av_cls = ASSIGNEE.get(op.get("assignee") or "ask", ASSIGNEE["ask"])
         order = (f"Se crea primero (paso 1 de {len(ops)}): el resto cuelga de esta épica." if not parent
                  else f"Se crea en el paso {n} de {len(ops)}, después de {key[parent['ref']]}.")
         pages.append(template.render(template.load("card.html"), {
