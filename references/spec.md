@@ -23,6 +23,7 @@
 | `evidence` | Required with `done`: what shows it is finished. Each entry is a commit (reachable from the remote's default branch, so merged and pushed), a branch on `origin`, or a URL (a PR, a deploy, a doc). jk resolves them from the project's git repo before any write, in the dry run too, and lists them as permalinks in the description's `Evidencia:` section; one that does not resolve refuses the create. A subtask that inherits `done` inherits its parent's evidence. Use the commits the conversation already produced; never invent one. |
 | `started` | The user is working on it now. Assigned without asking and moved to an in-progress status (never a blocked or review one). Subtasks do not inherit it. Excludes `done`. |
 | `priority` | Optional; one of `conventions.json` priorities, default `default_priority`. |
+| `assignee` | Optional; the name, email or accountId of the person who owns it, on the epic, an item or a subtask (a subtask inherits its item's). Wins over `done`, `started` and `--assign-open`. jk looks the person up while planning, in the dry run too, and refuses the create if the name matches nobody or several people. Not sure who it is? Run `jk who "<name>" --jira-project KEY` first. |
 
 Anything neither `done` nor `started` is open: the user decides whether it is assigned to them
 (`--assign-open` / `--no-assign-open`).

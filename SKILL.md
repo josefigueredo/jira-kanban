@@ -34,6 +34,16 @@ python3 ~/.agents/skills/jira-kanban/jk.py <create|pull|push|show|board> ... --p
    the same command with `--apply`. `references/layout.md` has the folders, how to edit and add a subtask, and what a
    conflict means.
 
+## People
+
+- To give an issue to someone other than the user, put `"assignee"` (a name, email or accountId) on the epic, an item or
+  a subtask in the spec; subtasks inherit their item's. See `references/spec.md`.
+- Not sure who the person is? `jk who "<name>" --jira-project KEY` (read only, `--json` for scripts). `unique`: use the
+  accountId or email it prints. `ambiguous`: show the user the candidates (name and email) and ask which one; never pick.
+  Accents and a one-letter slip are fine ("Matiaz" finds "Matías").
+- Reassigning what exists: `jk assign KEY "<person>" [--tree]` is a dry run; hand the user the same command with
+  `--apply`.
+
 ## Rules
 
 - Every Jira write needs `--apply`, run by the user, and is logged in `./.jira-kanban/jira-writes.jsonl`.

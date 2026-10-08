@@ -43,6 +43,8 @@ queda en `./.jira-kanban/jira-writes.jsonl` (hora, comando, issue y cambio).
 | `jk push EPIC [--apply] [--assign-open \| --no-assign-open]` | Manda a Jira los cambios locales: estado, título, descripción, subtareas nuevas |
 | `jk show EPIC` | Lista el kanban local como árbol |
 | `jk board EPIC` | Agrupa el kanban local: Bloqueado · Por hacer · En progreso · Hecho |
+| `jk who "NOMBRE" [--jira-project KEY] [--json]` | Busca una persona en Jira por nombre, email o accountId (solo lectura): `unique`, `ambiguous` o `none` |
+| `jk assign KEY "PERSONA" [--tree] [--apply]` | Asigna un issue (con `--tree`, todo lo que cuelga de él) a una persona |
 
 `jk` es `python3 ~/.agents/skills/jira-kanban/jk.py`.
 
@@ -82,6 +84,22 @@ El agente lo arma desde la conversación. Un ejemplo con una historia, una tarea
   su padre salvo que digan otra cosa, y la épica está completa sólo si todo lo que cuelga de ella lo está.
 - Lo que **no** está completo necesita tu respuesta: `--assign-open` (asignármelas) o `--no-assign-open` (sin asignar).
   Sin ella, `--apply` se niega antes de llamar a Jira. La skill te lo pregunta.
+
+### A otra persona
+
+`jk` asigna por defecto a quien lo corre, pero el spec puede nombrar a otra persona con `"assignee"` (un nombre, un email o
+un accountId) en la épica, un ítem o una subtarea; las subtareas heredan la de su ítem. Una persona nombrada gana sobre
+`done`, `started` y `--assign-open`, y no cuenta como "pendiente de decidir".
+
+- `jk create` la busca **mientras planifica**, también en el dry run, y se niega antes de escribir si el nombre no coincide
+  con nadie o coincide con varios. Lista los candidatos con su email; **nunca elige entre dos personas**.
+- La búsqueda de Jira solo reconoce el comienzo de cada palabra, así que "Matiaz" no encuentra a "Matías". `jk` consulta
+  cada palabra del nombre por separado, ignora tildes y mayúsculas y tolera una letra de diferencia. Una coincidencia
+  exacta del nombre completo gana sobre nombres más largos que lo contienen.
+- Solo busca entre quienes se pueden asignar en el proyecto (`--jira-project`, o el de la clave en `assign`), activos y
+  que no sean bots.
+- Para reasignar lo que ya existe: `jk assign PLATE-639 "Nombre Apellido" --tree` (dry run) y después lo mismo con
+  `--apply`. Una asignación rechazada se informa y no frena a las demás.
 
 ## Vista previa
 
