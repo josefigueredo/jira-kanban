@@ -58,6 +58,8 @@ class FakeJira:
         self.seq = start
         self.issues: Dict[str, dict] = {}
         self.writes: List[tuple] = []
+        self.search_answer = lambda jql: []  # tests replace it: jql -> list of normalized issues
+        self.jqls: List[str] = []
 
     def browse_url(self, key: str) -> str:
         return f"https://example.atlassian.net/browse/{key}"
@@ -104,6 +106,10 @@ class FakeJira:
 
     def children(self, key: str) -> List[dict]:
         return [dict(i) for i in self.issues.values() if i["parent"] == key]
+
+    def search(self, jql: str, blocked_link: str = "is blocked by") -> List[dict]:
+        self.jqls.append(jql)
+        return [dict(i) for i in self.search_answer(jql)]
 
     def update(self, key: str, fields: dict) -> None:
         for name in ("summary", "description"):
@@ -156,6 +162,15 @@ def epic_with_children(jira: FakeJira) -> str:
                  "parent": {"key": epic}})
     jira.writes.clear()
     return epic
+
+
+def issue(key: str, **over) -> dict:
+    """A normalized issue as Jira.search returns it, for the report tests."""
+    base = {"key": key, "summary": f"Summary of {key}", "issuetype": "Tarea", "status": "Backlog", "category": "todo",
+            "parent": None, "assignee": {"id": "acc-me", "name": "Yo"}, "priority": "Medium", "duedate": None,
+            "created": "2026-09-01", "resolved": None, "changed": "2026-09-01", "flagged": False, "blocked_by": []}
+    base.update(over)
+    return base
 
 
 def described(spec: dict) -> dict:

@@ -10,6 +10,18 @@ from typing import Callable, List, Optional
 
 ISSUE_FIELDS = "summary,description,issuetype,status,parent"
 CATEGORY = {"new": "todo", "indeterminate": "in_progress", "done": "done"}  # Jira's fixed status categories
+STANDUP_FIELDS = ["summary", "issuetype", "status", "parent", "assignee", "priority", "duedate", "created",
+                  "resolutiondate", "statuscategorychangedate", "issuelinks"]
+BLOCKED_LINK = "is blocked by"
+
+
+def _day(stamp: Optional[str]) -> Optional[str]:
+    """Jira's 2026-10-07T14:03:00.000-0300 as its calendar day, 2026-10-07 (the date in the stamp's own offset)."""
+    return stamp[:10] if stamp else None
+
+
+def _state(status: dict) -> str:
+    return CATEGORY.get((status.get("statusCategory") or {}).get("key", ""), "")
 
 
 class JiraError(RuntimeError):
@@ -120,6 +132,49 @@ class Jira:
             if not token:
                 break
         return [self.get(k) for k in keys]
+
+    @staticmethod
+    def _blocker(link: dict, wanted: str) -> Optional[dict]:
+        """The issue blocking this one, when the link reads `wanted` ("is blocked by") from this side."""
+        other = link.get("inwardIssue")
+        if not other or ((link.get("type") or {}).get("inward") or "").lower() != wanted.lower():
+            return None
+        fields = other.get("fields") or {}
+        status = fields.get("status") or {}
+        return {"key": other["key"], "summary": fields.get("summary") or "", "status": status.get("name", ""),
+                "category": _state(status), "assignee": (fields.get("assignee") or {}).get("displayName") or ""}
+
+    def _report_issue(self, raw: dict, flag: Optional[str], wanted: str) -> dict:
+        f = raw["fields"]
+        parent, owner, status = f.get("parent"), f.get("assignee"), f.get("status") or {}
+        parent_fields = (parent or {}).get("fields") or {}
+        return {"key": raw["key"], "summary": f.get("summary") or "",
+                "issuetype": (f.get("issuetype") or {}).get("name", ""),
+                "status": status.get("name", ""), "category": _state(status),
+                "parent": {"key": parent["key"], "summary": parent_fields.get("summary") or "",
+                           "issuetype": (parent_fields.get("issuetype") or {}).get("name", "")} if parent else None,
+                "assignee": {"id": owner["accountId"], "name": owner.get("displayName") or ""} if owner else None,
+                "priority": (f.get("priority") or {}).get("name", ""), "duedate": f.get("duedate"),
+                "created": _day(f.get("created")), "resolved": _day(f.get("resolutiondate")),
+                "changed": _day(f.get("statuscategorychangedate")),
+                "flagged": bool(f.get(flag)) if flag else False,
+                "blocked_by": [b for b in (self._blocker(link, wanted) for link in f.get("issuelinks") or []) if b]}
+
+    def search(self, jql: str, blocked_link: str = BLOCKED_LINK) -> List[dict]:
+        """Every issue the JQL finds, in the shape the reports use. Read only; follows the result pages."""
+        flag = self._flag_field()
+        fields = STANDUP_FIELDS + ([flag] if flag else [])
+        found: List[dict] = []
+        token = None
+        while True:
+            body = {"jql": jql, "fields": fields, "maxResults": 100}
+            if token:
+                body["nextPageToken"] = token
+            page = self._send("POST", "/rest/api/3/search/jql", body)
+            found += [self._report_issue(raw, flag, blocked_link) for raw in page.get("issues", [])]
+            token = page.get("nextPageToken")
+            if not token:
+                return found
 
     def update(self, key: str, fields: dict) -> None:
         self._send("PUT", f"/rest/api/2/issue/{key}", {"fields": fields})
