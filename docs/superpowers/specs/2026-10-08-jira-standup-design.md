@@ -50,7 +50,7 @@ Todos leen Jira en vivo con JQL (`POST /rest/api/3/search/jql`, ya usado en `jir
 | `jk next --until D` | 2 | ver abajo |
 | `jk blocked` | 3 | asignado a la persona, no Done, y con Flagged, estado en `blocked_statuses` o link "is blocked by" sin resolver |
 | `jk stats [--weeks N]` | métricas | throughput, lead time, edad del WIP, cumplimiento de fechas, mezcla de trabajo (ver abajo) |
-| `jk load --person X [--days N]` | 4 | carga abierta de la persona + lo que cerró en las últimas N semanas |
+| `jk load --person X [--weeks N]` | 4 | carga abierta de la persona + lo que cerró en las últimas N semanas |
 
 Las fechas llegan siempre como ISO (`YYYY-MM-DD`). El **agente** traduce "ayer" o "la semana pasada" a fechas en la
 zona `America/Argentina/Buenos_Aires` y muestra la ventana que usó. El CLI no entiende lenguaje natural.
@@ -105,7 +105,7 @@ issue, porque `statusCategoryChangedDate` guarda solo el último cambio. Va como
   estado. Los padres que no cayeron en la ventana se muestran atenuados para dar contexto.
 - `next` y `blocked`: tablas Markdown con `Key · Título · Prioridad · Vence · Estado` (y `Bloqueado por · Estado del
   bloqueador · Dueño del bloqueador` en `blocked`). Un bloqueo solo por Flagged dice "Flagged, sin link".
-- Las keys llevan la URL del issue (`jira.browse_url`) para abrir una con un clic.
+- Las keys de las tablas llevan la URL del issue (`jira.browse_url`); el árbol va en un bloque de código para que las líneas queden alineadas, así que ahí las keys son texto.
 - Cada salida abre con una línea que dice **de quién es, qué ventana y cuándo se consultó**.
 
 ## Personas

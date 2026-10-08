@@ -8,6 +8,9 @@ description: Use when the user asks to create a Jira epic for the work being dis
 Create a Jira epic from the conversation and mirror it, both ways, as a local kanban in `./.jira-kanban/`. All Jira
 access goes through `jk`; never hand-roll Jira calls or another folder layout.
 
+To read what was done, what is next, what is blocked, a teammate's load or delivery metrics, use the sibling skill
+`jira-standup`; this skill writes.
+
 ```bash
 python3 ~/.agents/skills/jira-kanban/jk.py <create|pull|push|show|board> ... --project .
 ```

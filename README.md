@@ -45,6 +45,7 @@ queda en `./.jira-kanban/jira-writes.jsonl` (hora, comando, issue y cambio).
 | `jk board EPIC` | Agrupa el kanban local: Bloqueado · Por hacer · En progreso · Hecho |
 | `jk who "NOMBRE" [--jira-project KEY] [--json]` | Busca una persona en Jira por nombre, email o accountId (solo lectura): `unique`, `ambiguous` o `none` |
 | `jk assign KEY "PERSONA" [--tree] [--apply]` | Asigna un issue (con `--tree`, todo lo que cuelga de él) a una persona |
+| `jk done` · `next` · `blocked` · `load` · `stats` | Reportes de solo lectura (ver «Reportes»): qué hice, qué puedo hacer, qué me bloquea, carga y métricas |
 
 `jk` es `python3 ~/.agents/skills/jira-kanban/jk.py`.
 
@@ -107,6 +108,24 @@ un accountId) en la épica, un ítem o una subtarea; las subtareas heredan la de
 una pantalla de issue de Jira: árbol a la izquierda, breadcrumb, descripción con criterios de aceptación, tabla de hijos,
 estado y panel de detalles con el responsable. Las claves son `NUEVO-1…n` en el orden de creación y la navegación es por
 `#hash` (el botón Atrás funciona). Muestra sólo lo que va a ejecutar esa pasada.
+
+## Reportes (solo lectura)
+
+Responden en tablas y árboles, leyendo Jira en vivo (el kanban local no guarda fechas ni asignados). La skill hermana
+`jira-standup` (carpeta `standup/`) los usa; el agente traduce "ayer" o "la semana pasada" a fechas `YYYY-MM-DD`.
+
+| Comando | Responde |
+|---|---|
+| `jk done --since D [--until D]` | Qué hice: árbol Épica → Historia/Tarea → Subtarea, con totales |
+| `jk next [--until D]` | Qué puedo hacer: para hacer ya (por prioridad y vencimiento), lo que vence, lo que está sin dueño en mis épicas |
+| `jk blocked` | Dónde estoy bloqueado: por link "is blocked by", por Flagged o por estado bloqueado |
+| `jk load --person "X" [--weeks N]` | Carga de otra persona, en números medidos, al lado de la mía |
+| `jk stats [--weeks N]` | Velocidad (issues cerrados por semana), lead time, edad del WIP, cumplimiento de fechas, mezcla |
+
+Todos aceptan `--person "NOMBRE"` (si el nombre es ambiguo lista a los candidatos y no elige), `--jira-project KEY` y
+`--json`. PLATE no tiene story points, así que la velocidad se mide en issues; `jk load` solo da un veredicto si
+`wip_limit` está en `./.jira-kanban/conventions.json`. Límites: Jira guarda solo el último cambio de estado (un issue
+que pasó por «en curso» y luego a Done figura con la fecha de Done) y «hecho» significa asignado a la persona.
 
 ## Kanban local
 
