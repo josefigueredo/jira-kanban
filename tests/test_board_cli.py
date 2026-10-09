@@ -73,6 +73,24 @@ class SetupTest(unittest.TestCase):
         self.assertIn("no statuses for EMPTY", err)
         self.assertIsNone(board_profile.load("EMPTY"))
 
+    def test_setup_rebuilds_a_profile_it_cannot_read_and_says_so(self):
+        (self.base / "profiles").mkdir()
+        (self.base / "profiles" / "UA.json").write_text("{}", encoding="utf-8")
+        code, out, _ = run(["setup", "UA"], fake(UA=shapes.UA))
+        self.assertEqual(code, 3)  # ON HOLD and AWAITING APPROVAL still need a person
+        self.assertIn("El perfil anterior no se podía leer", out)
+        self.assertEqual(board_profile.load("UA")["project"], "UA")
+
+    def test_setup_does_not_overwrite_a_profile_written_by_a_newer_jk(self):
+        newer = board_profile.build("UA", shapes.UA, None)
+        newer["version"] = board_profile.VERSION + 1
+        board_profile.save(newer)
+        code, _, err = run(["setup", "UA"], fake(UA=shapes.UA))
+        self.assertEqual(code, 1)
+        self.assertIn("newer jk", err)
+        raw = (self.base / "profiles" / "UA.json").read_text(encoding="utf-8")
+        self.assertIn(f'"version": {board_profile.VERSION + 1}', raw)
+
     def test_a_key_that_is_not_a_project_key_is_refused(self):
         code, _, err = run(["setup", "ua"], fake())
         self.assertEqual(code, 1)
@@ -126,6 +144,13 @@ class ShowAndCheckTest(unittest.TestCase):
         code, _, err = run(["show", "PEHD"], fake())
         self.assertEqual(code, 1)
         self.assertIn("newer jk", err)
+
+    def test_show_of_a_profile_with_the_wrong_shape_exits_1_instead_of_a_traceback(self):
+        (self.base / "profiles").mkdir()
+        (self.base / "profiles" / "UA.json").write_text("{}", encoding="utf-8")
+        code, _, err = run(["show", "UA"], fake())
+        self.assertEqual(code, 1)
+        self.assertIn("not a profile", err)
 
     def test_show_of_a_missing_profile_exits_1(self):
         self.assertEqual(run(["show", "UA"], fake())[0], 1)

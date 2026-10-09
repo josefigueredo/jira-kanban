@@ -89,7 +89,7 @@ REPORTS = ("done", "next", "blocked", "load", "stats")
 
 def _emit(args, conv: dict, payload, text: str) -> None:
     """Print a report, led by what the reader must know about the profiles it was computed with."""
-    notes = roles.notes(conv.get("_seen", []), conv.get("profiles") or {})
+    notes = roles.notes(conv.get("_seen", []), conv.get("profiles") or {}, conv.get("profile_problems"))
     if args.json:
         print(json.dumps({**payload, "profile_notes": notes}, ensure_ascii=False, indent=2, default=str))
     else:
@@ -98,7 +98,7 @@ def _emit(args, conv: dict, payload, text: str) -> None:
 
 def _report(jira, args, conv: dict, today: _dt.date) -> int:
     """done | next | blocked | load | stats: read only, for the user or, with --person, for a teammate."""
-    conv["profiles"] = board_profile.load_all()
+    conv["profiles"], conv["profile_problems"] = board_profile.scan()
     conv["_seen"] = []
     try:
         if args.cmd == "done":  # the window is checked before Jira is asked anything, even who the person is

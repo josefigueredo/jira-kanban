@@ -46,7 +46,11 @@ def _verdict(profile: dict) -> int:
 
 
 def _setup(jira, args) -> int:
-    existing = board_profile.load(args.key)
+    try:
+        existing = board_profile.load(args.key)
+    except board_profile.BadProfile as exc:  # a broken file is rebuilt; a newer jk's file is refused (NewerProfile)
+        print(f"El perfil anterior no se podía leer ({exc}); se rehace.\n")
+        existing = None
     groups = jira.project_statuses(args.key)
     if not groups:
         raise ValueError(f"Jira returned no statuses for {args.key}: wrong key, or the account cannot see it")

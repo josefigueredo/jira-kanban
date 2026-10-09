@@ -85,17 +85,22 @@ def annotate(issues: List[dict], profiles: Dict[str, dict]) -> List[dict]:
     return issues
 
 
-def notes(issues: List[dict], profiles: Dict[str, dict]) -> List[str]:
-    """What a reader must know before trusting a report: projects without profile, statuses still undecided, statuses
-    the profile has never seen."""
+def notes(issues: List[dict], profiles: Dict[str, dict], problems: Optional[Dict[str, tuple]] = None) -> List[str]:
+    """What a reader must know before trusting a report: projects without profile, profile files nobody could read
+    (`problems`: project -> (kind, why)), statuses still undecided, statuses the profile has never seen."""
+    problems = problems or {}
     missing: set = set()
+    broken: Dict[str, tuple] = {}
     undecided: Dict[str, set] = {}
     unknown: set = set()
     for issue in issues:
         project = project_of(issue["key"])
         profile = profiles.get(project)
         if profile is None:
-            missing.add(project)
+            if project in problems:
+                broken[project] = problems[project]
+            else:
+                missing.add(project)
             continue
         entry = {s["id"]: s for s in profile["statuses"]}.get(issue.get("status_id", ""))
         if entry is None:
@@ -105,6 +110,10 @@ def notes(issues: List[dict], profiles: Dict[str, dict]) -> List[str]:
     lines = []
     if missing:
         lines.append("Sin perfil: " + ", ".join(sorted(missing)) + ". Se usa la categoría de Jira; corré `jk board setup KEY`.")
+    for project in sorted(broken):
+        kind, why = broken[project]
+        fix = "actualizá jk" if kind == "newer" else f"corré `jk board setup {project}` para rehacerlo"
+        lines.append(f"Perfil de {project} ilegible ({why}): se usa la categoría de Jira; {fix}.")
     for project in sorted(undecided):
         lines.append(f"Perfil sin confirmar en {project}: faltan decidir {', '.join(sorted(undecided[project]))}.")
     for project, status in sorted(unknown):

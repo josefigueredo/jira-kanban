@@ -8,7 +8,7 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from . import roles
 
@@ -19,6 +19,14 @@ KEY = re.compile(r"^[A-Z][A-Z0-9_]*$")
 
 class BadSelection(ValueError):
     pass
+
+
+class BadProfile(ValueError):
+    """A profile file that is not valid JSON or does not have the shape of a profile."""
+
+
+class NewerProfile(ValueError):
+    """A profile written by a newer jk: it must be neither misread nor overwritten."""
 
 
 def config_dir() -> Path:
@@ -103,11 +111,23 @@ def save(profile: dict, base: Optional[Path] = None) -> Path:
 
 
 def _read(path: Path) -> dict:
-    data = json.loads(path.read_text(encoding="utf-8"))
+    """The profile in `path`, or BadProfile / NewerProfile; what the reports use is checked here, once."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise BadProfile(f"{path.name} is not valid JSON ({exc.msg})") from exc
     if not isinstance(data, dict):
-        raise ValueError(f"{path.name} is not a profile")
-    if data.get("version", 0) > VERSION:
-        raise ValueError(f"{path.name} was written by a newer jk (profile version {data['version']}); update jk")
+        raise BadProfile(f"{path.name} is not a profile")
+    version = data.get("version")
+    if isinstance(version, bool) or not isinstance(version, int):
+        raise BadProfile(f"{path.name} is not a profile (no valid version)")
+    if version > VERSION:
+        raise NewerProfile(f"{path.name} was written by a newer jk (profile version {version}); update jk")
+    statuses = data.get("statuses")
+    if not (data.get("project") == path.stem and isinstance(statuses, list)
+            and all(isinstance(s, dict) and isinstance(s.get("id"), str) and isinstance(s.get("name"), str)
+                    and (s.get("role") is None or s.get("role") in roles.ROLES) for s in statuses)):
+        raise BadProfile(f"{path.name} is not a profile (wrong shape)")
     return data
 
 
@@ -116,14 +136,21 @@ def load(project: str, base: Optional[Path] = None) -> Optional[dict]:
     return _read(path) if path.is_file() else None
 
 
-def load_all(base: Optional[Path] = None) -> Dict[str, dict]:
-    """Every readable profile by project key; a file that cannot be read is skipped (its project reads as 'Sin perfil')."""
+def scan(base: Optional[Path] = None) -> Tuple[Dict[str, dict], Dict[str, Tuple[str, str]]]:
+    """(profiles, problems): every readable profile by project key, and for each file that is not, ('newer' | 'bad', why)."""
     folder = (base or config_dir()) / "profiles"
     found: Dict[str, dict] = {}
+    problems: Dict[str, Tuple[str, str]] = {}
     if folder.is_dir():
         for path in sorted(folder.glob("*.json")):
             try:
                 found[path.stem] = _read(path)
-            except (OSError, ValueError):
-                continue
-    return found
+            except NewerProfile as exc:
+                problems[path.stem] = ("newer", str(exc))
+            except (OSError, ValueError) as exc:
+                problems[path.stem] = ("bad", str(exc))
+    return found, problems
+
+
+def load_all(base: Optional[Path] = None) -> Dict[str, dict]:
+    return scan(base)[0]

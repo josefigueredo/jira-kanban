@@ -107,6 +107,16 @@ class NotesTest(unittest.TestCase):
         notes = roles.notes([{"key": "GDNC-2", "status_id": "25", "status": "ON HOLD"}], PROFILES)
         self.assertEqual(notes, ["Perfil sin confirmar en GDNC: faltan decidir ON HOLD."])
 
+    def test_a_profile_file_that_could_not_be_read_is_named_instead_of_reported_as_missing(self):
+        issues = [{"key": "UA-1", "status_id": "1", "status": "To Do"}, {"key": "PEHD-1", "status_id": "1", "status": "x"}]
+        problems = {"UA": ("bad", "UA.json is not a profile (wrong shape)"),
+                    "PEHD": ("newer", "PEHD.json was written by a newer jk (profile version 2); update jk")}
+        self.assertEqual(roles.notes(issues, {}, problems), [
+            "Perfil de PEHD ilegible (PEHD.json was written by a newer jk (profile version 2); update jk): "
+            "se usa la categoría de Jira; actualizá jk.",
+            "Perfil de UA ilegible (UA.json is not a profile (wrong shape)): se usa la categoría de Jira; "
+            "corré `jk board setup UA` para rehacerlo."])
+
     def test_a_status_the_profile_never_saw_is_reported_as_unknown(self):
         notes = roles.notes([{"key": "GDNC-3", "status_id": "99", "status": "Nuevo"}], PROFILES)
         self.assertEqual(notes, ["Estado desconocido: Nuevo (GDNC). El workflow cambió; corré `jk board check GDNC`."])

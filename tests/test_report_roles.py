@@ -38,7 +38,7 @@ def blocked(key):
 
 class RoleReportsTest(unittest.TestCase):
     def setUp(self):
-        config_dir()
+        self.base = config_dir()
         save_profile("GDNC", shapes.GDNC, {"delivered": ["Done"], "waiting": ["ON HOLD"]})
 
     def answer(self, *issues):
@@ -93,6 +93,18 @@ class RoleReportsTest(unittest.TestCase):
         code, out, _ = run(["next"], jira)
         self.assertEqual(code, 0)
         self.assertIn("> ⚠ Estado desconocido: Nuevo (GDNC).", out)
+
+    def test_a_profile_file_nobody_can_read_does_not_crash_the_reports_and_is_named(self):
+        (self.base / "profiles" / "UA.json").write_text('{"version": "2"}', encoding="utf-8")
+        newer = board_profile.build("PEHD", shapes.PEHD, None)
+        newer["version"] = board_profile.VERSION + 1
+        board_profile.save(newer)
+        jira = self.answer(issue("UA-1", status="To Do", status_id="1"), issue("PEHD-1", status="To Do", status_id="50"))
+        code, out, _ = run(["next"], jira)
+        self.assertEqual(code, 0)
+        self.assertIn("> ⚠ Perfil de UA ilegible", out)
+        self.assertIn("actualizá jk", out)
+        self.assertNotIn("Sin perfil: PEHD", out)
 
     def test_json_carries_the_notes_instead_of_a_banner(self):
         _, clean, _ = run(["done", "--since", "2026-10-01", "--json"], self.answer(closed("GDNC-1")))

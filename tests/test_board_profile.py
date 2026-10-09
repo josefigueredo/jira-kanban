@@ -135,6 +135,32 @@ class PersistenceTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not a profile"):
             bp.load("UA")
 
+    def test_a_profile_with_the_wrong_shape_is_refused_by_load_and_skipped_by_load_all(self):
+        (self.base / "profiles").mkdir()
+        wrong = ["{not json", "{}", '{"version": "2"}', '{"version": true, "project": "UA", "statuses": []}',
+                 '{"version": 1, "project": "UA", "statuses": "x"}',
+                 '{"version": 1, "project": "OTHER", "statuses": []}',
+                 '{"version": 1, "project": "UA", "statuses": [{"id": "1", "name": "x", "role": "hecho"}]}']
+        for text in wrong:
+            (self.base / "profiles" / "UA.json").write_text(text, encoding="utf-8")
+            with self.assertRaises(bp.BadProfile, msg=text):
+                bp.load("UA")
+            self.assertEqual(bp.load_all(), {}, text)
+
+    def test_scan_names_each_file_it_could_not_use_and_why(self):
+        bp.save(bp.build("GDNC", shapes.GDNC, None))
+        (self.base / "profiles" / "UA.json").write_text("{}", encoding="utf-8")
+        newer = bp.build("PEHD", shapes.PEHD, None)
+        newer["version"] = bp.VERSION + 1
+        bp.save(newer)
+        profiles, problems = bp.scan()
+        self.assertEqual(list(profiles), ["GDNC"])
+        self.assertEqual(sorted(problems), ["PEHD", "UA"])
+        self.assertEqual(problems["UA"][0], "bad")
+        self.assertIn("not a profile", problems["UA"][1])
+        self.assertEqual(problems["PEHD"][0], "newer")
+        self.assertIn("newer jk", problems["PEHD"][1])
+
     def test_the_config_directory_follows_the_environment(self):
         self.assertEqual(bp.config_dir(), self.base)
 
