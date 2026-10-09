@@ -1,4 +1,4 @@
-"""jk: create | pull | push | show | board | who | assign | done | next | blocked | load | stats. Every Jira write is a dry run unless --apply is passed; the reports only read."""
+"""jk: create | pull | push | show | board | who | assign | done | next | blocked | load | stats | board setup|set|show|check|survey. Every Jira write is a dry run unless --apply is passed; the reports only read."""
 from __future__ import annotations
 
 import argparse
@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from . import config, journal, kanban, people, preview, render, standup, stats, sync, window
+from . import board_cli, board_profile, config, journal, kanban, people, preview, render, roles, standup, stats, sync, window
 from .jira import Jira, JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
@@ -136,6 +136,10 @@ def _report(jira, args, conv: dict, today: _dt.date) -> int:
 
 def main(argv: Optional[List[str]] = None, client: Callable = _client,
          today: Optional[Callable[[], _dt.date]] = None) -> int:
+    argv = sys.argv[1:] if argv is None else list(argv)
+    if len(argv) > 1 and argv[0] == "board" and argv[1] in board_cli.VERBS:  # `jk board EPIC` stays the local kanban
+        here = Path(".").resolve()
+        return board_cli.run(argv[1:], lambda: client(here) if client is not _client else _client(here, command="board"))
     parser = argparse.ArgumentParser(prog="jk", description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("create", "pull", "push", "show", "board"):
