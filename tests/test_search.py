@@ -27,7 +27,7 @@ class SearchTest(unittest.TestCase):
         found = jira.search("assignee = currentUser()")
         self.assertEqual([i["key"] for i in found], ["PLATE-9", "PLATE-10"])
         self.assertEqual(found[0], {
-            "key": "PLATE-9", "summary": "[BE] Algo", "issuetype": "Tarea", "status": "PROCESANDO",
+            "key": "PLATE-9", "summary": "[BE] Algo", "issuetype": "Tarea", "status": "PROCESANDO", "status_id": "",
             "category": "in_progress", "parent": {"key": "PLATE-1", "summary": "Épica", "issuetype": "Epic"},
             "assignee": {"id": "acc-me", "name": "Yo"}, "priority": "High", "duedate": "2026-10-10",
             "created": "2026-10-01", "resolved": None, "changed": "2026-10-07", "flagged": True,

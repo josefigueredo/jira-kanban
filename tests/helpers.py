@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import unicodedata
@@ -8,6 +9,16 @@ from typing import Dict, List, Optional
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+
+
+def config_dir() -> Path:
+    """Point jk at an empty config directory, so no test reads or writes the real ~/.config/jk."""
+    path = Path(tempfile.mkdtemp(prefix="jk-config-"))
+    os.environ["JK_CONFIG_DIR"] = str(path)
+    return path
+
+
+config_dir()  # every test run starts isolated, even the tests that never ask for a profile
 
 CONVENTIONS = {
     "project": "PLATE",
@@ -60,6 +71,8 @@ class FakeJira:
         self.writes: List[tuple] = []
         self.search_answer = lambda jql: []  # tests replace it: jql -> list of normalized issues
         self.jqls: List[str] = []
+        self.status_groups: Dict[str, List[dict]] = {}  # project key -> what Jira.project_statuses returns
+        self.project_list: List[dict] = []  # what Jira.projects returns
 
     def browse_url(self, key: str) -> str:
         return f"https://example.atlassian.net/browse/{key}"
@@ -110,6 +123,15 @@ class FakeJira:
     def search(self, jql: str, blocked_link: str = "is blocked by") -> List[dict]:
         self.jqls.append(jql)
         return [dict(i) for i in self.search_answer(jql)]
+
+    def project_statuses(self, key: str) -> List[dict]:
+        from jkan.jira import JiraError
+        if key not in self.status_groups:
+            raise JiraError(f"GET /rest/api/3/project/{key}/statuses: HTTP 404")
+        return [dict(g, statuses=[dict(s) for s in g["statuses"]]) for g in self.status_groups[key]]
+
+    def projects(self) -> List[dict]:
+        return [dict(p) for p in self.project_list]
 
     def update(self, key: str, fields: dict) -> None:
         for name in ("summary", "description"):

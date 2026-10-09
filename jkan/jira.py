@@ -6,7 +6,7 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Callable, List, Optional
+from typing import Callable, Dict, List, Optional
 
 ISSUE_FIELDS = "summary,description,issuetype,status,parent"
 CATEGORY = {"new": "todo", "indeterminate": "in_progress", "done": "done"}  # Jira's fixed status categories
@@ -133,6 +133,32 @@ class Jira:
                 break
         return [self.get(k) for k in keys]
 
+    def project_statuses(self, key: str) -> List[dict]:
+        """The workflows of a project: one entry per distinct set of statuses, with the issue types that share it.
+
+        Each status is {"id", "name", "category"} with category todo, in_progress or done. Read only."""
+        raw = self._send("GET", f"/rest/api/3/project/{urllib.parse.quote(key)}/statuses")
+        groups: Dict[tuple, dict] = {}
+        for kind in raw:
+            statuses = [{"id": s["id"], "name": s["name"],
+                         "category": CATEGORY.get((s.get("statusCategory") or {}).get("key", ""), "")}
+                        for s in kind.get("statuses", [])]
+            group = groups.setdefault(tuple(sorted(s["id"] for s in statuses)), {"types": [], "statuses": statuses})
+            group["types"].append(kind["name"])
+        return list(groups.values())
+
+    def projects(self) -> List[dict]:
+        """Every project the account can see, as {key, name, type, style}. Read only; follows the result pages."""
+        found: List[dict] = []
+        start = 0
+        while True:
+            page = self._send("GET", f"/rest/api/3/project/search?maxResults=100&startAt={start}")
+            found += [{"key": p["key"], "name": p.get("name") or "", "type": p.get("projectTypeKey") or "",
+                       "style": p.get("style") or ""} for p in page.get("values", [])]
+            if page.get("isLast", True) or not page.get("values"):
+                return found
+            start += 100
+
     @staticmethod
     def _blocker(link: dict, wanted: str) -> Optional[dict]:
         """The issue blocking this one, when the link reads `wanted` ("is blocked by") from this side."""
@@ -150,7 +176,7 @@ class Jira:
         parent_fields = (parent or {}).get("fields") or {}
         return {"key": raw["key"], "summary": f.get("summary") or "",
                 "issuetype": (f.get("issuetype") or {}).get("name", ""),
-                "status": status.get("name", ""), "category": _state(status),
+                "status": status.get("name", ""), "status_id": status.get("id", ""), "category": _state(status),
                 "parent": {"key": parent["key"], "summary": parent_fields.get("summary") or "",
                            "issuetype": (parent_fields.get("issuetype") or {}).get("name", "")} if parent else None,
                 "assignee": {"id": owner["accountId"], "name": owner.get("displayName") or ""} if owner else None,

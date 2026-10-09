@@ -128,5 +128,49 @@ class JiraPeopleTest(unittest.TestCase):
         self.assertEqual(seen, [{"action": "assign", "key": "PLATE-5", "accountId": "a1"}])
 
 
+STATUSES = [
+    {"id": "10", "name": "Tarea", "subtask": False, "statuses": [
+        {"id": "1", "name": "To Do", "statusCategory": {"key": "new"}},
+        {"id": "2", "name": "Done", "statusCategory": {"key": "done"}}]},
+    {"id": "11", "name": "Subtarea", "subtask": True, "statuses": [
+        {"id": "2", "name": "Done", "statusCategory": {"key": "done"}},
+        {"id": "1", "name": "To Do", "statusCategory": {"key": "new"}}]},
+    {"id": "12", "name": "Epic", "subtask": False, "statuses": [
+        {"id": "1", "name": "To Do", "statusCategory": {"key": "new"}},
+        {"id": "3", "name": "ON HOLD", "statusCategory": {"key": "indeterminate"}},
+        {"id": "2", "name": "Done", "statusCategory": {"key": "done"}}]},
+]
+
+
+class JiraProfileTest(unittest.TestCase):
+    def test_project_statuses_groups_the_issue_types_that_share_a_workflow(self):
+        jira, rec = client({("GET", "/rest/api/3/project/UA/statuses"): STATUSES})
+        groups = jira.project_statuses("UA")
+        self.assertEqual([g["types"] for g in groups], [["Tarea", "Subtarea"], ["Epic"]])
+        self.assertEqual(groups[0]["statuses"], [{"id": "1", "name": "To Do", "category": "todo"},
+                                                 {"id": "2", "name": "Done", "category": "done"}])
+        self.assertEqual(groups[1]["statuses"][1], {"id": "3", "name": "ON HOLD", "category": "in_progress"})
+        self.assertEqual(rec.calls[0][:2], ("GET", "/rest/api/3/project/UA/statuses"))
+
+    def test_projects_follow_the_pages_and_keep_type_and_style(self):
+        pages = [{"values": [{"key": "UA", "name": "core", "projectTypeKey": "software", "style": "next-gen"}],
+                  "isLast": False},
+                 {"values": [{"key": "CDSP", "name": "desk", "projectTypeKey": "service_desk", "style": "next-gen"}],
+                  "isLast": True}]
+        jira, rec = client({("GET", "/rest/api/3/project/search"): lambda body: pages.pop(0)})
+        self.assertEqual([(p["key"], p["type"], p["style"]) for p in jira.projects()],
+                         [("UA", "software", "next-gen"), ("CDSP", "service_desk", "next-gen")])
+        self.assertIn("startAt=0", rec.calls[0][1])
+        self.assertIn("startAt=100", rec.calls[1][1])
+
+    def test_search_keeps_the_status_id_the_profiles_are_keyed_by(self):
+        raw = {"key": "UA-1", "fields": {"summary": "S", "issuetype": {"name": "Tarea"},
+                                         "status": {"id": "7", "name": "Review",
+                                                    "statusCategory": {"key": "indeterminate"}}}}
+        jira, _ = client({("GET", "/rest/api/3/field"): FIELDS, ("POST", "/rest/api/3/search/jql"): {"issues": [raw]}})
+        found = jira.search("project = UA")
+        self.assertEqual((found[0]["status_id"], found[0]["status"], found[0]["category"]), ("7", "Review", "in_progress"))
+
+
 if __name__ == "__main__":
     unittest.main()
