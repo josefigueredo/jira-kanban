@@ -261,3 +261,19 @@ cierre sin `--allow-close`, ejecución sin TTY y `APRUEBO` con un `n` equivocado
   los frena el hook local `git-guardrails.sh`, que los EM no tienen, y `jk` es un solo binario, así que una instalación de
   solo lectura también los contiene. Decisión pendiente: aplicar el mismo guardia a esos tres comandos, o dejarlos
   fuera de la instalación por defecto.
+
+## Resultados de la fase 1
+
+Medido con `jk board survey` sobre el Jira real el 2026-10-09 (solo lectura).
+
+| Medida | Resultado |
+|---|---|
+| Proyectos leídos / sin acceso | 253 / 0 |
+| Estados (ids únicos por proyecto) | 2256 |
+| Propuestas con confianza `alta` | 1785 (79%) |
+| Estados que necesitan una persona (`decidir`) | 471 (21%) |
+| Proyectos sin ninguna decisión pendiente | 96 de 253 |
+| Proyectos con al menos una decisión | 157 |
+| Estados con la categoría de Jira mal puesta | 42 en 38 proyectos |
+
+En promedio sobre todos los proyectos son 1,9 estados a decidir por board (471 / 253), así que seguir 5 boards son unos 9. Es una cuenta, no una medición sobre los boards de un EM real.
