@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
-# Install the jira-kanban and jira-standup skills for Claude Code, Codex and Cursor.
-#   ./install.sh
-# Shared layout (same as WayOfWork): ~/.agents/skills/<name> points at this repo (jira-kanban) or at its standup/
+# Install jk and its skills for Claude Code, Codex and Cursor.
+#   ./install.sh               the read-only skill: jira-standup
+#   ./install.sh --with-write  also the skill that writes to Jira: jira-kanban
+# CLI: ~/.local/bin/jk points at jk.py; the skills call `jk`, never another skill's folder.
+# Skills (same layout as WayOfWork): ~/.agents/skills/<name> points at this repo (jira-kanban) or at its standup/
 # folder (jira-standup); ~/.claude/skills/<name>, ~/.codex/skills/<name> and ~/.cursor/skills/<name> point at
 # ../../.agents/skills/<name> (measured: ~/.cursor/skills held only explicit links, so Cursor needs its own).
-# Re-running is safe. A real directory with a skill's name is never replaced: the script stops with exit 1.
+# Re-running is safe and never removes a skill installed before. A real file or directory where a link goes is
+# never replaced: the script stops with exit 1.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILLS=("jira-kanban:" "jira-standup:standup")  # name:folder inside the repo ("" is the repo itself)
+SKILLS=("jira-standup:standup")  # name:folder inside the repo ("" is the repo itself)
 case "${1:-}" in
-  -h|--help) sed -n '2,7p' "$0"; exit 0 ;;
+  -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
+  --with-write) SKILLS+=("jira-kanban:") ;;
   "") ;;
   *) echo "unknown argument: $1" >&2; exit 2 ;;
 esac
@@ -35,5 +39,9 @@ for entry in "${SKILLS[@]}"; do
   done
   echo "skill: $NAME (Claude Code, Codex, Cursor) -> $TARGET"
 done
+chmod +x "$REPO/jk.py"
+link "$REPO/jk.py" "$HOME/.local/bin/jk" || status=1
+echo "cli: jk -> $REPO/jk.py"
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) echo "note: add ~/.local/bin to PATH to use jk" >&2 ;; esac
 command -v python3 >/dev/null || { echo "note: python3 is not on PATH; jk needs it" >&2; status=1; }
 exit "$status"
