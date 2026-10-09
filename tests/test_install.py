@@ -20,7 +20,7 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(install(home).returncode, 0)
         self.assertEqual(os.readlink(home / ".agents/skills/jira-kanban"), str(ROOT))
         self.assertEqual(os.readlink(home / ".agents/skills/jira-standup"), str(ROOT / "standup"))
-        for host in (".claude", ".codex"):
+        for host in (".claude", ".codex", ".cursor"):
             for name in ("jira-kanban", "jira-standup"):
                 self.assertEqual(os.readlink(home / host / "skills" / name), f"../../.agents/skills/{name}")
         self.assertEqual(install(home).returncode, 0)  # re-running is safe

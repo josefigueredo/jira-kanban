@@ -2,9 +2,9 @@
 # Install the jira-kanban and jira-standup skills for Claude Code, Codex and Cursor.
 #   ./install.sh
 # Shared layout (same as WayOfWork): ~/.agents/skills/<name> points at this repo (jira-kanban) or at its standup/
-# folder (jira-standup), and ~/.claude/skills/<name> and ~/.codex/skills/<name> point at ../../.agents/skills/<name>.
-# Cursor reads ~/.agents/skills natively. Re-running is safe. A real directory with a skill's name is never
-# replaced: the script stops with exit 1.
+# folder (jira-standup); ~/.claude/skills/<name>, ~/.codex/skills/<name> and ~/.cursor/skills/<name> point at
+# ../../.agents/skills/<name> (measured: ~/.cursor/skills held only explicit links, so Cursor needs its own).
+# Re-running is safe. A real directory with a skill's name is never replaced: the script stops with exit 1.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,7 +30,7 @@ for entry in "${SKILLS[@]}"; do
   SUB="${entry#*:}"
   TARGET="$REPO${SUB:+/$SUB}"
   link "$TARGET" "$HOME/.agents/skills/$NAME" || exit 1
-  for host in .claude .codex; do
+  for host in .claude .codex .cursor; do
     link "../../.agents/skills/$NAME" "$HOME/$host/skills/$NAME" || status=1
   done
   echo "skill: $NAME (Claude Code, Codex, Cursor) -> $TARGET"

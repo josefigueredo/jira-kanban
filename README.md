@@ -15,9 +15,11 @@ git clone git@github.com:josefigueredo/skill-kanban-jira.git jira-kanban
 cd jira-kanban && ./install.sh
 ```
 
-Sigue el mismo layout que WayOfWork: `~/.agents/skills/jira-kanban` apunta a este repo, y `~/.claude/skills/jira-kanban`
-y `~/.codex/skills/jira-kanban` apuntan a `../../.agents/skills/jira-kanban`. Cursor lee `~/.agents/skills` de forma nativa
-(y también `~/.claude/skills` y `~/.codex/skills` por compatibilidad). Repetirlo es seguro; nunca reemplaza un directorio real.
+Instala las dos skills, `jira-kanban` (crear y sincronizar épicas) y `jira-standup` (reportes de solo lectura). Sigue el
+mismo layout que WayOfWork: `~/.agents/skills/jira-kanban` apunta a este repo, `~/.agents/skills/jira-standup` a su
+carpeta `standup/`, y `~/.claude/skills/<skill>`, `~/.codex/skills/<skill>` y `~/.cursor/skills/<skill>` apuntan a
+`../../.agents/skills/<skill>`. Cursor tiene su propio enlace porque `~/.cursor/skills` sólo contenía enlaces explícitos
+(medido el 2026-10-09). Repetirlo es seguro; nunca reemplaza un directorio real.
 
 Requisitos: `python3` (3.9 o más; sólo biblioteca estándar) y credenciales de Jira Cloud.
 
