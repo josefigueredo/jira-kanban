@@ -37,23 +37,23 @@ Cubre las **fases 0 y 1** de la spec. Las fases 2 (views y reportes de equipo), 
 | Perfil con `access: limited` si Jira devuelve 403 | `access` queda siempre en `full` | Esta fase solo lee estados; `limited` se escribe cuando exista una lectura que pueda dar 403 (colas de JSM, fase 2) |
 | `jk.py` no mencionado | `jk.py` pasa a modo `755` | Está en `644` en git; el instalador lo enlaza al PATH |
 
-**Hallazgo para decidir (no se resuelve acá):** `jk create`, `jk push` y `jk assign --apply` escriben en Jira sin exigir terminal interactiva ni `APRUEBO`; solo los frena el hook local `git-guardrails.sh`, que los EM no tienen, y `jk` es un solo binario. Está anotado en los «Riesgos» de la spec (Tarea 8). La fase 3 tiene que decidir si les aplica el mismo guardia.
+**Hallazgo para decidir (no se resuelve acá):** `jk create`, `jk push` y `jk assign --apply` escriben en Jira sin exigir terminal interactiva ni `APRUEBO`; solo los frena el hook local `git-guardrails.sh`, que los EM no tienen, y `jk` es un solo binario. Está anotado en los «Riesgos» de la spec (Task 8). La fase 3 tiene que decidir si les aplica el mismo guardia.
 
 ## Review Focus
 
 Modos de falla que la spec implica y que ninguna tarea de lectura/escritura cubre «de oficio»; cada uno tiene su test en la tarea que es dueña del código.
 
-1. **Un estado que existe solo para un tipo de issue** (`RELEASED` solo en `Tarea` de `UA`) tiene que resolver su rol → `BuildTest.test_a_status_that_exists_for_one_issue_type_only_still_gets_its_role` (Tarea 5).
-2. **Jira contesta sin estados** para la clave → no se guarda un perfil «completo» vacío → `SetupTest.test_a_jira_answer_with_no_statuses_is_not_saved_as_a_complete_profile` (Tarea 6).
-3. **Un perfil escrito por un `jk` más nuevo** no se lee mal en silencio → `PersistenceTest.test_a_profile_from_a_newer_jk_is_refused_by_load_and_skipped_by_load_all` y `ShowAndCheckTest.test_show_of_a_profile_from_a_newer_jk_exits_1` (Tareas 5 y 6).
-4. **Un issue sin `status_id`** (respuesta vieja o recortada) con perfil presente → «estado desconocido», sin `KeyError` → `AnnotateTest.test_an_issue_without_a_status_id_is_unknown_to_the_profile_and_does_not_crash` (Tarea 4).
-5. **Nombrar dos veces el mismo estado** en un `set` es inofensivo → `AssignTest.test_naming_a_status_twice_in_one_call_is_harmless` (Tarea 5).
+1. **Un estado que existe solo para un tipo de issue** (`RELEASED` solo en `Task` de `UA`) tiene que resolver su rol → `BuildTest.test_a_status_that_exists_for_one_issue_type_only_still_gets_its_role` (Task 5).
+2. **Jira contesta sin estados** para la clave → no se guarda un perfil «completo» vacío → `SetupTest.test_a_jira_answer_with_no_statuses_is_not_saved_as_a_complete_profile` (Task 6).
+3. **Un perfil escrito por un `jk` más nuevo** no se lee mal en silencio → `PersistenceTest.test_a_profile_from_a_newer_jk_is_refused_by_load_and_skipped_by_load_all` y `ShowAndCheckTest.test_show_of_a_profile_from_a_newer_jk_exits_1` (Tasks 5 y 6).
+4. **Un issue sin `status_id`** (respuesta vieja o recortada) con perfil presente → «estado desconocido», sin `KeyError` → `AnnotateTest.test_an_issue_without_a_status_id_is_unknown_to_the_profile_and_does_not_crash` (Task 4).
+5. **Nombrar dos veces el mismo estado** en un `set` es inofensivo → `AssignTest.test_naming_a_status_twice_in_one_call_is_harmless` (Task 5).
 
 Además quedan fijados por tests de las tareas: que re-correr `setup` no pierde decisiones humanas ni siquiera con un estado renombrado, que `set` es todo o nada, que un archivo de perfil corrupto no tira un traceback y que `jk board EPIC` (el tablero local) sigue andando (`tests/test_board.py`, ya existente).
 
 ## Estructura de archivos
 
-| Archivo | Responsabilidad | Tarea |
+| Archivo | Responsabilidad | Task |
 |---|---|---|
 | `tests/test_boundaries.py` (nuevo) | Fija quién puede importar a quién | 1 |
 | `install.sh`, `tests/test_install.py` (reemplazo) | `jk` en el PATH; `--with-write` | 2 |
@@ -70,7 +70,7 @@ Línea base antes de empezar: **244 tests en verde** (`python3 -m unittest disco
 
 ---
 
-### Tarea 1: Fijar quién puede importar a quién
+### Task 1: Fijar quién puede importar a quién
 
 **Files:**
 - Create: `tests/test_boundaries.py`
@@ -175,7 +175,7 @@ git commit -m "test(boundaries): the read side of jk must not import the write s
 
 ---
 
-### Tarea 2: `jk` en el PATH e instalación con `--with-write`
+### Task 2: `jk` en el PATH e instalación con `--with-write`
 
 **Files:**
 - Replace: `install.sh`
@@ -340,7 +340,7 @@ git commit -m "feat(install): put jk on the PATH; --with-write installs the skil
 
 ---
 
-### Tarea 3: El cliente de Jira lee estados y proyectos; las búsquedas traen `status_id`
+### Task 3: El cliente de Jira lee estados y proyectos; las búsquedas traen `status_id`
 
 **Files:**
 - Modify: `jkan/jira.py` (tres ediciones)
@@ -363,7 +363,7 @@ por este:
 
 ```python
 STATUSES = [
-    {"id": "10", "name": "Tarea", "subtask": False, "statuses": [
+    {"id": "10", "name": "Task", "subtask": False, "statuses": [
         {"id": "1", "name": "To Do", "statusCategory": {"key": "new"}},
         {"id": "2", "name": "Done", "statusCategory": {"key": "done"}}]},
     {"id": "11", "name": "Subtarea", "subtask": True, "statuses": [
@@ -380,7 +380,7 @@ class JiraProfileTest(unittest.TestCase):
     def test_project_statuses_groups_the_issue_types_that_share_a_workflow(self):
         jira, rec = client({("GET", "/rest/api/3/project/UA/statuses"): STATUSES})
         groups = jira.project_statuses("UA")
-        self.assertEqual([g["types"] for g in groups], [["Tarea", "Subtarea"], ["Epic"]])
+        self.assertEqual([g["types"] for g in groups], [["Task", "Subtarea"], ["Epic"]])
         self.assertEqual(groups[0]["statuses"], [{"id": "1", "name": "To Do", "category": "todo"},
                                                  {"id": "2", "name": "Done", "category": "done"}])
         self.assertEqual(groups[1]["statuses"][1], {"id": "3", "name": "ON HOLD", "category": "in_progress"})
@@ -398,7 +398,7 @@ class JiraProfileTest(unittest.TestCase):
         self.assertIn("startAt=100", rec.calls[1][1])
 
     def test_search_keeps_the_status_id_the_profiles_are_keyed_by(self):
-        raw = {"key": "UA-1", "fields": {"summary": "S", "issuetype": {"name": "Tarea"},
+        raw = {"key": "UA-1", "fields": {"summary": "S", "issuetype": {"name": "Task"},
                                          "status": {"id": "7", "name": "Review",
                                                     "statusCategory": {"key": "indeterminate"}}}}
         jira, _ = client({("GET", "/rest/api/3/field"): FIELDS, ("POST", "/rest/api/3/search/jql"): {"issues": [raw]}})
@@ -592,7 +592,7 @@ Expected: `OK`.
 
 ---
 
-### Tarea 4: Roles — qué significa cada estado
+### Task 4: Roles — qué significa cada estado
 
 **Files:**
 - Create: `jkan/roles.py`
@@ -859,14 +859,14 @@ git commit -m "feat(roles): propose a role for each status and annotate issues w
 
 ---
 
-### Tarea 5: Perfiles de board
+### Task 5: Perfiles de board
 
 **Files:**
 - Create: `jkan/board_profile.py`, `tests/shapes.py`
 - Test: `tests/test_board_profile.py`
 
 **Interfaces:**
-- Consumes: `roles.propose`, `roles.normalize`, `roles.ROLES`; `Jira.project_statuses` (Tarea 3) como forma de entrada: `groups = [{"types", "statuses"}]`.
+- Consumes: `roles.propose`, `roles.normalize`, `roles.ROLES`; `Jira.project_statuses` (Task 3) como forma de entrada: `groups = [{"types", "statuses"}]`.
 - Produces: `config_dir()`, `path_of(project, base=None)`, `fingerprint(statuses)`, `build(project, groups, kind, existing=None) -> profile`, `open_statuses(profile)`, `assign(profile, role, tokens)`, `save(profile, base=None)`, `load(project, base=None)`, `load_all(base=None)`, `class BadSelection(ValueError)`, `KINDS`, `VERSION`.
 - Forma del perfil: `{"version", "project", "kind", "access", "wip_limit", "fingerprint", "workflows": [{"types", "status_ids"}], "statuses": [{"id", "name", "category", "role", "by", "suggest", "why"}]}`; `by` es `"proposal"`, `"human"` o `None`.
 
@@ -876,7 +876,7 @@ git commit -m "feat(roles): propose a role for each status and annotate issues w
 """Workflow shapes for the board-profile tests, in the form Jira.project_statuses returns them.
 
 The status names and Jira categories come from the 2026-10-09 survey of the real Jira: GDNC and OYP file a «Done» under
-in progress, BDBDESK has four «done» statuses, FDQ has a «Finalizado con error», UA's Tarea has its own workflow, and
+in progress, BDBDESK has four «done» statuses, FDQ has a «Finalizado con error», UA's Task has its own workflow, and
 a few projects hold two statuses with the same name. The groupings are simplified and every id is made up."""
 from __future__ import annotations
 
@@ -893,21 +893,21 @@ BDBDESK = [{"types": ["Solicitud"], "statuses": [
     status(30, "Pendiente", "todo"), status(31, "En curso", "in_progress"), status(32, "Finalizado", "done"),
     status(33, "Resuelto", "done"), status(34, "Cancelado", "done"), status(35, "Implementado", "done")]}]
 
-FDQ = [{"types": ["Tarea"], "statuses": [
+FDQ = [{"types": ["Task"], "statuses": [
     status(40, "To Do", "todo"), status(41, "Done", "done"), status(42, "Finalizado", "done"),
     status(43, "Finalizado con error", "done"), status(44, "Listo para entrega", "in_progress")]}]
 
 UA = [{"types": ["Historia", "Error", "Epic", "Subtask"], "statuses": [
     status(1, "To Do", "todo"), status(2, "In Progress", "in_progress"), status(3, "ON HOLD", "in_progress"),
     status(4, "Done", "done")]},
-    {"types": ["Tarea"], "statuses": [
+    {"types": ["Task"], "statuses": [
         status(1, "To Do", "todo"), status(2, "In Progress", "in_progress"), status(5, "AWAITING APPROVAL", "in_progress"),
         status(6, "Approved", "in_progress"), status(7, "RELEASED", "done"), status(8, "NOT APPROVED", "done")]}]
 
-PEHD = [{"types": ["Epic", "Tarea", "Story", "Solicitud"], "statuses": [
+PEHD = [{"types": ["Epic", "Task", "Story", "Solicitud"], "statuses": [
     status(50, "To Do", "todo"), status(51, "In Progress", "in_progress"), status(52, "Done", "done")]}]
 
-SAME_NAME = [{"types": ["Tarea"], "statuses": [
+SAME_NAME = [{"types": ["Task"], "statuses": [
     status(60, "To Do", "todo"), status(61, "en ejecucion", "in_progress"), status(62, "En ejecución", "in_progress"),
     status(63, "Done", "done")]}]
 ```
@@ -936,11 +936,11 @@ class BuildTest(unittest.TestCase):
     def test_a_status_shared_by_several_issue_types_appears_once(self):
         profile = bp.build("UA", shapes.UA, None)
         self.assertEqual(sorted(s["id"] for s in profile["statuses"]), ["1", "2", "3", "4", "5", "6", "7", "8"])
-        self.assertEqual([w["types"] for w in profile["workflows"]], [["Historia", "Error", "Epic", "Subtask"], ["Tarea"]])
+        self.assertEqual([w["types"] for w in profile["workflows"]], [["Historia", "Error", "Epic", "Subtask"], ["Task"]])
 
     def test_a_status_that_exists_for_one_issue_type_only_still_gets_its_role(self):
         profile = bp.build("UA", shapes.UA, None)
-        issue = {"key": "UA-9", "status": "RELEASED", "status_id": "7", "category": "done"}  # only Tarea has it
+        issue = {"key": "UA-9", "status": "RELEASED", "status_id": "7", "category": "done"}  # only Task has it
         roles.annotate([issue], {"UA": profile})
         self.assertEqual(issue["role"], "delivered")
 
@@ -1211,7 +1211,7 @@ git commit -m "feat(profile): per-board profiles; a person's decision survives a
 
 ---
 
-### Tarea 6: `jk board setup | set | show | check | survey`
+### Task 6: `jk board setup | set | show | check | survey`
 
 **Files:**
 - Create: `jkan/board_cli.py`
@@ -1219,7 +1219,7 @@ git commit -m "feat(profile): per-board profiles; a person's decision survives a
 - Test: `tests/test_board_cli.py`
 
 **Interfaces:**
-- Consumes: `board_profile.*` (Tarea 5), `roles.propose/ROLES` (Tarea 4), `Jira.project_statuses/projects` (Tarea 3), `render.table`.
+- Consumes: `board_profile.*` (Task 5), `roles.propose/ROLES` (Task 4), `Jira.project_statuses/projects` (Task 3), `render.table`.
 - Produces: `board_cli.run(argv, jira) -> int` con `argv` empezando en el verbo y `jira` una función que arma el cliente (solo se llama en los verbos que leen Jira); `board_cli.VERBS`; códigos de salida `0 OK`, `1 FINDINGS`, `2 CANNOT`, `3 NEEDS_DECISION`.
 - Produces: `jk board <verbo>` despacha a `board_cli` **solo** si el segundo argumento es uno de los verbos; `jk board EPIC` sigue siendo el tablero local.
 
@@ -1596,7 +1596,7 @@ def run(argv: List[str], jira: Callable[[], object]) -> int:
 
 - [ ] **Step 4: Despachar desde `cli.py`**
 
-Los imports incluyen `board_profile` y `roles`, que usa la Tarea 7.
+Los imports incluyen `board_profile` y `roles`, que usa la Task 7.
 
 Reemplazá en `jkan/cli.py` este texto:
 
@@ -1653,7 +1653,7 @@ git commit -m "feat(board): jk board setup, set, show, check and survey"
 
 ---
 
-### Tarea 7: Los reportes leen roles y avisan qué perfil falta
+### Task 7: Los reportes leen roles y avisan qué perfil falta
 
 **Files:**
 - Modify: `jkan/standup.py` (siete ediciones), `jkan/stats.py` (cuatro), `jkan/render.py` (una), `jkan/cli.py` (dos más y un `sd`)
@@ -1661,7 +1661,7 @@ git commit -m "feat(board): jk board setup, set, show, check and survey"
 - Test: `tests/test_report_roles.py`
 
 **Interfaces:**
-- Consumes: `roles.annotate/role_of/source_of/notes/CLOSED/IN_FLIGHT` (Tarea 4), `board_profile.load_all` (Tarea 5), `issue["status_id"]` (Tarea 3).
+- Consumes: `roles.annotate/role_of/source_of/notes/CLOSED/IN_FLIGHT` (Task 4), `board_profile.load_all` (Task 5), `issue["status_id"]` (Task 3).
 - Produces: `standup.search` anota `role` y `role_source` en cada issue y, si `conv` trae `"_seen"`, acumula lo leído; `gather_done` devuelve además `"dropped"`; los reportes imprimen arriba una línea `> ⚠ …` por cada aviso, y con `--json` agregan la clave `profile_notes`.
 - Comportamiento sin perfil: idéntico al de hoy (rol por categoría), más el aviso `Sin perfil: KEY`.
 
@@ -2060,7 +2060,7 @@ Expected: `Ran 320 tests ... OK` dos veces.
 
 ---
 
-### Tarea 8: Docs y correcciones a la spec
+### Task 8: Docs y correcciones a la spec
 
 **Files:**
 - Modify: `SKILL.md`, `standup/SKILL.md`, `README.md`, `docs/superpowers/specs/2026-10-09-jira-em-design.md`
@@ -2316,7 +2316,7 @@ git commit -m "docs: board profiles, jk on the PATH and the spec corrections fou
 
 ---
 
-### Tarea 9: Aceptación contra el Jira real y cierre de la fase
+### Task 9: Aceptación contra el Jira real y cierre de la fase
 
 **Files:**
 - Modify: `docs/superpowers/specs/2026-10-09-jira-em-design.md` (sección nueva al final)
@@ -2394,6 +2394,6 @@ Expected: `Ran 320 tests ... OK` dos veces y `git status --short` vacío salvo l
 
 Planes que se escriben con lo que muestre esta fase, uno por vez:
 
-1. **Fase 2, views y reportes de equipo:** consultas armadas con `status in (<ids>)` a partir de los roles (esto arregla los estados archivados en la categoría *new*), `jk team setup`, y los siete reportes. Necesita los números del Step 1 de la Tarea 9 y, para `desk`, que alguien confirme qué service desks usan SLA.
+1. **Fase 2, views y reportes de equipo:** consultas armadas con `status in (<ids>)` a partir de los roles (esto arregla los estados archivados en la categoría *new*), `jk team setup`, y los siete reportes. Necesita los números del Step 1 de la Task 9 y, para `desk`, que alguien confirme qué service desks usan SLA.
 2. **Fase 3, `jk plan` y `jk apply`:** necesita probar si `!` entrega una terminal interactiva, **un proyecto de pruebas** para escribir de verdad y la decisión sobre el hallazgo de los comandos `--apply` que ya existen.
 3. **Fase 4, cierre:** renombrar el repo y actualizar `git-guardrails.sh` y `AGENTS.md`.
