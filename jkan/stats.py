@@ -7,7 +7,7 @@ import math
 import re
 from typing import Dict, List, Optional
 
-from . import queries, standup
+from . import queries, roles, standup
 
 STALLED_DAYS = 7
 DUE_SOON_DAYS = 7
@@ -52,7 +52,7 @@ def lead_days(done: List[dict]) -> List[int]:
 
 def wip(open_issues: List[dict], today: _dt.date) -> List[dict]:
     rows = [{"issue": i, "days": (today - _day(i["changed"])).days}
-            for i in open_issues if i["category"] == "in_progress" and i["changed"]]
+            for i in open_issues if roles.role_of(i) in roles.IN_FLIGHT and i["changed"]]
     rows.sort(key=lambda r: (-r["days"], r["issue"]["key"]))
     return [dict(r, stalled=r["days"] >= STALLED_DAYS) for r in rows]
 
@@ -92,7 +92,7 @@ def load_numbers(done: List[dict], open_issues: List[dict], today: _dt.date, wee
     statuses = conv.get("blocked_statuses") or []
     soon = (today + _dt.timedelta(days=DUE_SOON_DAYS)).isoformat()
     numbers = {"open": len(open_issues),
-               "in_progress": sum(1 for i in open_issues if i["category"] == "in_progress"),
+               "in_progress": sum(1 for i in open_issues if roles.role_of(i) in roles.IN_FLIGHT),
                "blocked": sum(1 for i in open_issues if standup.blockers(i, statuses)),
                "overdue": sum(1 for i in open_issues if i["duedate"] and i["duedate"] < today.isoformat()),
                "due_soon": sum(1 for i in open_issues if i["duedate"] and today.isoformat() <= i["duedate"] <= soon),
@@ -108,6 +108,12 @@ def gather_history(jira, person: Optional[str], today: _dt.date, weeks: int, con
     epic_type = conv["issue_types"]["epic"]
     first = week_of(today) - _dt.timedelta(weeks=weeks - 1)
     project = conv.get("project")
-    done = standup.search(jira, queries.done_since(person, first, project), conv)
-    open_issues = standup.search(jira, queries.open_of(person, project), conv)
-    return ([i for i in done if i["issuetype"] != epic_type], [i for i in open_issues if i["issuetype"] != epic_type])
+    closed = standup.search(jira, queries.done_since(person, first, project), conv)
+    found = standup.search(jira, queries.open_of(person, project), conv)
+    delivered = [i for i in closed if roles.role_of(i) == "delivered"]  # «dropped» is not delivery
+    have = {i["key"] for i in delivered}
+    # A «Done» filed outside Jira's done category comes back from the open search; it is delivered work too.
+    delivered += [i for i in found if roles.role_of(i) == "delivered" and i["key"] not in have
+                  and i["changed"] and i["changed"] >= first.isoformat()]
+    open_now = [i for i in found if roles.role_of(i) not in roles.CLOSED]
+    return ([i for i in delivered if i["issuetype"] != epic_type], [i for i in open_now if i["issuetype"] != epic_type])

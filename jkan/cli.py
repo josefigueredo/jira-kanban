@@ -87,12 +87,19 @@ def _assign(jira, key: str, who: str, tree: bool, apply: bool) -> int:
 REPORTS = ("done", "next", "blocked", "load", "stats")
 
 
-def _emit(args, payload, text: str) -> None:
-    print(json.dumps(payload, ensure_ascii=False, indent=2, default=str) if args.json else text)
+def _emit(args, conv: dict, payload, text: str) -> None:
+    """Print a report, led by what the reader must know about the profiles it was computed with."""
+    notes = roles.notes(conv.get("_seen", []), conv.get("profiles") or {})
+    if args.json:
+        print(json.dumps({**payload, "profile_notes": notes}, ensure_ascii=False, indent=2, default=str))
+    else:
+        print("\n".join(f"> ⚠ {n}" for n in notes) + "\n\n" + text if notes else text)
 
 
 def _report(jira, args, conv: dict, today: _dt.date) -> int:
     """done | next | blocked | load | stats: read only, for the user or, with --person, for a teammate."""
+    conv["profiles"] = board_profile.load_all()
+    conv["_seen"] = []
     try:
         if args.cmd == "done":  # the window is checked before Jira is asked anything, even who the person is
             since, until = window.span(args.since, args.until, today)
@@ -106,26 +113,26 @@ def _report(jira, args, conv: dict, today: _dt.date) -> int:
         project = conv.get("project")
         if args.cmd == "done":
             result = standup.gather_done(jira, pid, since, until, conv)
-            _emit(args, result, render.render_done(render.head("Hecho", owner, today, (since, until), project), result))
+            _emit(args, conv, result, render.render_done(render.head("Hecho", owner, today, (since, until), project), result))
         elif args.cmd == "next":
             tables = standup.gather_next(jira, pid, until, today, conv)
-            _emit(args, tables, render.render_next(render.head("Para hacer", owner, today, (today, until), project),
+            _emit(args, conv, tables, render.render_next(render.head("Para hacer", owner, today, (today, until), project),
                                                    tables, until, link))
         elif args.cmd == "blocked":
             rows = standup.gather_blocked(jira, pid, conv)
-            _emit(args, {"rows": rows}, render.render_blocked(render.head("Bloqueos", owner, today, None, project),
+            _emit(args, conv, {"rows": rows}, render.render_blocked(render.head("Bloqueos", owner, today, None, project),
                                                               rows, link))
         else:
             done, open_issues = stats.gather_history(jira, pid, today, weeks, conv)
             if args.cmd == "stats":
                 result = stats.compute(done, open_issues, today, weeks, conv)
-                _emit(args, result, render.render_stats(render.head("Métricas", owner, today, None, project), result, link))
+                _emit(args, conv, result, render.render_stats(render.head("Métricas", owner, today, None, project), result, link))
             else:
                 numbers = stats.load_numbers(done, open_issues, today, weeks, conv)
                 mine = None
                 if person:
                     mine = stats.load_numbers(*stats.gather_history(jira, None, today, weeks, conv), today, weeks, conv)
-                _emit(args, {"person": numbers, "me": mine},
+                _emit(args, conv, {"person": numbers, "me": mine},
                       render.render_load(render.head("Carga", owner, today, None, project), owner, numbers,
                                          "vos" if mine else None, mine))
         return OK

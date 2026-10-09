@@ -5,14 +5,19 @@ from __future__ import annotations
 import datetime as _dt
 from typing import List, Optional
 
-from . import queries
+from . import queries, roles
 
 FAR = "9999-12-31"  # sorts after any real due date
 MAX_EPICS = 50
 
 
 def search(jira, jql: str, conv: dict) -> List[dict]:
-    return jira.search(jql, blocked_link=conv.get("blocked_link") or "is blocked by")
+    """Jira's answer with each issue's role set from the board profiles in conv["profiles"]."""
+    found = jira.search(jql, blocked_link=conv.get("blocked_link") or "is blocked by")
+    roles.annotate(found, conv.get("profiles") or {})
+    if "_seen" in conv:  # the CLI collects what the report read, to tell the reader which profiles it lacked
+        conv["_seen"].extend(found)
+    return found
 
 
 def _rank(conv: dict, priority: str) -> int:
@@ -22,7 +27,8 @@ def _rank(conv: dict, priority: str) -> int:
 
 def blockers(issue: dict, blocked_statuses: List[str]) -> List[dict]:
     """Why an open issue is blocked: one row per unresolved blocker; with none linked, the flag or the status itself."""
-    if issue["category"] == "done":
+    role = roles.role_of(issue)
+    if role in roles.CLOSED:
         return []
     rows = [{"by": b["key"], "title": b["summary"], "status": b["status"], "owner": b["assignee"] or "sin dueño"}
             for b in issue["blocked_by"] if b["category"] != "done"]
@@ -30,7 +36,11 @@ def blockers(issue: dict, blocked_statuses: List[str]) -> List[dict]:
         return rows
     if issue["flagged"]:
         return [{"by": "Flagged, sin link", "title": "", "status": "", "owner": ""}]
-    if issue["status"].lower() in {name.lower() for name in blocked_statuses}:
+    if roles.source_of(issue) == "profile":
+        by_status = role == "blocked"
+    else:
+        by_status = issue["status"].lower() in {name.lower() for name in blocked_statuses}
+    if by_status:
         return [{"by": f"Estado {issue['status']}, sin link", "title": "", "status": "", "owner": ""}]
     return []
 
@@ -43,7 +53,8 @@ def blocked_rows(open_issues: List[dict], conv: dict) -> List[dict]:
 def next_tables(open_issues: List[dict], unowned: List[dict], today: _dt.date, until: _dt.date, conv: dict) -> dict:
     statuses = conv.get("blocked_statuses") or []
     by_priority = lambda i: (_rank(conv, i["priority"]), i["duedate"] or FAR, i["key"])  # noqa: E731
-    ready = sorted((i for i in open_issues if not blockers(i, statuses)), key=by_priority)
+    ready = sorted((i for i in open_issues if not blockers(i, statuses) and roles.role_of(i) != "waiting"),
+                   key=by_priority)
     due = sorted((i for i in open_issues if i["duedate"] and i["duedate"] <= until.isoformat()),
                  key=lambda i: (i["duedate"], i["key"]))
     return {"ready": ready,
@@ -61,7 +72,8 @@ def epic_keys(open_issues: List[dict], owned_epics: List[dict], epic_type: str) 
 def _open(jira, person: Optional[str], conv: dict) -> tuple:
     """(work, epics) of a person that are not done; epics are kept apart so they never show as rows."""
     epic_type = conv["issue_types"]["epic"]
-    found = search(jira, queries.open_of(person, conv.get("project")), conv)
+    found = [i for i in search(jira, queries.open_of(person, conv.get("project")), conv)
+             if roles.role_of(i) not in roles.CLOSED]  # a «Done» filed under in progress is not open work
     return ([i for i in found if i["issuetype"] != epic_type], [i for i in found if i["issuetype"] == epic_type])
 
 
@@ -135,6 +147,7 @@ def gather_done(jira, person: Optional[str], since: _dt.date, until: _dt.date, c
                    if i["parent"] and i["parent"]["issuetype"] != types["epic"] and i["parent"]["key"] not in have})
     parents = {i["key"]: i for i in search(jira, queries.by_keys(need), conv)} if need else {}
     work = [i for i in issues if i["issuetype"] != types["epic"]]
-    return {"done": sum(1 for i in work if i["category"] == "done"),
-            "in_progress": sum(1 for i in work if i["category"] == "in_progress"),
+    return {"done": sum(1 for i in work if roles.role_of(i) == "delivered"),
+            "dropped": sum(1 for i in work if roles.role_of(i) == "dropped"),
+            "in_progress": sum(1 for i in work if roles.role_of(i) in roles.IN_FLIGHT),
             "tree": done_tree(issues, parents, types["epic"])}

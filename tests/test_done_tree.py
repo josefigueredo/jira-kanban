@@ -69,7 +69,7 @@ class GatherDoneTest(unittest.TestCase):
     def test_empty_window(self):
         jira = FakeJira()
         result = standup.gather_done(jira, None, date(2026, 10, 1), date(2026, 10, 7), CONVENTIONS)
-        self.assertEqual(result, {"done": 0, "in_progress": 0, "tree": []})
+        self.assertEqual(result, {"done": 0, "dropped": 0, "in_progress": 0, "tree": []})
         self.assertEqual(len(jira.jqls), 1)
 
 

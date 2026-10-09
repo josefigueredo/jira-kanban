@@ -66,6 +66,8 @@ def render_tree(tree: List[dict]) -> str:
 
 def render_done(head_text: str, result: dict) -> str:
     totals = f"**{result['done']} cerradas · {result['in_progress']} en curso**"
+    if result.get("dropped"):
+        totals += f" · {result['dropped']} descartadas"
     body = f"```text\n{render_tree(result['tree'])}\n```" if result["tree"] else "_Nada en esta ventana._"
     return "\n\n".join([head_text, totals, body, NOTE_DONE])
 

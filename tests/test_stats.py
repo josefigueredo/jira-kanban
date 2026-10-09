@@ -80,7 +80,7 @@ class ComputeTest(unittest.TestCase):
 class GatherHistoryTest(unittest.TestCase):
     def test_gather_history_drops_epics_and_starts_at_the_first_week(self):
         jira = FakeJira()
-        jira.search_answer = lambda jql: ([issue("D", changed="2026-10-06"), issue("E", issuetype="Epic")]
+        jira.search_answer = lambda jql: ([issue("D", category="done", changed="2026-10-06"), issue("E", issuetype="Epic")]
                                           if "statusCategory = Done" in jql else [issue("O"), issue("P", issuetype="Epic")])
         done, open_issues = stats.gather_history(jira, None, TODAY, 3, CONVENTIONS)
         self.assertEqual(([i["key"] for i in done], [i["key"] for i in open_issues]), (["D"], ["O"]))
