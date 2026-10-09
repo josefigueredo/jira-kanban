@@ -73,16 +73,16 @@ proyectos) ni el nombre.
 ## Estructura de código e instalación
 
 ```
-jkan/
-  core/      jira (cliente), config, journal, people
-  reports/   window, queries, standup, stats, render, team  (lectura)
-  write/     sync, spec, description, evidence, kanban, template, preview, plan, apply  (escritura)
-  profile/   board setup, roles, views
-  cli.py     parte en un módulo de comandos por skill
+jkan/                  (módulos planos: 25 archivos de tests hacen `from jkan import <módulo>`)
+  núcleo     jira, config, journal, people
+  lectura    window, queries, standup, stats, render, roles, board_profile, board_cli, team
+  escritura  sync, spec, description, evidence, kanban, template, preview, plan, apply
+  cli.py     raíz de composición: el único que importa los dos lados
 ```
 
-- Regla verificada por test: **`reports/` y `profile/` no importan `write/`**. La skill de lectura no puede escribir por
-  construcción.
+- Regla verificada por `tests/test_boundaries.py`: **ningún módulo de lectura importa uno de escritura**, el núcleo no
+  importa ninguno de los dos lados y todo módulo nuevo tiene que figurar en un lado. Ordena el código, pero `jk` es un
+  solo binario: no quita `create|push|assign --apply` de una instalación de solo lectura (ver «Riesgos»).
 - `install.sh`: instala `~/.local/bin/jk` y los symlinks de las skills elegidas. Por defecto `jira-standup` y `jira-em`;
   `--with-write` suma `jira-kanban` y `jira-em-ops`. Repetirlo es seguro y nunca reemplaza un archivo real, igual que
   hoy. Soporta Claude Code, Codex y Cursor (hoy Cursor necesita su propio enlace).
@@ -116,14 +116,15 @@ ambos `delivered`.
 
 `kind` es `flow`, `scrum` o `helpdesk`, y **se declara** (`PEHD` es un proyecto de software que funciona como help desk).
 `scrum` se trata como `flow` en esta versión. `access` es `limited` si Jira devolvió 403 en algún recurso.
-`fingerprint` es el hash de los ids de estado y detecta workflows cambiados. `open` lista los estados sin decidir.
+`fingerprint` es el hash de los ids de estado y detecta workflows cambiados. `open` y `roles` se calculan a partir de `statuses`, la lista que se guarda con `id, name, category, role, by,
+suggest, why` por estado.
 
 ### Comandos
 
 Solo leen Jira; escriben únicamente el JSON local.
 
 - `jk board setup KEY`: lee estados por grupo de tipos con el mismo workflow, imprime **"lo que entiendo"** (estado, id,
-  categoría de Jira, rol propuesto, confianza `alta` o `decidir`) y guarda el borrador. Termina con **código 2** mientras
+  categoría de Jira, rol propuesto, confianza `alta` o `decidir`) y guarda el borrador. Termina con **código 3** (el 2 ya es «no se pudo») mientras
   `open` no esté vacío. Tolera 403 y lo registra en `access`.
 - `jk board set KEY <rol> "<estado>" ["<estado>" …]`: asigna por nombre, resuelto a ids. Un nombre que corresponde a
   más de un id lista los ids y falla; no elige.
@@ -223,7 +224,7 @@ en `jk`.
 - `jira-kanban`: sin cambios de comportamiento.
 - `jira-em-ops`: solo `jk plan …`. Para aplicar entrega el comando y espera; **nunca** corre `jk apply`.
 - Comunes: mostrar la salida tal cual (ya es Markdown), no inventar umbrales, no imprimir ni pedir credenciales
-  (`IC_JIRA_*`), y código de salida 2 significa "falta una decisión humana", no "reintentá".
+  (`IC_JIRA_*`), y el código 3 de `jk board` significa "falta una decisión humana", no "reintentá".
 - Descripciones separadas por **sujeto** (yo / mi equipo). Se revisa con 12 frases reales por skill antes de publicar,
   a mano. Alternativa si no se separan limpio: `--team` dentro de `jira-standup` y una skill menos.
 
@@ -240,7 +241,7 @@ cierre sin `--allow-close`, ejecución sin TTY y `APRUEBO` con un `n` equivocado
 | Fase | Contenido | Se considera terminada cuando |
 |---|---|---|
 | 0. Estructura | Partir `cli.py`; `jk` en el PATH; `install.sh --with-write`; test de imports prohibidos | Los 244 tests actuales siguen verdes, también en 3.9 |
-| 1. Perfiles y roles | `jk board setup/set/show/check`; migrar `done`, `next`, `blocked`, `load`, `stats` a roles | `setup` corrido sobre los 253 proyectos, con el porcentaje `alta` vs `decidir` medido; los 29 proyectos mal categorizados dan lo correcto |
+| 1. Perfiles y roles | `jk board setup/set/show/check`; migrar `done`, `next`, `blocked`, `load`, `stats` a roles | `jk board survey` sobre todos los proyectos, con el porcentaje `alta` vs `decidir` y los proyectos con la categoría mal puesta medidos; un `Done` archivado en «en curso» cuenta como cerrado y no como WIP. Los estados en la categoría *new* no los trae la consulta por categoría: se resuelven con consultas por rol en la fase 2 |
 | 2. Equipo | Views y los siete reportes | Corridas de solo lectura sobre `PLATE`, `UA`, `PEHD` y `CDSP`, comparadas con Jira |
 | 3. Escritura | `jk plan`, `jk apply`, bitácora | La batería de casos y una prueba real en un proyecto de pruebas |
 | 4. Cierre | Docs, renombrar el repo, `git-guardrails.sh` y `AGENTS.md` | Tests verdes y cada cita `archivo:línea` de esta spec re-verificada contra el código |
@@ -256,3 +257,7 @@ cierre sin `--allow-close`, ejecución sin TTY y `APRUEBO` con un `n` equivocado
   significa "hecho".
 - **Nombre del repo:** deja de describir el contenido; se renombra en la fase 4 (GitHub redirige).
 - **Scrum y sprints:** 3 de 50 boards y sin API Agile; fuera de la versión 1.
+- **Escritura que ya existe sin guardia:** `jk create|push|assign --apply` no exige terminal interactiva ni `APRUEBO`; solo
+  los frena el hook local `git-guardrails.sh`, que los EM no tienen, y `jk` es un solo binario, así que una instalación de
+  solo lectura también los contiene. Decisión pendiente: aplicar el mismo guardia a esos tres comandos, o dejarlos
+  fuera de la instalación por defecto.

@@ -12,7 +12,7 @@ To read what was done, what is next, what is blocked, a teammate's load or deliv
 `jira-standup`; this skill writes.
 
 ```bash
-python3 ~/.agents/skills/jira-kanban/jk.py <create|pull|push|show|board> ... --project .
+jk <create|pull|push|show|board> ... --project .
 ```
 
 ## Steps

@@ -15,7 +15,9 @@ git clone git@github.com:josefigueredo/skill-kanban-jira.git jira-kanban
 cd jira-kanban && ./install.sh
 ```
 
-Instala las dos skills, `jira-kanban` (crear y sincronizar épicas) y `jira-standup` (reportes de solo lectura). Sigue el
+Por defecto instala `jira-standup` (reportes de solo lectura) y deja `jk` en `~/.local/bin/jk`; con
+`./install.sh --with-write` suma `jira-kanban` (crear y sincronizar épicas). Volver a correrlo nunca quita una skill
+ya instalada. Sigue el
 mismo layout que WayOfWork: `~/.agents/skills/jira-kanban` apunta a este repo, `~/.agents/skills/jira-standup` a su
 carpeta `standup/`, y `~/.claude/skills/<skill>`, `~/.codex/skills/<skill>` y `~/.cursor/skills/<skill>` apuntan a
 `../../.agents/skills/<skill>`. Cursor tiene su propio enlace porque `~/.cursor/skills` sólo contenía enlaces explícitos
@@ -49,7 +51,7 @@ queda en `./.jira-kanban/jira-writes.jsonl` (hora, comando, issue y cambio).
 | `jk assign KEY "PERSONA" [--tree] [--apply]` | Asigna un issue (con `--tree`, todo lo que cuelga de él) a una persona |
 | `jk done` · `next` · `blocked` · `load` · `stats` | Reportes de solo lectura (ver «Reportes»): qué hice, qué puedo hacer, qué me bloquea, carga y métricas |
 
-`jk` es `python3 ~/.agents/skills/jira-kanban/jk.py`.
+`jk` queda en `~/.local/bin/jk` (lo crea `install.sh`; hace falta `~/.local/bin` en el PATH).
 
 ## El spec
 
@@ -128,6 +130,27 @@ Todos aceptan `--person "NOMBRE"` (si el nombre es ambiguo lista a los candidato
 `--json`. PLATE no tiene story points, así que la velocidad se mide en issues; `jk load` solo da un veredicto si
 `wip_limit` está en `./.jira-kanban/conventions.json`. Límites: Jira guarda solo el último cambio de estado (un issue
 que pasó por «en curso» y luego a Done figura con la fecha de Done) y «hecho» significa asignado a la persona.
+
+## Perfiles de board
+
+Cada board dice «hecho» a su manera (`Done`, `Finalizado`, `Resuelto`) y Jira a veces archiva mal un estado: medido el
+2026-10-09 en el Jira de la compañía, hay estados con nombre de «hecho» fuera de la categoría *done* en 29 proyectos.
+Por eso los reportes no se fían de la categoría: leen un **rol por estado** que una persona confirma una vez por proyecto.
+
+Roles: `todo`, `active`, `blocked`, `waiting` (frenado por un tercero), `delivered` y `dropped` (cancelado, rechazado,
+no aplica). Varios estados pueden tener el mismo rol (`Finalizado` y `Resuelto` → `delivered`). Los perfiles viven en
+`~/.config/jk/profiles/<KEY>.json` (o en `$JK_CONFIG_DIR`) y no se editan a mano.
+
+| Comando | Qué hace |
+|---|---|
+| `jk board setup KEY [--kind flow\|scrum\|helpdesk]` | Lee los estados de Jira, propone un rol por estado y guarda el borrador; correrlo de nuevo no pierde tus decisiones |
+| `jk board set KEY ROL "ESTADO"…` | Asigna un rol por nombre (o `id:<id>` si dos estados se llaman igual); todo o nada |
+| `jk board show KEY` · `jk board check KEY` | Muestra el perfil · lo compara con los estados de Jira ahora |
+| `jk board survey [--type T] [--json]` | Propone roles para todos los proyectos y cuenta qué necesita una decisión; no guarda nada |
+
+Salida: `0` listo, `1` entrada rechazada, `2` no se pudo (Jira o disco) y **`3` el perfil tiene estados sin rol**: una
+persona tiene que decidir. Un reporte de un proyecto sin perfil usa la categoría de Jira y lo avisa arriba con `> ⚠`.
+`jk board EPIC` sigue siendo el tablero local de una épica.
 
 ## Kanban local
 

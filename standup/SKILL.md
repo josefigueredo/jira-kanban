@@ -8,7 +8,7 @@ description: Use when the user asks what they (or a teammate) did in a period ("
 Answers four questions from Jira, live, as tables and trees the user reads at a glance. It never writes to Jira.
 
 ```bash
-python3 ~/.agents/skills/jira-kanban/jk.py <done|next|blocked|load|stats> ... --project .
+jk <done|next|blocked|load|stats> ... --project .
 ```
 
 | The user asks | Run |
@@ -35,9 +35,16 @@ python3 ~/.agents/skills/jira-kanban/jk.py <done|next|blocked|load|stats> ... --
 5. **Say what the numbers are not.** `done` uses the last status change and "assigned to"; `stats` has no
    story points (PLATE has none) and no true cycle time; small `n` is flagged in the output. Repeat those limits if
    the user draws a conclusion from them.
+6. **Profiles.** Reports read each status through a role (`todo`, `active`, `blocked`, `waiting`, `delivered`,
+   `dropped`) that a person confirmed once per project. A line starting with `> ⚠` at the top of the output says what
+   is missing: a project without profile (the report falls back to Jira's category), statuses nobody decided, or a
+   status the profile has never seen. Show it as it is. To fix it run `jk board setup KEY`: it prints what it
+   understood and exits 3 while statuses are undecided. Relay each undecided status to the user, ask which role it
+   plays, and apply the answer with `jk board set KEY <role> "<status>"`. Never choose a role yourself.
 
 ## Rules
 
 - Read only: never run `create`, `push`, `assign --apply` or anything with `--apply`.
 - Never print or ask for Jira credentials (`IC_JIRA_*`).
+- `jk board setup|set` write only the local profile in `~/.config/jk`, never Jira.
 - Output labels are Spanish; if the user writes in English, the tables stay as they are.
