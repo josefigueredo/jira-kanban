@@ -11,7 +11,7 @@ cambiaste localmente.
 ## Instalación
 
 ```bash
-git clone git@github.com:josefigueredo/skill-kanban-jira.git jira-kanban
+git clone git@github.com:josefigueredo/jira-team-kit.git jira-kanban
 cd jira-kanban && ./install.sh
 ```
 

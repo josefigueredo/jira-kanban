@@ -136,6 +136,9 @@ TDD, en `python3` y `/usr/bin/python3` (3.9), con Jira falso. Línea base: 599 t
   `jira.py:114` (search/jql, children)→`:129` y `:206`; `jira.py:114` (maxResults)→`:126` y `:203`;
   `queries.py:24-29`→`:26-34` (ahora `_scope` acepta la lista de un view); `jira.py:208-216` (transiciones por nombre)→`:223-256`;
   `journal.py:24`→`:28` (cuatro citas); `cli.py:171|:187`→`:198|:214`.
-- **Pendiente:** prueba real de la fase 3 en el sandbox, renombre del
-  repo (el nombre lo elige la persona), los dos menores de la fase 3 que quedaron afuera (el `n` de los viejos cuenta
+- **Renombre del repo (2026-10-10):** `josefigueredo/skill-kanban-jira` → `josefigueredo/jira-team-kit`
+  con `gh repo rename` (pedido por la persona, permiso ADMIN); `git ls-remote` sobre el nombre nuevo devuelve `1465a25`, el
+  mismo `HEAD` de `main`. `origin` actualizado, README de este repo y de la raíz de SPECKIT al día; la carpeta local
+  sigue siendo `Harness/jira-kanban` y el nombre viejo redirige.
+- **Pendiente:** prueba real de la fase 3 en el sandbox, los dos menores de la fase 3 que quedaron afuera (el `n` de los viejos cuenta
   issues; el resumen de un re-apply no nombra lo ya hecho), los menores de la fase 1 y `jk done|stats` por categoría.
