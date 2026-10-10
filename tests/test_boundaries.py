@@ -12,7 +12,7 @@ PACKAGE = ROOT / "jkan"
 CORE = {"jira", "config", "journal", "people", "guard", "state"}
 READ = {"window", "queries", "standup", "stats", "render", "roles", "board_profile", "board_cli", "views", "team",
         "team_render", "team_cli"}
-WRITE = {"sync", "spec", "description", "evidence", "kanban", "template", "preview", "plan"}
+WRITE = {"sync", "spec", "description", "evidence", "kanban", "template", "preview", "plan", "applier"}
 COMPOSITION_ROOT = {"cli", "__init__"}
 
 
