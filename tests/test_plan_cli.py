@@ -30,7 +30,7 @@ def approve(n, summary, command):
 
 
 def plan_id(out):
-    return re.search(r"jk apply ([0-9a-f]{12})", out).group(1)
+    return re.search(r"jtk apply ([0-9a-f]{12})", out).group(1)
 
 
 class Base(unittest.TestCase):
@@ -181,7 +181,7 @@ class ApplyTest(Base):
         real = functools.partial(guard.confirm, streams=(NoTerminal(),) * 3)
         code, _, err = run(["apply", pid], self.jira, confirm=real)
         self.assertEqual((code, self.jira.writes), (3, []))
-        self.assertIn(f"  jk apply {pid}", err)
+        self.assertIn(f"  jtk apply {pid}", err)
 
     def test_an_unknown_edited_or_malformed_plan_is_exit_1(self):
         pid = self.planned()
@@ -261,7 +261,7 @@ class RevertCliTest(Base):
         self.assertEqual(self.jira.writes, [])
         asked = []
         run(["apply", second], self.jira, confirm=lambda n, s, c: asked.append((n, c)))
-        self.assertEqual(asked, [(1, f"jk apply {second}")])
+        self.assertEqual(asked, [(1, f"jtk apply {second}")])
         self.assertEqual(self.jira.writes, [("transition_id", "TEAM-1", "2>1")])
 
     def test_reverting_a_plan_that_does_not_exist_or_wrote_nothing_is_refused(self):

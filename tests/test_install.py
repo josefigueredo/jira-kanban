@@ -15,7 +15,7 @@ def install(home: Path, *args: str) -> subprocess.CompletedProcess:
 
 
 def fresh_home() -> Path:
-    return Path(tempfile.mkdtemp(prefix="jk-home-"))
+    return Path(tempfile.mkdtemp(prefix="jtk-home-"))
 
 
 class InstallTest(unittest.TestCase):
@@ -54,17 +54,17 @@ class InstallTest(unittest.TestCase):
     def test_jk_is_put_on_the_path_and_is_executable(self):
         home = fresh_home()
         self.assertEqual(install(home).returncode, 0)
-        self.assertEqual(os.readlink(home / ".local/bin/jk"), str(ROOT / "jk.py"))
-        self.assertTrue(os.access(ROOT / "jk.py", os.X_OK))
+        self.assertEqual(os.readlink(home / ".local/bin/jtk"), str(ROOT / "jtk.py"))
+        self.assertTrue(os.access(ROOT / "jtk.py", os.X_OK))
 
     def test_a_real_file_named_jk_is_never_replaced(self):
         home = fresh_home()
         (home / ".local/bin").mkdir(parents=True)
-        (home / ".local/bin/jk").write_text("mine", encoding="utf-8")
+        (home / ".local/bin/jtk").write_text("mine", encoding="utf-8")
         result = install(home)
         self.assertEqual(result.returncode, 1)
         self.assertIn("refusing to replace", result.stderr)
-        self.assertEqual((home / ".local/bin/jk").read_text(encoding="utf-8"), "mine")
+        self.assertEqual((home / ".local/bin/jtk").read_text(encoding="utf-8"), "mine")
 
     def test_a_real_directory_is_never_replaced(self):
         home = fresh_home()
@@ -72,6 +72,50 @@ class InstallTest(unittest.TestCase):
         result = install(home)
         self.assertEqual(result.returncode, 1)
         self.assertIn("refusing to replace", result.stderr)
+
+    def test_an_old_jk_link_to_this_repo_is_removed(self):
+        home = fresh_home()
+        (home / ".local/bin").mkdir(parents=True)
+        os.symlink(str(ROOT / "jk.py"), home / ".local/bin/jk")
+        self.assertEqual(install(home).returncode, 0)
+        self.assertFalse(os.path.lexists(home / ".local/bin/jk"))
+        self.assertEqual(os.readlink(home / ".local/bin/jtk"), str(ROOT / "jtk.py"))
+
+    def test_a_jk_that_is_not_this_repos_link_is_left_alone(self):
+        home = fresh_home()
+        (home / ".local/bin").mkdir(parents=True)
+        os.symlink("/elsewhere/jk.py", home / ".local/bin/jk")
+        result = install(home)
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(os.readlink(home / ".local/bin/jk"), "/elsewhere/jk.py")
+        self.assertIn("left alone", result.stderr)
+
+    def test_old_data_is_announced_with_the_exact_mv_and_never_moved(self):
+        home = fresh_home()
+        (home / ".config/jk/profiles").mkdir(parents=True)
+        (home / ".local/state/jk").mkdir(parents=True)
+        result = install(home)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("mv ~/.config/jk ~/.config/jtk", result.stdout)
+        self.assertIn("mv ~/.local/state/jk ~/.local/state/jtk", result.stdout)
+        self.assertTrue((home / ".config/jk/profiles").is_dir())
+        self.assertFalse((home / ".config/jtk").exists())
+
+    def test_no_migration_notice_when_there_is_nothing_to_migrate_or_the_new_folder_exists(self):
+        home = fresh_home()
+        self.assertNotIn("mv ", install(home).stdout)
+        (home / ".config/jk").mkdir(parents=True)
+        (home / ".config/jtk").mkdir(parents=True)
+        result = install(home)
+        self.assertNotIn("mv ~/.config/jk", result.stdout)
+        self.assertIn("both ~/.config/jk and ~/.config/jtk exist", result.stderr)
+
+    def test_old_environment_variables_are_called_out(self):
+        home = fresh_home()
+        env = dict(os.environ, HOME=str(home), JK_STATE_DIR="/somewhere", JK_CONFIG_DIR="/else")
+        result = subprocess.run(["bash", str(ROOT / "install.sh")], env=env, capture_output=True, text=True)
+        self.assertIn("JK_STATE_DIR is no longer read; use JTK_STATE_DIR", result.stderr)
+        self.assertIn("JK_CONFIG_DIR is no longer read; use JTK_CONFIG_DIR", result.stderr)
 
     def test_an_unknown_argument_is_refused(self):
         self.assertEqual(install(fresh_home(), "--wat").returncode, 2)

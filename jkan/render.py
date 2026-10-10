@@ -1,6 +1,6 @@
 """Markdown for the reports: tables (keys are links) and trees (in a code block, so the lines stay aligned).
 
-Labels are Spanish, like `jk board`; error messages elsewhere stay English."""
+Labels are Spanish, like `jtk board`; error messages elsewhere stay English."""
 from __future__ import annotations
 
 import datetime as _dt

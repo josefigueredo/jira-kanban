@@ -1,0 +1,37 @@
+--- a/git-guardrails.sh
++++ b/git-guardrails.sh
+@@ -44,9 +44,9 @@
+   && bloquear "wow close / wow jira fix-fields con --apply escriben en Jira"
+ 
+ # jira-kanban: jk create/push con --apply crean y modifican issues en Jira. Sin --apply son vista previa.
+-JK="${INICIO}([^[:space:];&|]*python3?[^[:space:];&|]*[[:space:]]+)?([^[:space:];&|]*/)?jk(\.py)?[[:space:]]+"
++JK="${INICIO}([^[:space:];&|]*python3?[^[:space:];&|]*[[:space:]]+)?([^[:space:];&|]*/)?(jtk|jk)(\.py)?[[:space:]]+"
+ coincide "${JK}(create|push|assign)([[:space:]]+[^;&|]*)?[[:space:]]--apply([[:space:]]|$)" \
+-  && bloquear "jk create / jk push / jk assign con --apply escriben en Jira"
++  && bloquear "jtk create / jtk push / jtk assign con --apply escriben en Jira (jk es el nombre viejo)"
+ 
+ # jk apply escribe en Jira lo que dice un plan guardado (jk plan solo lee y pasa). Lo corre el usuario en una ventana de
+ # terminal aparte, donde escribe APRUEBO <n>: bajo `!` tampoco funciona porque no hay terminal interactiva.
+@@ -59,14 +59,19 @@
+ EOF
+   exit 2
+ }
+-coincide "${JK}apply([[:space:]]|$)" && bloquear_terminal "jk apply escribe en Jira lo que dice un plan guardado"
++coincide "${JK}apply([[:space:]]|$)" && bloquear_terminal "jtk apply escribe en Jira lo que dice un plan guardado"
+ 
+ # Rodeo que la guarda APRUEBO no ve: un pseudo-terminal que escribe la aprobación (tmux send-keys, expect, script, pty...).
+ # Va aunque `jk apply` no esté al inicio del comando. Falso positivo asumido: un mensaje que nombre las dos cosas a la vez.
+-APLICA='jk(\.py)?["'"'"']?[[:space:],]+["'"'"']?apply(["'"'"'[:space:]]|$)'
++APLICA='(jtk|jk)(\.py)?["'"'"']?[[:space:],]+["'"'"']?apply(["'"'"'[:space:]]|$)'
+ PTY='(tmux[[:space:]]+(send-keys|send|new-session|new|new-window|neww|split-window|splitw|respawn-pane|run-shell)|(^|[^[:alnum:]_])(expect|pexpect|unbuffer|socat|script)([[:space:]]|\.|$)|pty\.)'
+ if coincide "$APLICA" && coincide "$PTY"; then
+-  bloquear_terminal "jk apply a través de un pseudo-terminal salta la aprobación de una persona"
++  bloquear_terminal "jtk apply a través de un pseudo-terminal salta la aprobación de una persona"
++fi
++# Lo mismo para los escritores con --apply: la regla de arriba pide el comando al inicio y un prefijo (expect, script, tmux) la saltea.
++APLICA_ESCRIBE='(^|[^[:alnum:]_])(jtk|jk)(\.py)?[[:space:]]+(create|push|assign)[[:space:]].*--apply(["'"'"'[:space:]]|$)'
++if coincide "$APLICA_ESCRIBE" && coincide "$PTY"; then
++  bloquear_terminal "jtk create / push / assign con --apply a través de un pseudo-terminal salta la aprobación de una persona"
+ fi
+ # La otra mitad del mismo rodeo, en dos pasos: abrir la sesión por un lado y escribir la aprobación por el otro.
+ coincide "tmux[[:space:]]+send(-keys)?[[:space:]].*APRUEBO" \

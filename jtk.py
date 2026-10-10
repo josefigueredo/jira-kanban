@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Entry point: puts the skill folder on sys.path and runs the jk CLI."""
+"""Entry point: puts the skill folder on sys.path and runs the jtk CLI."""
 import sys
 from pathlib import Path
 

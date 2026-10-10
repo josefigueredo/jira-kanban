@@ -23,41 +23,56 @@ check() {  # check <expected exit code> <command line>
 
 # blocked: the writers that already existed
 check 2 'git push origin main'
-check 2 'jk push PLATE-1 --apply'
-check 2 'jk create --spec s.json --apply'
-check 2 'jk assign PLATE-1 Ana --apply'
+check 2 'jtk push PLATE-1 --apply'
+check 2 'jtk create --spec s.json --apply'
+check 2 'jtk assign PLATE-1 Ana --apply'
 # blocked: applying a plan, behind every prefix the hook accepts
-check 2 'jk apply abc123def456'
-check 2 'rtk jk apply abc123def456'
-check 2 'python3 /Users/x/jira-kanban/jk.py apply abc123def456'
-check 2 'cd /tmp && jk apply abc123def456'
-check 2 '/Users/x/.local/bin/jk apply abc123def456'
+check 2 'jtk apply abc123def456'
+check 2 'rtk jtk apply abc123def456'
+check 2 'python3 /Users/x/jira-kanban/jtk.py apply abc123def456'
+check 2 'cd /tmp && jtk apply abc123def456'
+check 2 '/Users/x/.local/bin/jtk apply abc123def456'
 # blocked: a pseudo-terminal typing the approval for it
-check 2 "tmux send-keys 'jk apply abc123def456' Enter"
-check 2 "expect -c 'spawn jk apply abc123def456'"
-check 2 'script -q /dev/null jk apply abc123def456'
-check 2 "python3 -c 'import pty; pty.spawn(\"jk apply abc123def456\".split())'"
-check 2 "tmux send -t s 'jk apply abc123def456' Enter"
-check 2 "tmux new-session -d -s s 'jk apply abc123def456'"
+check 2 "tmux send-keys 'jtk apply abc123def456' Enter"
+check 2 "expect -c 'spawn jtk apply abc123def456'"
+check 2 'script -q /dev/null jtk apply abc123def456'
+check 2 "python3 -c 'import pty; pty.spawn(\"jtk apply abc123def456\".split())'"
+check 2 "tmux send -t s 'jtk apply abc123def456' Enter"
+check 2 "tmux new-session -d -s s 'jtk apply abc123def456'"
 check 2 "tmux send-keys -t s 'APRUEBO 1' Enter"
-check 2 "python3 -c 'import pty; pty.spawn([\"jk\",\"apply\",\"abc123def456\"])'"
-check 2 "python3 -c 'import pexpect; pexpect.spawn(\"jk apply abc123def456\")'"
-check 2 'script /tmp/out jk apply abc123def456'
+check 2 "python3 -c 'import pty; pty.spawn([\"jtk\",\"apply\",\"abc123def456\"])'"
+check 2 "python3 -c 'import pexpect; pexpect.spawn(\"jtk apply abc123def456\")'"
+check 2 'script /tmp/out jtk apply abc123def456'
 # allowed
-check 0 'jk plan move plataforma TEAM-1 --to active'
-check 0 'jk plan revert abc123def456'
-check 0 'jk team status plataforma --list'
-check 0 'jk push PLATE-1'
-check 0 'jk assign PLATE-1 Ana'
-check 0 'jk applyx'
+check 0 'jtk plan move plataforma TEAM-1 --to active'
+check 0 'jtk plan revert abc123def456'
+check 0 'jtk team status plataforma --list'
+check 0 'jtk push PLATE-1'
+check 0 'jtk assign PLATE-1 Ana'
+check 0 'jtk applyx'
 check 0 'git status'
-check 0 'git commit -m "docs: jk apply"'
-check 0 'echo jk apply'
-check 0 'rg -n "jk apply" docs'
-check 0 'rg -n "jk apply" scripts/'
+check 0 'git commit -m "docs: jtk apply"'
+check 0 'echo jtk apply'
+check 0 'rg -n "jtk apply" docs'
+check 0 'rg -n "jtk apply" scripts/'
 check 0 'tmux ls'
 check 0 "tmux send-keys -t s 'ls' Enter"
 check 0 "tmux new-session -d -s build 'make'"
+
+# create|push|assign --apply through a pseudo-terminal skip the approval just like apply does
+check 2 'script -q /dev/null jtk push PLATE-1 --apply'
+check 2 "expect -c 'spawn jtk push PLATE-1 --apply'"
+check 2 "tmux new-session -d 'jtk create --spec s.json --apply'"
+check 2 "python3 -c 'import pty; pty.spawn(\"jtk assign PLATE-1 Ana --apply\".split())'"
+check 2 "expect -c 'spawn jk push PLATE-1 --apply'"
+check 0 "expect -c 'spawn jtk push PLATE-1'"
+
+# the old name stays blocked too: old scripts and shell history still say jk
+check 2 'jk apply abc123def456'
+check 2 'jk push PLATE-1 --apply'
+check 2 "tmux send-keys 'jk apply abc123def456' Enter"
+check 2 'python3 /Users/x/jira-kanban/jk.py apply abc123def456'
+check 0 'jk plan move plataforma TEAM-1 --to active'
 
 echo "$((total - wrong))/$total cases behaved as expected"
 [ "$wrong" -eq 0 ]

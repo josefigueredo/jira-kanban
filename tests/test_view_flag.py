@@ -64,7 +64,7 @@ class ViewFlagTest(unittest.TestCase):
         jira = FakeJira()
         code, _, err = run(["next", "--view", "nada"], jira)
         self.assertEqual(code, 1)
-        self.assertIn("jk team setup nada", err)
+        self.assertIn("jtk team setup nada", err)
         self.assertEqual(jira.jqls, [])
 
     def test_a_view_and_a_jira_project_together_are_refused_by_the_parser(self):

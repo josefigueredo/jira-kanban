@@ -1,4 +1,4 @@
-"""jk: create | pull | push | show | board | who | assign | done | next | blocked | load | stats | board setup|set|show|check|survey | team … | plan … | apply. Every Jira write is a dry run unless --apply is passed; the reports only read."""
+"""jtk: create | pull | push | show | board | who | assign | done | next | blocked | load | stats | board setup|set|show|check|survey | team … | plan … | apply. Every Jira write is a dry run unless --apply is passed; the reports only read."""
 from __future__ import annotations
 
 import argparse
@@ -36,7 +36,7 @@ def excerpt(before: str, after: str, width: int = 60) -> tuple:
 def _client(project: Path, command: Optional[str] = None):
     creds = config.credentials(project)
     if creds is None:
-        raise SystemExit("jk: Jira credentials not found (IC_JIRA_* or JIRA_* in the environment, ./.env.local, "
+        raise SystemExit("jtk: Jira credentials not found (IC_JIRA_* or JIRA_* in the environment, ./.env.local, "
                          "./.spec-kit/.env)")
     return Jira(*creds, journal=journal.journal(project, command, also=state.log_write) if command else None)
 
@@ -44,7 +44,7 @@ def _client(project: Path, command: Optional[str] = None):
 def _show(project: Path, key: str) -> None:
     epic = kanban.epic_dir(project, key)
     if not (epic / "epic.md").is_file():
-        print(f"no local kanban for {key}: run jk pull {key}")
+        print(f"no local kanban for {key}: run jtk pull {key}")
         return
     for entry in sync._local(epic, key):
         depth = {"epic": 0, "story": 1, "task": 1, "subtask": 2}[entry["kind"]]
@@ -71,9 +71,9 @@ def _approve(confirm: Callable, n: int, summary: str, argv: List[str]) -> Option
     if n == 0:
         return None
     try:
-        confirm(n, summary, "jk " + shlex.join(argv))
+        confirm(n, summary, "jtk " + shlex.join(argv))
     except guard.NotApproved as exc:
-        sys.stderr.write(f"jk: {exc}\n")
+        sys.stderr.write(f"jtk: {exc}\n")
         return NEEDS_PERSON
     return None
 
@@ -166,7 +166,7 @@ def _report(jira, args, conv: dict, today: _dt.date) -> int:
 def main(argv: Optional[List[str]] = None, client: Callable = _client,
          today: Optional[Callable[[], _dt.date]] = None, confirm: Callable = guard.confirm) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
-    if len(argv) > 1 and argv[0] == "board" and argv[1] in board_cli.VERBS:  # `jk board EPIC` stays the local kanban
+    if len(argv) > 1 and argv[0] == "board" and argv[1] in board_cli.VERBS:  # `jtk board EPIC` stays the local kanban
         here = Path(".").resolve()
         return board_cli.run(argv[1:], lambda: client(here) if client is not _client else _client(here, command="board"))
     if argv and argv[0] == "team":  # unlike `board`, no legacy command shares the name: argparse names a bad verb
@@ -183,7 +183,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
             return plan_cli.run_apply(argv[1:], make, confirm)
         return plan_cli.run_plan(argv[1:], make, plan_conv,
                                  today or (lambda: window.today_in(plan_conv.get("timezone"))))
-    parser = argparse.ArgumentParser(prog="jk", description=__doc__)
+    parser = argparse.ArgumentParser(prog="jtk", description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("create", "pull", "push", "show", "board"):
         p = sub.add_parser(name)
@@ -208,7 +208,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
     who.add_argument("--json", action="store_true", help="machine-readable output")
     give = sub.add_parser("assign", help="assign an issue (and with --tree everything under it) to a person")
     give.add_argument("key", help="issue key, e.g. PLATE-639")
-    give.add_argument("who", help="the person: a name, email or accountId (run jk who first if unsure)")
+    give.add_argument("who", help="the person: a name, email or accountId (run jtk who first if unsure)")
     give.add_argument("--tree", action="store_true", help="also assign every issue under it")
     give.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
     give.add_argument("--apply", action="store_true", help="write to Jira (default: dry run)")
@@ -223,7 +223,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
         r.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
         r.add_argument("--json", action="store_true", help="machine-readable output")
         if name in ("done", "next", "blocked"):
-            r.add_argument("--view", help="only the boards of this saved view (see jk team setup)")
+            r.add_argument("--view", help="only the boards of this saved view (see jtk team setup)")
         if name == "done":
             r.add_argument("--since", required=True, help="first day, YYYY-MM-DD")
             r.add_argument("--until", help="last day, YYYY-MM-DD (default: today)")
@@ -242,7 +242,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
         try:
             conv["project"] = views.load(args.view)["boards"]
         except views.BadView as exc:
-            sys.stderr.write(f"jk: {exc}\n")
+            sys.stderr.write(f"jtk: {exc}\n")
             return FINDINGS
     try:
         if args.cmd == "show":
@@ -295,7 +295,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
                 sys.stderr.write(f"{error['key']}: not moved to {error['to']} ({error['reason']})\n")
             if errors:
                 sys.stderr.write(f"Every issue was created; do not run create again. Set the status in the issue's .md and "
-                                 f"run jk push {result['epic']} (dry run), then with --apply.\n")
+                                 f"run jtk push {result['epic']} (dry run), then with --apply.\n")
                 return FINDINGS
             return OK
         if args.cmd == "pull":
@@ -333,5 +333,5 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
                   + (f", {len(result['invalid'])} invalid" if result["invalid"] else ""))
         return FINDINGS if result["conflicts"] or result["errors"] or result["invalid"] else OK
     except (JiraError, OSError, KeyError) as exc:
-        sys.stderr.write(f"jk: {exc}\n")
+        sys.stderr.write(f"jtk: {exc}\n")
         return CANNOT

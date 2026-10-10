@@ -64,7 +64,7 @@ class SetupTest(unittest.TestCase):
     def test_a_project_jira_does_not_know_exits_2_and_saves_nothing(self):
         code, _, err = run(["setup", "NOPE"], fake())
         self.assertEqual(code, 2)
-        self.assertIn("jk:", err)
+        self.assertIn("jtk:", err)
         self.assertIsNone(board_profile.load("NOPE"))
 
     def test_a_jira_answer_with_no_statuses_is_not_saved_as_a_complete_profile(self):
@@ -87,7 +87,7 @@ class SetupTest(unittest.TestCase):
         board_profile.save(newer)
         code, _, err = run(["setup", "UA"], fake(UA=shapes.UA))
         self.assertEqual(code, 1)
-        self.assertIn("newer jk", err)
+        self.assertIn("newer jtk", err)
         raw = (self.base / "profiles" / "UA.json").read_text(encoding="utf-8")
         self.assertIn(f'"version": {board_profile.VERSION + 1}', raw)
 
@@ -119,7 +119,7 @@ class SetTest(unittest.TestCase):
     def test_set_without_a_profile_says_how_to_make_one(self):
         code, _, err = run(["set", "UA", "active", "Done"], fake())
         self.assertEqual(code, 1)
-        self.assertIn("run jk board setup UA", err)
+        self.assertIn("run jtk board setup UA", err)
 
     def test_a_role_that_does_not_exist_is_refused_by_the_parser(self):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
@@ -143,7 +143,7 @@ class ShowAndCheckTest(unittest.TestCase):
         board_profile.save(profile)
         code, _, err = run(["show", "PEHD"], fake())
         self.assertEqual(code, 1)
-        self.assertIn("newer jk", err)
+        self.assertIn("newer jtk", err)
 
     def test_show_of_a_profile_with_the_wrong_shape_exits_1_instead_of_a_traceback(self):
         (self.base / "profiles").mkdir()
@@ -160,7 +160,7 @@ class ShowAndCheckTest(unittest.TestCase):
         (self.base / "profiles" / "UA.json").write_text("{not json", encoding="utf-8")
         code, _, err = run(["show", "UA"], fake())
         self.assertEqual(code, 1)
-        self.assertIn("jk:", err)
+        self.assertIn("jtk:", err)
 
     def test_check_says_nothing_changed_or_what_did(self):
         jira = fake(UA=shapes.UA)
@@ -174,7 +174,7 @@ class ShowAndCheckTest(unittest.TestCase):
         code, out, _ = run(["check", "UA"], jira)
         self.assertEqual(code, 1)
         self.assertIn("Nuevos: QA", out)
-        self.assertIn("jk board setup UA", out)
+        self.assertIn("jtk board setup UA", out)
 
 
 class SurveyTest(unittest.TestCase):

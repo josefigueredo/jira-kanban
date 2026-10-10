@@ -48,7 +48,7 @@ REAL = (Stream(), Stream(), Stream())
 
 def ask(n, answer, streams=REAL):
     tty = Tty(answer)
-    guard.confirm(n, "THE SUMMARY", "jk apply abc", streams=streams, open_tty=lambda: tty)
+    guard.confirm(n, "THE SUMMARY", "jtk apply abc", streams=streams, open_tty=lambda: tty)
     return tty
 
 
@@ -79,25 +79,25 @@ class TerminalTest(unittest.TestCase):
                         (Stream(), Stream(), Stream(False))):
             opened = []
             with self.assertRaisesRegex(guard.NotApproved, "Run it yourself"):
-                guard.confirm(2, "S", "jk apply abc", streams=streams, open_tty=lambda: opened.append(1))
+                guard.confirm(2, "S", "jtk apply abc", streams=streams, open_tty=lambda: opened.append(1))
             self.assertEqual(opened, [])
 
     def test_the_refusal_prints_the_exact_command_to_run(self):
         with self.assertRaises(guard.NotApproved) as caught:
-            guard.confirm(2, "S", "jk apply abc123", streams=(Stream(False),) * 3)
-        self.assertIn("  jk apply abc123", str(caught.exception))
+            guard.confirm(2, "S", "jtk apply abc123", streams=(Stream(False),) * 3)
+        self.assertIn("  jtk apply abc123", str(caught.exception))
         self.assertIn("nothing was written", str(caught.exception))
 
     def test_a_stream_that_cannot_say_if_it_is_a_terminal_counts_as_not_one(self):
         with self.assertRaises(guard.NotApproved):
-            guard.confirm(1, "S", "jk apply abc", streams=(object(), Stream(), Stream()))
+            guard.confirm(1, "S", "jtk apply abc", streams=(object(), Stream(), Stream()))
 
     def test_without_dev_tty_it_refuses(self):
         def no_tty():
             raise OSError("Device not configured")
 
         with self.assertRaisesRegex(guard.NotApproved, "Run it yourself"):
-            guard.confirm(1, "S", "jk apply abc", streams=REAL, open_tty=no_tty)
+            guard.confirm(1, "S", "jtk apply abc", streams=REAL, open_tty=no_tty)
 
 
 class NoBypassTest(unittest.TestCase):
@@ -108,10 +108,10 @@ class NoBypassTest(unittest.TestCase):
     def test_no_environment_variable_skips_it(self):
         saved = dict(os.environ)
         try:
-            for name in ("JK_YES", "JK_APPROVE", "YES", "CI", "FORCE", "JK_ASSUME_YES"):
+            for name in ("JTK_YES", "JTK_APPROVE", "YES", "CI", "FORCE", "JTK_ASSUME_YES"):
                 os.environ[name] = "1"
             with self.assertRaises(guard.NotApproved):
-                guard.confirm(1, "S", "jk apply abc", streams=(Stream(False),) * 3)
+                guard.confirm(1, "S", "jtk apply abc", streams=(Stream(False),) * 3)
         finally:
             os.environ.clear()
             os.environ.update(saved)

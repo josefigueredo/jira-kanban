@@ -168,7 +168,7 @@ def desk_report(open_issues: List[dict], delivered: List[dict], view: dict, prof
     owner, and how long resolving took. There is no SLA here: no service desk measured had SLA data."""
     boards = desk_boards(view, profiles)
     if not boards:
-        raise NoDesk(f"view {view['name']!r} has no help desk board: set one with jk board setup KEY --kind helpdesk")
+        raise NoDesk(f"view {view['name']!r} has no help desk board: set one with jtk board setup KEY --kind helpdesk")
     first = first_week(today, weeks).isoformat()
     rows = []
     for board in boards:

@@ -1,4 +1,4 @@
-"""The read side of jk never imports the write side, and the shared core imports neither (spec 2026-10-09, «Estructura»).
+"""The read side of jtk never imports the write side, and the shared core imports neither (spec 2026-10-09, «Estructura»).
 
 cli.py is the composition root: it wires both sides on purpose and is the only module allowed to."""
 from __future__ import annotations

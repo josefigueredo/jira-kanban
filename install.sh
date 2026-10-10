@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# Install jk and its skills for Claude Code, Codex and Cursor.
+# Install jtk and its skills for Claude Code, Codex and Cursor.
 #   ./install.sh               the read-only skills: jira-standup and jira-em
 #   ./install.sh --with-write  also the skills that write to Jira: jira-kanban and jira-em-ops
-# CLI: ~/.local/bin/jk points at jk.py; the skills call `jk`, never another skill's folder.
+# CLI: ~/.local/bin/jtk points at jtk.py; the skills call `jtk`, never another skill's folder.
 # Skills (same layout as WayOfWork): ~/.agents/skills/<name> points at this repo (jira-kanban) or at its standup/
 # folder (jira-standup); ~/.claude/skills/<name>, ~/.codex/skills/<name> and ~/.cursor/skills/<name> point at
 # ../../.agents/skills/<name> (measured: ~/.cursor/skills held only explicit links, so Cursor needs its own).
 # Re-running is safe and never removes a skill installed before. A real file or directory where a link goes is
 # never replaced: the script stops with exit 1.
+# The old command name jk is not kept: a link to this repo is removed and the data move is printed, not done.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -39,9 +40,37 @@ for entry in "${SKILLS[@]}"; do
   done
   echo "skill: $NAME (Claude Code, Codex, Cursor) -> $TARGET"
 done
-chmod +x "$REPO/jk.py"
-link "$REPO/jk.py" "$HOME/.local/bin/jk" || status=1
-echo "cli: jk -> $REPO/jk.py"
-case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) echo "note: add ~/.local/bin to PATH to use jk" >&2 ;; esac
-command -v python3 >/dev/null || { echo "note: python3 is not on PATH; jk needs it" >&2; status=1; }
+chmod +x "$REPO/jtk.py"
+link "$REPO/jtk.py" "$HOME/.local/bin/jtk" || status=1
+echo "cli: jtk -> $REPO/jtk.py"
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) echo "note: add ~/.local/bin to PATH to use jtk" >&2 ;; esac
+command -v python3 >/dev/null || { echo "note: python3 is not on PATH; jtk needs it" >&2; status=1; }
+# The command used to be called jk. Remove its link only when it is this repo's own; never touch anything else.
+OLD="$HOME/.local/bin/jk"
+if [ -L "$OLD" ]; then
+  if [ "$(readlink "$OLD")" = "$REPO/jk.py" ]; then
+    rm "$OLD"
+    echo "removed the old link ~/.local/bin/jk (the command is jtk now)"
+  else
+    echo "note: ~/.local/bin/jk points somewhere else and was left alone" >&2
+  fi
+elif [ -e "$OLD" ]; then
+  echo "note: ~/.local/bin/jk is not a symlink and was left alone" >&2
+fi
+# Data is renamed by the person, never by this script: it prints the exact commands.
+migrate() {  # migrate <old> <new> (both written with ~)
+  local o="${1/#\~/$HOME}" n="${2/#\~/$HOME}"
+  [ -e "$o" ] || return 0
+  if [ -e "$n" ]; then
+    echo "note: both $1 and $2 exist; merge them by hand, nothing was moved" >&2
+  else
+    echo "migrate: mv $1 $2"
+  fi
+}
+migrate "~/.config/jk" "~/.config/jtk"
+migrate "~/.local/state/jk" "~/.local/state/jtk"
+for name in CONFIG STATE; do
+  var="JK_${name}_DIR"
+  if [ -n "${!var:-}" ]; then echo "note: $var is no longer read; use JTK_${name}_DIR" >&2; fi
+done
 exit "$status"

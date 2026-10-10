@@ -100,7 +100,7 @@ class ProfileTest(Base):
     def test_a_board_with_undecided_statuses_is_refused_when_it_is_touched(self):
         self.profiles["TEAM"] = fx.profile("TEAM", decide_waiting=False)
         touched = [self.put("TEAM-1", "todo")]
-        with self.assertRaisesRegex(plan.Refused, "TEAM has 1 status.*without a role.*jk board set"):
+        with self.assertRaisesRegex(plan.Refused, "TEAM has 1 status.*without a role.*jtk board set"):
             plan.check_profiles(touched, self.profiles)
 
     def test_a_board_that_is_not_touched_does_not_matter(self):
@@ -264,7 +264,7 @@ class RevertTest(Base):
         from jkan import applier
         selection = [self.put(k, "todo") for k in keys]
         saved = state.save_plan(plan.move(self.jira, self.view, selection, self.profiles, "active", now=NOW))
-        applier.run(self.jira, saved, lambda n, s, c: None, "jk apply x", now=NOW)
+        applier.run(self.jira, saved, lambda n, s, c: None, "jtk apply x", now=NOW)
         self.jira.writes.clear()
         return saved
 
@@ -294,7 +294,7 @@ class RevertTest(Base):
         from jkan import applier
         selection = [self.put("TEAM-1", "todo"), self.put("TEAM-2", "todo", fx.BETO)]
         saved = state.save_plan(plan.assign(self.view, selection, ANA, now=NOW))
-        applier.run(self.jira, saved, lambda n, s, c: None, "jk apply x", now=NOW)
+        applier.run(self.jira, saved, lambda n, s, c: None, "jtk apply x", now=NOW)
         body = plan.revert(self.jira, saved, self.profiles, now=NOW)
         self.assertEqual(body["kind"], "assign")
         self.assertEqual(body["items"], [
@@ -305,7 +305,7 @@ class RevertTest(Base):
     def test_comments_cannot_be_reverted_and_the_plan_says_so(self):
         from jkan import applier
         saved = state.save_plan(plan.comment(self.view, [self.put("TEAM-1", "todo")], "hola", now=NOW))
-        applier.run(self.jira, saved, lambda n, s, c: None, "jk apply x", now=NOW)
+        applier.run(self.jira, saved, lambda n, s, c: None, "jtk apply x", now=NOW)
         with self.assertRaisesRegex(plan.Refused, "TEAM-1: comments are not reverted"):
             plan.revert(self.jira, saved, self.profiles, now=NOW)
 
@@ -319,7 +319,7 @@ class RevertTest(Base):
         from jkan import applier
         selection = [self.put("TEAM-1", "delivered")]
         saved = state.save_plan(plan.move(self.jira, self.view, selection, self.profiles, "active", now=NOW))
-        applier.run(self.jira, saved, lambda n, s, c: None, "jk apply x", now=NOW)
+        applier.run(self.jira, saved, lambda n, s, c: None, "jtk apply x", now=NOW)
         with self.assertRaisesRegex(plan.Refused, "reverting closes issues: add --allow-close"):
             plan.revert(self.jira, saved, self.profiles, now=NOW)
         body = plan.revert(self.jira, saved, self.profiles, now=NOW, allow_close=True)
@@ -338,9 +338,9 @@ class RevertOfRevertTest(Base):
         from jkan import applier
         selection = [self.put("TEAM-1", "todo")]
         first = state.save_plan(plan.assign(self.view, selection, ANA, now=NOW))
-        applier.run(self.jira, first, lambda n, s, c: None, "jk apply x", now=NOW)
+        applier.run(self.jira, first, lambda n, s, c: None, "jtk apply x", now=NOW)
         second = state.save_plan(plan.revert(self.jira, first, self.profiles, now=NOW))
-        applier.run(self.jira, second, lambda n, s, c: None, "jk apply y", now=NOW)
+        applier.run(self.jira, second, lambda n, s, c: None, "jtk apply y", now=NOW)
         body = plan.revert(self.jira, second, self.profiles, now=NOW)
         self.assertEqual(body["items"], [{"key": "TEAM-1", "from": None,
                                           "to": {"id": "acc-ana", "name": "Ana Gómez"}}])

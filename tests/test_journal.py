@@ -1,7 +1,7 @@
-"""Every write jk makes to Jira is kept in ./.jira-kanban/jira-writes.jsonl, in the same shape as WayOfWork's log.
+"""Every write jtk makes to Jira is kept in ./.jira-kanban/jira-writes.jsonl, in the same shape as WayOfWork's log.
 
 With one Jira token shared by several tools and by hand, Jira's changelog cannot say which tool made a change. A log
-of this skill's own successful writes at least lets a change be ruled in or out as jk's.
+of this skill's own successful writes at least lets a change be ruled in or out as jtk's.
 """
 from __future__ import annotations
 

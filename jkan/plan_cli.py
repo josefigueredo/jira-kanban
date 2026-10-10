@@ -1,4 +1,4 @@
-"""jk plan move|assign|comment|revert and jk apply: guarded writes to Jira. A plan only reads Jira and saves a file; apply
+"""jtk plan move|assign|comment|revert and jtk apply: guarded writes to Jira. A plan only reads Jira and saves a file; apply
 runs that file exactly, after a person at a terminal approved it (guard.py).
 
 Exit codes: 0 done, 1 refused or something changed or failed, 2 could not (Jira, disk, log), 3 a person has to do it
@@ -17,7 +17,7 @@ VERBS = ("move", "assign", "comment", "revert")
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="jk plan", description=__doc__)
+    parser = argparse.ArgumentParser(prog="jtk plan", description=__doc__)
     sub = parser.add_subparsers(dest="verb", required=True)
 
     def selecting(p: argparse.ArgumentParser) -> None:
@@ -48,7 +48,7 @@ def _parser() -> argparse.ArgumentParser:
 def _announce(saved: dict) -> int:
     print(plan.describe(saved))
     print(f"\nPlan {saved['id']} saved in {state.plan_path(saved['id'])}. Nothing was written to Jira.\n"
-          f"To apply it, run this in your own terminal (it asks for your approval there):\n  jk apply {saved['id']}")
+          f"To apply it, run this in your own terminal (it asks for your approval there):\n  jtk apply {saved['id']}")
     return OK
 
 
@@ -84,16 +84,16 @@ def run_plan(argv: List[str], jira: Callable[[], object], conv: dict, today: Cal
     try:
         return _plan(args, jira, conv, today())
     except ValueError as exc:  # Refused, Refusal, BadPlan, BadView, NotResolved: a decision for the person, not a crash
-        sys.stderr.write(f"jk: {exc}\n")
+        sys.stderr.write(f"jtk: {exc}\n")
         return FINDINGS
     except (JiraError, OSError) as exc:
-        sys.stderr.write(f"jk: {exc}\n")
+        sys.stderr.write(f"jtk: {exc}\n")
         return CANNOT
 
 
 def run_apply(argv: List[str], jira: Callable[[], object], confirm: Callable) -> int:
-    parser = argparse.ArgumentParser(prog="jk apply", description="Run a saved plan after a person approves it.")
-    parser.add_argument("id", help="the plan id that jk plan printed")
+    parser = argparse.ArgumentParser(prog="jtk apply", description="Run a saved plan after a person approves it.")
+    parser.add_argument("id", help="the plan id that jtk plan printed")
     args = parser.parse_args(argv)
     try:
         saved = state.load_plan(args.id)
@@ -103,15 +103,15 @@ def run_apply(argv: List[str], jira: Callable[[], object], confirm: Callable) ->
             raise plan.Refused(f"{', '.join(outside)} is not in the boards of view {saved['view']!r} "
                                f"({', '.join(view['boards'])}) any more: plan again")
         plan.check_profiles(saved["items"], profiles)
-        outcomes, code = applier.run(jira(), saved, confirm, f"jk apply {saved['id']}")
+        outcomes, code = applier.run(jira(), saved, confirm, f"jtk apply {saved['id']}")
     except guard.NotApproved as exc:
-        sys.stderr.write(f"jk: {exc}\n")
+        sys.stderr.write(f"jtk: {exc}\n")
         return guard.EXIT_NEEDS_PERSON
     except ValueError as exc:
-        sys.stderr.write(f"jk: {exc}\n")
+        sys.stderr.write(f"jtk: {exc}\n")
         return FINDINGS
     except (JiraError, OSError) as exc:
-        sys.stderr.write(f"jk: {exc}\n")
+        sys.stderr.write(f"jtk: {exc}\n")
         return CANNOT
     print(applier.render(outcomes))
     return code

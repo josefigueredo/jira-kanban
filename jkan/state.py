@@ -1,6 +1,6 @@
-"""Where a plan and the log of writes live: ~/.local/state/jk (or $JK_STATE_DIR).
+"""Where a plan and the log of writes live: ~/.local/state/jtk (or $JTK_STATE_DIR).
 
-A plan is a file `jk apply` runs exactly; its id is the start of its hash, and the file is refused if it no longer matches.
+A plan is a file `jtk apply` runs exactly; its id is the start of its hash, and the file is refused if it no longer matches.
 The hash catches accidents, it does not authenticate: the approval is asked over what apply shows from the file.
 The log is append-only, one JSON line per write; re-applying a plan skips what the log already marks `ok`."""
 from __future__ import annotations
@@ -22,7 +22,7 @@ class BadPlan(ValueError):
 
 
 def state_dir() -> Path:
-    return Path(os.environ.get("JK_STATE_DIR") or Path.home() / ".local" / "state" / "jk")
+    return Path(os.environ.get("JTK_STATE_DIR") or Path.home() / ".local" / "state" / "jtk")
 
 
 def utc_now() -> str:
@@ -72,7 +72,7 @@ def load_plan(plan_id: str) -> dict:
     except (OSError, ValueError) as exc:
         raise BadPlan(f"{path.name} cannot be read: {exc}") from None
     if not isinstance(plan, dict) or plan.get("version") != 1:
-        raise BadPlan(f"{path.name} is not a plan this jk understands")
+        raise BadPlan(f"{path.name} is not a plan this jtk understands")
     if plan.get("hash") != digest(plan) or plan.get("id") != plan_id or str(plan.get("hash", ""))[:12] != plan_id:
         raise BadPlan(f"{path.name} was changed after it was planned (its hash does not match): plan again")
     return plan
@@ -101,7 +101,7 @@ def log_write(entry: dict, now: Optional[Callable[[], str]] = None) -> bool:
         path = log_path()
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps({"ts": stamp, "tool": "jk", **entry}, ensure_ascii=False) + "\n")
+            handle.write(json.dumps({"ts": stamp, "tool": "jtk", **entry}, ensure_ascii=False) + "\n")
         return True
     except OSError:
         return False

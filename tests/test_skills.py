@@ -38,16 +38,16 @@ class SkillsTest(unittest.TestCase):
 
     def test_the_team_skill_calls_only_jk_and_never_writes_to_jira(self):
         text = (ROOT / "em" / "SKILL.md").read_text(encoding="utf-8")
-        self.assertNotIn("jk.py", text)
-        self.assertNotIn("jk create", text)
-        self.assertNotIn("jk push", text)
-        self.assertNotIn("jk assign", text)
+        self.assertNotIn("jtk.py", text)
+        self.assertNotIn("jtk create", text)
+        self.assertNotIn("jtk push", text)
+        self.assertNotIn("jtk assign", text)
 
     def test_every_team_and_board_command_the_team_skill_mentions_exists(self):
         text = (ROOT / "em" / "SKILL.md").read_text(encoding="utf-8")
-        for verb in re.findall(r"jk team (\w+)", text):
+        for verb in re.findall(r"jtk team (\w+)", text):
             self.assertIn(verb, team_cli.VERBS, verb)
-        for verb in re.findall(r"jk board (\w+)", text):
+        for verb in re.findall(r"jtk board (\w+)", text):
             self.assertIn(verb, board_cli.VERBS, verb)
 
     def test_the_ops_skill_is_about_changing_the_team_and_points_to_the_read_only_ones(self):
@@ -58,16 +58,16 @@ class SkillsTest(unittest.TestCase):
 
     def test_the_ops_skill_only_plans_and_never_runs_apply_or_the_legacy_writers(self):
         text = (ROOT / "ops" / "SKILL.md").read_text(encoding="utf-8")
-        self.assertNotIn("jk.py", text)
-        for forbidden in ("jk create", "jk push", "jk assign"):
+        self.assertNotIn("jtk.py", text)
+        for forbidden in ("jtk create", "jtk push", "jtk assign"):
             self.assertNotIn(forbidden, text)
-        self.assertIn("Never run `jk apply`", text)
+        self.assertIn("Never run `jtk apply`", text)
 
     def test_every_plan_command_the_ops_skill_mentions_exists(self):
         text = (ROOT / "ops" / "SKILL.md").read_text(encoding="utf-8")
-        for verb in re.findall(r"jk plan (\w+)", text):
+        for verb in re.findall(r"jtk plan (\w+)", text):
             self.assertIn(verb, plan_cli.VERBS, verb)
-        for verb in re.findall(r"jk team (\w+)", text):
+        for verb in re.findall(r"jtk team (\w+)", text):
             self.assertIn(verb, team_cli.VERBS, verb)
 
     def test_the_descriptions_do_not_overlap_on_the_phrases_that_pick_a_skill(self):
@@ -76,7 +76,7 @@ class SkillsTest(unittest.TestCase):
 
     def test_the_personal_skill_mentions_only_commands_that_exist(self):
         text = (ROOT / "standup" / "SKILL.md").read_text(encoding="utf-8")
-        for verb in re.findall(r"jk board (\w+)", text):
+        for verb in re.findall(r"jtk board (\w+)", text):
             self.assertIn(verb, board_cli.VERBS, verb)
 
 

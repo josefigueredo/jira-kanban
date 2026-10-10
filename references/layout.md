@@ -16,7 +16,7 @@ the title as `# …` and the description below. The last sync time lives only in
 nothing new leaves every `.md` unchanged. The folder decides kind and parent; the front matter never
 moves an issue.
 
-- **Edit:** change `status`, the `# title` or the body, then `jk push KEY`. An edited body goes to Jira only if it keeps
+- **Edit:** change `status`, the `# title` or the body, then `jtk push KEY`. An edited body goes to Jira only if it keeps
   the sections of `templates/description.md` (Por qué, Qué, Hecho cuando), all filled in; push lists what is missing as
   `invalid`. A card mirrored from Jira with free text can still change status or title.
 - **New subtask:** `…/subtasks/_new-<slug>/subtask.md` with a `# title` and the three sections, written over the lines

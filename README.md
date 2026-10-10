@@ -15,7 +15,7 @@ git clone git@github.com:josefigueredo/jira-team-kit.git jira-kanban
 cd jira-kanban && ./install.sh
 ```
 
-Por defecto instala `jira-standup` (reportes de solo lectura) y deja `jk` en `~/.local/bin/jk`; con
+Por defecto instala `jira-standup` (reportes de solo lectura) y deja `jtk` en `~/.local/bin/jtk`; con
 `./install.sh --with-write` suma `jira-kanban` (crear y sincronizar épicas) y `jira-em-ops` (planes de cambios del equipo). Volver a correrlo nunca quita una skill
 ya instalada. Sigue el
 mismo layout que WayOfWork: `~/.agents/skills/jira-kanban` apunta a este repo, `~/.agents/skills/jira-standup` a su
@@ -41,17 +41,17 @@ queda en `./.jira-kanban/jira-writes.jsonl` (hora, comando, issue y cambio).
 
 | Comando | Qué hace |
 |---|---|
-| `jk create --spec spec.json [--html vista.html]` | Vista previa de lo que crearía; con `--html`, la página navegable |
-| `jk create --spec spec.json --jira-project KEY --apply [--assign-open \| --no-assign-open]` | Crea en Jira (primero los padres), pasa a Done lo terminado y escribe el kanban local. Si Jira rechaza un issue a mitad de camino, conserva lo creado y el mismo comando retoma sin duplicar. Si sólo falla un cambio de estado, sigue con los demás, escribe el kanban y lo informa: se termina con `push`, nunca repitiendo `create` |
-| `jk pull EPIC` | Trae la épica y sus hijos de Jira al kanban local |
-| `jk push EPIC [--apply] [--assign-open \| --no-assign-open]` | Manda a Jira los cambios locales: estado, título, descripción, subtareas nuevas |
-| `jk show EPIC` | Lista el kanban local como árbol |
-| `jk board EPIC` | Agrupa el kanban local: Bloqueado · Por hacer · En progreso · Hecho |
-| `jk who "NOMBRE" [--jira-project KEY] [--json]` | Busca una persona en Jira por nombre, email o accountId (solo lectura): `unique`, `ambiguous` o `none` |
-| `jk assign KEY "PERSONA" [--tree] [--apply]` | Asigna un issue (con `--tree`, todo lo que cuelga de él) a una persona |
-| `jk done` · `next` · `blocked` · `load` · `stats` | Reportes de solo lectura (ver «Reportes»): qué hice, qué puedo hacer, qué me bloquea, carga y métricas |
+| `jtk create --spec spec.json [--html vista.html]` | Vista previa de lo que crearía; con `--html`, la página navegable |
+| `jtk create --spec spec.json --jira-project KEY --apply [--assign-open \| --no-assign-open]` | Crea en Jira (primero los padres), pasa a Done lo terminado y escribe el kanban local. Si Jira rechaza un issue a mitad de camino, conserva lo creado y el mismo comando retoma sin duplicar. Si sólo falla un cambio de estado, sigue con los demás, escribe el kanban y lo informa: se termina con `push`, nunca repitiendo `create` |
+| `jtk pull EPIC` | Trae la épica y sus hijos de Jira al kanban local |
+| `jtk push EPIC [--apply] [--assign-open \| --no-assign-open]` | Manda a Jira los cambios locales: estado, título, descripción, subtareas nuevas |
+| `jtk show EPIC` | Lista el kanban local como árbol |
+| `jtk board EPIC` | Agrupa el kanban local: Bloqueado · Por hacer · En progreso · Hecho |
+| `jtk who "NOMBRE" [--jira-project KEY] [--json]` | Busca una persona en Jira por nombre, email o accountId (solo lectura): `unique`, `ambiguous` o `none` |
+| `jtk assign KEY "PERSONA" [--tree] [--apply]` | Asigna un issue (con `--tree`, todo lo que cuelga de él) a una persona |
+| `jtk done` · `next` · `blocked` · `load` · `stats` | Reportes de solo lectura (ver «Reportes»): qué hice, qué puedo hacer, qué me bloquea, carga y métricas |
 
-`jk` queda en `~/.local/bin/jk` (lo crea `install.sh`; hace falta `~/.local/bin` en el PATH).
+`jtk` queda en `~/.local/bin/jtk` (lo crea `install.sh`; hace falta `~/.local/bin` en el PATH).
 
 ## El spec
 
@@ -76,7 +76,7 @@ El agente lo arma desde la conversación. Un ejemplo con una historia, una tarea
 - **Área:** se convierte en el prefijo del título, `[FE] Página de login`. No se usan componentes, labels ni story points.
 - **`done`:** el trabajo ya está terminado (hecho, verificado, mergeado). Ver la asignación, abajo.
 - **`evidence`:** obligatoria con `done`. Commits (alcanzables desde la branch principal del remoto, o sea mergeados y
-  pusheados), una branch de `origin` o URLs (un PR, un deploy). jk los resuelve antes de escribir, también en seco, y los
+  pusheados), una branch de `origin` o URLs (un PR, un deploy). jtk los resuelve antes de escribir, también en seco, y los
   agrega a la descripción como permalinks bajo `Evidencia:`. Si alguno no resuelve, `create` no escribe nada. Una
   subtarea que hereda el `done` hereda también la evidencia.
 - **`started`:** lo estás haciendo ahora. Se crea y pasa a un estado de la categoría *En progreso* (evita los
@@ -92,23 +92,23 @@ El agente lo arma desde la conversación. Un ejemplo con una historia, una tarea
 
 ### A otra persona
 
-`jk` asigna por defecto a quien lo corre, pero el spec puede nombrar a otra persona con `"assignee"` (un nombre, un email o
+`jtk` asigna por defecto a quien lo corre, pero el spec puede nombrar a otra persona con `"assignee"` (un nombre, un email o
 un accountId) en la épica, un ítem o una subtarea; las subtareas heredan la de su ítem. Una persona nombrada gana sobre
 `done`, `started` y `--assign-open`, y no cuenta como "pendiente de decidir".
 
-- `jk create` la busca **mientras planifica**, también en el dry run, y se niega antes de escribir si el nombre no coincide
+- `jtk create` la busca **mientras planifica**, también en el dry run, y se niega antes de escribir si el nombre no coincide
   con nadie o coincide con varios. Lista los candidatos con su email; **nunca elige entre dos personas**.
-- La búsqueda de Jira solo reconoce el comienzo de cada palabra, así que "Matiaz" no encuentra a "Matías". `jk` consulta
+- La búsqueda de Jira solo reconoce el comienzo de cada palabra, así que "Matiaz" no encuentra a "Matías". `jtk` consulta
   cada palabra del nombre por separado, ignora tildes y mayúsculas y tolera una letra de diferencia. Una coincidencia
   exacta del nombre completo gana sobre nombres más largos que lo contienen.
 - Solo busca entre quienes se pueden asignar en el proyecto (`--jira-project`, o el de la clave en `assign`), activos y
   que no sean bots.
-- Para reasignar lo que ya existe: `jk assign PLATE-639 "Nombre Apellido" --tree` (dry run) y después lo mismo con
+- Para reasignar lo que ya existe: `jtk assign PLATE-639 "Nombre Apellido" --tree` (dry run) y después lo mismo con
   `--apply`. Una asignación rechazada se informa y no frena a las demás.
 
 ## Vista previa
 
-`jk create --spec spec.json --html vista.html` genera una sola página, sin red ni recursos externos, con la estructura de
+`jtk create --spec spec.json --html vista.html` genera una sola página, sin red ni recursos externos, con la estructura de
 una pantalla de issue de Jira: árbol a la izquierda, breadcrumb, descripción con criterios de aceptación, tabla de hijos,
 estado y panel de detalles con el responsable. Las claves son `NUEVO-1…n` en el orden de creación y la navegación es por
 `#hash` (el botón Atrás funciona). Muestra sólo lo que va a ejecutar esa pasada.
@@ -120,40 +120,40 @@ Responden en tablas y árboles, leyendo Jira en vivo (el kanban local no guarda 
 
 | Comando | Responde |
 |---|---|
-| `jk done --since D [--until D]` | Qué hice: árbol Épica → Historia/Tarea → Subtarea, con totales |
-| `jk next [--until D]` | Qué puedo hacer: para hacer ya (por prioridad y vencimiento), lo que vence, lo que está sin dueño en mis épicas |
-| `jk blocked` | Dónde estoy bloqueado: por link "is blocked by", por Flagged o por estado bloqueado |
-| `jk load --person "X" [--weeks N]` | Carga de otra persona, en números medidos, al lado de la mía |
-| `jk stats [--weeks N]` | Velocidad (issues cerrados por semana), lead time, edad del WIP, cumplimiento de fechas, mezcla |
+| `jtk done --since D [--until D]` | Qué hice: árbol Épica → Historia/Tarea → Subtarea, con totales |
+| `jtk next [--until D]` | Qué puedo hacer: para hacer ya (por prioridad y vencimiento), lo que vence, lo que está sin dueño en mis épicas |
+| `jtk blocked` | Dónde estoy bloqueado: por link "is blocked by", por Flagged o por estado bloqueado |
+| `jtk load --person "X" [--weeks N]` | Carga de otra persona, en números medidos, al lado de la mía |
+| `jtk stats [--weeks N]` | Velocidad (issues cerrados por semana), lead time, edad del WIP, cumplimiento de fechas, mezcla |
 
 Todos aceptan `--person "NOMBRE"` (si el nombre es ambiguo lista a los candidatos y no elige), `--jira-project KEY` y
-`--json`. PLATE no tiene story points, así que la velocidad se mide en issues; `jk load` solo da un veredicto si
+`--json`. PLATE no tiene story points, así que la velocidad se mide en issues; `jtk load` solo da un veredicto si
 `wip_limit` está en `./.jira-kanban/conventions.json`. Límites: Jira guarda solo el último cambio de estado (un issue
 que pasó por «en curso» y luego a Done figura con la fecha de Done) y «hecho» significa asignado a la persona.
 
 ## Reportes de equipo
 
 Para quien sigue varios boards y un equipo (EM, Sr EM). Primero se guarda un **view**: los boards y el equipo.
-Cada board tiene que tener su perfil (`jk board setup KEY`); sin él, `jk team` se niega y dice cuál falta. Con el perfil
+Cada board tiene que tener su perfil (`jtk board setup KEY`); sin él, `jtk team` se niega y dice cuál falta. Con el perfil
 sin confirmar corre y lo avisa en la primera línea.
 
 | Comando | Responde |
 |---|---|
-| `jk team setup NOMBRE --boards PLATE,UA --group team` | Guarda un view. El equipo es un grupo de Jira (`--group`) o personas (`--people "Ana Gómez" …`); sin equipo, todo lo asignado |
-| `jk team show NOMBRE` · `jk team list` | Ver un view y el estado de los perfiles de sus boards · listar los views |
-| `jk team status VIEW` | Trabajo abierto por rol, por board y por persona; lo que nadie tiene. Con límite de WIP (`jk board limit KEY N`), un veredicto de carga |
-| `jk team stalled VIEW [--days N]` | Lo `active` que lleva N días o más sin cambiar de categoría, con los días desde la última edición |
-| `jk team blocked VIEW` | Bloqueado (rol, flag o link) y, aparte, lo que espera a un tercero |
-| `jk team flow VIEW [--weeks N]` | Entregas por semana, lead time (mediana y p85, con su n) y edad de lo que está en curso |
-| `jk team digest VIEW --since D [--until D]` | Entregado, descartado y nuevo del período, más lo bloqueado y estancado de hoy |
-| `jk team desk VIEW [--weeks N]` | Boards `helpdesk`: antigüedad de lo abierto, sin asignar, esperando y tiempo de resolución. Sin SLA |
-| `jk team rollup VIEW VIEW …` | Una fila por view: abiertos, bloqueados, estancados, entregados y lead time p85 |
+| `jtk team setup NOMBRE --boards PLATE,UA --group team` | Guarda un view. El equipo es un grupo de Jira (`--group`) o personas (`--people "Ana Gómez" …`); sin equipo, todo lo asignado |
+| `jtk team show NOMBRE` · `jtk team list` | Ver un view y el estado de los perfiles de sus boards · listar los views |
+| `jtk team status VIEW` | Trabajo abierto por rol, por board y por persona; lo que nadie tiene. Con límite de WIP (`jtk board limit KEY N`), un veredicto de carga |
+| `jtk team stalled VIEW [--days N]` | Lo `active` que lleva N días o más sin cambiar de categoría, con los días desde la última edición |
+| `jtk team blocked VIEW` | Bloqueado (rol, flag o link) y, aparte, lo que espera a un tercero |
+| `jtk team flow VIEW [--weeks N]` | Entregas por semana, lead time (mediana y p85, con su n) y edad de lo que está en curso |
+| `jtk team digest VIEW --since D [--until D]` | Entregado, descartado y nuevo del período, más lo bloqueado y estancado de hoy |
+| `jtk team desk VIEW [--weeks N]` | Boards `helpdesk`: antigüedad de lo abierto, sin asignar, esperando y tiempo de resolución. Sin SLA |
+| `jtk team rollup VIEW VIEW …` | Una fila por view: abiertos, bloqueados, estancados, entregados y lead time p85 |
 
 `status` y `desk` aceptan además `--list`: lista los issues que el reporte contó, del más viejo al más nuevo, para pasar de «7 sin asignar» a cuáles son. Se acota con `--unassigned`, `--older-than DÍAS` y `--role todo|active|blocked|waiting|none` (solo junto a `--list`). En `desk`, `--older-than` no cuenta lo que espera a un tercero, igual que los tramos de antigüedad.
 
 Todos aceptan `--json` y `--all`. Cada reporte abre con el view, los boards, el equipo, la ventana y el estado de los
 perfiles; muestra el `n` de cada número; corta las tablas en 20 filas con un `… y N más`; avisa si la búsqueda llegó a su
-tope de 1000 issues; y cierra con **Límites**. Para un 1:1, `jk done|next|blocked --person "X" --view VIEW` mira a una
+tope de 1000 issues; y cierra con **Límites**. Para un 1:1, `jtk done|next|blocked --person "X" --view VIEW` mira a una
 persona dentro de los boards del view.
 
 ### Cambiar varios issues a la vez (con guarda)
@@ -162,23 +162,33 @@ Sirve para pasar de «7 sin asignar» a «asignados». Es en dos pasos, y el seg
 
 | Comando | Qué hace |
 |---|---|
-| `jk plan move VIEW [KEY …] --to ROL` | Arma un plan para mover issues al estado que cumple ese rol. Solo lee Jira y guarda un archivo con las claves, el estado de origen, el de destino y la transición |
-| `jk plan assign VIEW [KEY …] --person "Ana"` | Plan para reasignar. La persona nunca se adivina: si hay dos, lista las dos |
-| `jk plan comment VIEW [KEY …] --text "…"` | Plan para dejar el mismo comentario |
-| `jk plan revert ID` | Plan inverso de uno aplicado; no garantiza deshacer y lo dice |
-| `jk apply ID` | Aplica **exactamente** ese plan. Muestra qué va a hacer y pide escribir `APRUEBO <n>` |
+| `jtk plan move VIEW [KEY …] --to ROL` | Arma un plan para mover issues al estado que cumple ese rol. Solo lee Jira y guarda un archivo con las claves, el estado de origen, el de destino y la transición |
+| `jtk plan assign VIEW [KEY …] --person "Ana"` | Plan para reasignar. La persona nunca se adivina: si hay dos, lista las dos |
+| `jtk plan comment VIEW [KEY …] --text "…"` | Plan para dejar el mismo comentario |
+| `jtk plan revert ID` | Plan inverso de uno aplicado; no garantiza deshacer y lo dice |
+| `jtk apply ID` | Aplica **exactamente** ese plan. Muestra qué va a hacer y pide escribir `APRUEBO <n>` |
 
 Las claves pueden ir solas o combinadas con `--unassigned`, `--older-than DÍAS` y `--role ROL` (los mismos filtros que `--list`). Un plan lleva hasta 25 issues (`--max`, hasta 200); mover a `delivered` o `dropped` exige `--allow-close`.
 
-**`apply` necesita una terminal de verdad**: no funciona desde el chat, ni desde `!` de Claude Code, ni con un `echo APRUEBO 3 | …`. Corrélo en una ventana de terminal aparte. Lo mismo vale ahora para `jk create`, `jk push` y `jk assign` con `--apply`. Si no hay terminal, el comando no escribe nada, imprime la línea para copiar y sale con código 3.
+**`apply` necesita una terminal de verdad**: no funciona desde el chat, ni desde `!` de Claude Code, ni con un `echo APRUEBO 3 | …`. Corrélo en una ventana de terminal aparte. Lo mismo vale ahora para `jtk create`, `jtk push` y `jtk assign` con `--apply`. Si no hay terminal, el comando no escribe nada, imprime la línea para copiar y sale con código 3.
 
-Antes de cada escritura, `apply` vuelve a leer el issue: si alguien lo movió o reasignó después de planificar, lo saltea y lo informa. Reaplicar un plan es seguro (saltea lo ya hecho). Cada escritura queda en `~/.local/state/jk/writes.jsonl`, también las de `jk create|push|assign --apply` (el registro de cada proyecto, `.jira-kanban/jira-writes.jsonl`, sigue como antes). Las líneas de un plan llevan `plan`; las de los comandos viejos, no.
+Antes de cada escritura, `apply` vuelve a leer el issue: si alguien lo movió o reasignó después de planificar, lo saltea y lo informa. Reaplicar un plan es seguro (saltea lo ya hecho). Cada escritura queda en `~/.local/state/jtk/writes.jsonl`, también las de `jtk create|push|assign --apply` (el registro de cada proyecto, `.jira-kanban/jira-writes.jsonl`, sigue como antes). Las líneas de un plan llevan `plan`; las de los comandos viejos, no.
 
 La skill `jira-em-ops` (solo con `./install.sh --with-write`) prepara los planes; **nunca** corre `apply`.
 
 ### Segunda capa: el hook de Claude Code
 
-La guarda `APRUEBO` frena lo accidental y lo inducido desde el chat, `!` o la herramienta Bash, pero **no a un agente que abra un pseudo-terminal y escriba la aprobación**. Para eso, `~/.claude/hooks/git-guardrails.sh` bloquea `jk apply` y cualquier comando que lo combine con `tmux` (`send-keys`, `send`, `new-session`…, y escribir `APRUEBO` en una sesión), `expect`, `pexpect`, `unbuffer`, `socat`, `script` o `pty.`. `jk plan …` pasa. Se verifica con `tools/check-guardrails.sh` (33 casos); el parche está en `tools/git-guardrails-jk-apply.patch` y lo aplica la persona. El hook solo cubre a Claude Code: en Codex y Cursor quedan la guarda y las reglas de `AGENTS.md`.
+La guarda `APRUEBO` frena lo accidental y lo inducido desde el chat, `!` o la herramienta Bash, pero **no a un agente que abra un pseudo-terminal y escriba la aprobación**. Para eso, `~/.claude/hooks/git-guardrails.sh` bloquea `jtk apply` (y el nombre viejo `jk apply`) y cualquier comando que lo combine con `tmux` (`send-keys`, `send`, `new-session`…, y escribir `APRUEBO` en una sesión), `expect`, `pexpect`, `unbuffer`, `socat`, `script` o `pty.`. `jtk plan …` pasa. Se verifica con `tools/check-guardrails.sh` (44 casos). Los parches los aplica la persona, en este orden y uno encima del otro: `tools/git-guardrails-jk-apply.patch` (fase 4, el hook original con `jk`) y después `tools/git-guardrails-jtk.patch` (el renombre: reconoce `jtk` y `jk`), con `patch -N ~/.claude/hooks/git-guardrails.sh < tools/git-guardrails-jtk.patch` (`-N` importa: sin él, correrlo dos veces te ofrece revertirlo). También bloquea `create|push|assign --apply` cuando se los pasa por un pseudo-terminal. El hook solo cubre a Claude Code: en Codex y Cursor quedan la guarda y las reglas de `AGENTS.md`.
+
+### Si venías usando `jk`
+
+El comando se llama `jtk` y el nombre viejo no se conserva. El orden importa, porque el hook tiene que reconocer `jtk` **antes** de que el comando exista donde un agente lo pueda correr: desde que `jtk.py` está en el árbol de este repo, un `jtk apply` mandado por un pseudo-terminal no lo frena un hook que solo conoce `jk`. Por eso el parche va primero, y se puede aplicar ya mismo: sigue bloqueando `jk`. Mientras no mergees e instales, `jk` sigue andando; desde el checkout de la rama deja de andar porque `jk.py` ya no existe.
+
+1. Aplicar el parche del hook (sección anterior), antes de mergear; `tools/check-guardrails.sh` tiene que dar 44/44. Después, mergear esta rama.
+2. Correr `./install.sh` (con `--with-write` si lo usás). Borra `~/.local/bin/jk` solo si era el enlace de este repo, linkea `jtk` y **imprime** los `mv` de tus datos sin ejecutarlos.
+3. Correr esos `mv` vos: `~/.config/jk` pasa a `~/.config/jtk` (perfiles y views) y `~/.local/state/jk` a `~/.local/state/jtk` (planes y registro de escrituras).
+
+Las variables pasan a `JTK_CONFIG_DIR` y `JTK_STATE_DIR`; las viejas ya no se leen y `install.sh` avisa si las tenés exportadas. El registro conserva sus líneas anteriores (`"tool": "jk"`) y un plan aplicado a medias se puede retomar.
 
 ## Perfiles de board
 
@@ -188,18 +198,18 @@ Por eso los reportes no se fían de la categoría: leen un **rol por estado** qu
 
 Roles: `todo`, `active`, `blocked`, `waiting` (frenado por un tercero), `delivered` y `dropped` (cancelado, rechazado,
 no aplica). Varios estados pueden tener el mismo rol (`Finalizado` y `Resuelto` → `delivered`). Los perfiles viven en
-`~/.config/jk/profiles/<KEY>.json` (o en `$JK_CONFIG_DIR`) y no se editan a mano.
+`~/.config/jtk/profiles/<KEY>.json` (o en `$JTK_CONFIG_DIR`) y no se editan a mano.
 
 | Comando | Qué hace |
 |---|---|
-| `jk board setup KEY [--kind flow\|scrum\|helpdesk]` | Lee los estados de Jira, propone un rol por estado y guarda el borrador; correrlo de nuevo no pierde tus decisiones |
-| `jk board set KEY ROL "ESTADO"…` | Asigna un rol por nombre (o `id:<id>` si dos estados se llaman igual); todo o nada |
-| `jk board show KEY` · `jk board check KEY` | Muestra el perfil · lo compara con los estados de Jira ahora |
-| `jk board survey [--type T] [--json]` | Propone roles para todos los proyectos y cuenta qué necesita una decisión; no guarda nada |
+| `jtk board setup KEY [--kind flow\|scrum\|helpdesk]` | Lee los estados de Jira, propone un rol por estado y guarda el borrador; correrlo de nuevo no pierde tus decisiones |
+| `jtk board set KEY ROL "ESTADO"…` | Asigna un rol por nombre (o `id:<id>` si dos estados se llaman igual); todo o nada |
+| `jtk board show KEY` · `jtk board check KEY` | Muestra el perfil · lo compara con los estados de Jira ahora |
+| `jtk board survey [--type T] [--json]` | Propone roles para todos los proyectos y cuenta qué necesita una decisión; no guarda nada |
 
 Salida: `0` listo, `1` entrada rechazada, `2` no se pudo (Jira o disco) y **`3` el perfil tiene estados sin rol**: una
 persona tiene que decidir. Un reporte de un proyecto sin perfil usa la categoría de Jira y lo avisa arriba con `> ⚠`.
-`jk board EPIC` sigue siendo el tablero local de una épica.
+`jtk board EPIC` sigue siendo el tablero local de una épica.
 
 ## Kanban local
 
@@ -214,8 +224,8 @@ persona tiene que decidir. Un reporte de un proyecto sin perfil usa la categorí
 Cada `.md` tiene un front matter (`key`, `kind`, `issuetype`, `status`, `category`, `blocked`, `parent`, `url`),
 el título como `# …` y la descripción debajo.
 
-- **Editar:** cambiá `status`, el `# título` o el cuerpo y corré `jk push EPIC`. Si el mismo campo también cambió en Jira,
-  push lo informa como **conflicto** y no lo pisa: `jk pull`, volvé a aplicar tu cambio y repetí el push.
+- **Editar:** cambiá `status`, el `# título` o el cuerpo y corré `jtk push EPIC`. Si el mismo campo también cambió en Jira,
+  push lo informa como **conflicto** y no lo pisa: `jtk pull`, volvé a aplicar tu cambio y repetí el push.
 - **Subtarea nueva:** creá `…/subtasks/_new-<algo>/subtask.md` con un `# título`; push la crea bajo el padre del folder y
   le pone su clave.
 - **Versionarlo o no** queda a criterio de cada proyecto. Si se versiona, `jira-writes.jsonl` (evidencia local, trae
@@ -225,7 +235,7 @@ el título como `# …` y la descripción debajo.
 
 Los nombres de las columnas y de los estados cambian entre tableros y se traducen (en PLATE conviven `PROCESANDO`, `Review`,
 `Blocked` y `Done`). Por eso `pull` guarda la **categoría** fija que Jira le da a todo estado (`todo`, `in_progress`, `done`)
-y `jk board` agrupa por ella, nunca por el nombre. **Bloqueado** no es una categoría: un issue lo está si su estado figura
+y `jtk board` agrupa por ella, nunca por el nombre. **Bloqueado** no es una categoría: un issue lo está si su estado figura
 en `blocked_statuses` o si tiene marcado el campo *Flagged*. Un issue en *Hecho* sigue contando como hecho aunque tenga
 la bandera.
 

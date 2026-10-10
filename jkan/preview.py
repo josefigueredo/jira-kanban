@@ -1,4 +1,4 @@
-"""A standalone, navigable HTML preview of what `jk create --apply` would create, laid out like a Jira issue view.
+"""A standalone, navigable HTML preview of what `jtk create --apply` would create, laid out like a Jira issue view.
 
 Everything is inline (CSS, SVG icons, a few lines of JS): no network, no external fonts, no Atlassian logo or assets.
 Keys are placeholders (NUEVO-n) in creation order; Jira assigns the real ones on --apply.
@@ -176,7 +176,7 @@ def render(ops: List[dict], conv: dict) -> str:
 <body>
 <header class="top"><span class="app">{GRID} Proyectos <span class="muted">/</span> {e(project)}</span>
   <span class="pill">Vista previa</span><span class="search">Buscar</span></header>
-<div class="banner"><b>Vista previa:</b> nada se creó en Jira. <code>jk create --apply</code> crea estos {len(ops)} issues en
+<div class="banner"><b>Vista previa:</b> nada se creó en Jira. <code>jtk create --apply</code> crea estos {len(ops)} issues en
   {e(project)}, en este orden, con claves reales en lugar de NUEVO-n.</div>
 <div class="shell">
   <aside class="side"><div class="proj"><div class="avatar-p">{e(project[:1])}</div><div><b>{e(project)}</b><span>Épica en preparación</span></div></div>

@@ -125,7 +125,7 @@ class PersistenceTest(unittest.TestCase):
         profile = bp.build("GDNC", shapes.GDNC, None)
         profile["version"] = bp.VERSION + 1
         bp.save(profile)
-        with self.assertRaisesRegex(ValueError, "newer jk"):
+        with self.assertRaisesRegex(ValueError, "newer jtk"):
             bp.load("GDNC")
         self.assertEqual(bp.load_all(), {})
 
@@ -160,7 +160,7 @@ class PersistenceTest(unittest.TestCase):
         self.assertEqual(problems["UA"][0], "bad")
         self.assertIn("not a profile", problems["UA"][1])
         self.assertEqual(problems["PEHD"][0], "newer")
-        self.assertIn("newer jk", problems["PEHD"][1])
+        self.assertIn("newer jtk", problems["PEHD"][1])
 
     def test_the_config_directory_follows_the_environment(self):
         self.assertEqual(bp.config_dir(), self.base)

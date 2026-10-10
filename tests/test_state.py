@@ -79,7 +79,7 @@ class LogTest(unittest.TestCase):
         self.assertTrue(state.log_write({"plan": "p1", "key": "TEAM-1", "result": "ok"}, now=lambda: "T1"))
         self.assertTrue(state.log_write({"plan": "p1", "key": "TEAM-2", "result": "error: boom"}, now=lambda: "T2"))
         lines = (self.base / "writes.jsonl").read_text(encoding="utf-8").splitlines()
-        self.assertEqual(json.loads(lines[0]), {"ts": "T1", "tool": "jk", "plan": "p1", "key": "TEAM-1", "result": "ok"})
+        self.assertEqual(json.loads(lines[0]), {"ts": "T1", "tool": "jtk", "plan": "p1", "key": "TEAM-1", "result": "ok"})
         self.assertEqual(len(lines), 2)
         self.assertRegex(state.utc_now(), r"^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$")
 
@@ -103,8 +103,8 @@ class LogTest(unittest.TestCase):
 
     def test_the_default_location_is_under_the_home_when_the_variable_is_missing(self):
         with mock.patch.dict("os.environ", {}, clear=False) as env:
-            env.pop("JK_STATE_DIR", None)
-            self.assertTrue(re.search(r"\.local/state/jk$", str(state.state_dir())))
+            env.pop("JTK_STATE_DIR", None)
+            self.assertTrue(re.search(r"\.local/state/jtk$", str(state.state_dir())))
 
 
 if __name__ == "__main__":
