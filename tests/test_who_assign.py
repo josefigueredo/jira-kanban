@@ -87,6 +87,22 @@ class AssignTest(unittest.TestCase):
         self.assertEqual(self.jira.writes, [("assign", "PLATE-601", "acc-matias")])
         self.assertIn("assigned 1 issue", out)
 
+    def test_an_issue_already_owned_by_that_person_is_not_written_and_says_so(self):
+        self.jira.issues["PLATE-601"]["assignee"] = "acc-matias"
+        code, out, _ = self.assign("PLATE-601", "Matias Andres Fernandez", "--apply")
+        self.assertEqual(code, 0)
+        self.assertEqual(self.jira.writes, [])
+        self.assertIn("already assigned", out)
+        self.assertNotIn("assigned 1 issue", out)
+
+    def test_only_the_issues_that_change_are_written_and_counted(self):
+        self.jira.issues["PLATE-601"]["assignee"] = "acc-matias"
+        code, out, _ = self.assign(self.epic, "Matias Andres Fernandez", "--tree", "--apply")
+        self.assertEqual(code, 0)
+        self.assertEqual({w[1] for w in self.jira.writes}, {"PLATE-600", "PLATE-602", "PLATE-603"})
+        self.assertIn("assigned 3 issue", out)
+        self.assertIn("PLATE-601", out)
+
     def test_tree_assigns_the_issue_and_everything_under_it(self):
         code, _, _ = self.assign(self.epic, "Matias Andres Fernandez", "--tree", "--apply")
         self.assertEqual(code, 0)

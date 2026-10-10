@@ -90,6 +90,20 @@ def _route(jira, key: str, target_ids: List[str]):
     return options[0], None
 
 
+def _choose_status(profiles: Dict[str, dict], selection: List[dict], skipped: List[dict], to_role: str,
+                   to_status: Optional[str]) -> str:
+    """When the role has several statuses and none was chosen, say which ones, so `--to-status` is not a guess."""
+    if to_status is not None or not any(s["why"] == "ambiguous" for s in skipped):
+        return ""
+    ambiguous = {s["key"] for s in skipped if s["why"] == "ambiguous"}
+    boards = sorted({roles.project_of(i["key"]) for i in selection if i["key"] in ambiguous})
+    parts = []
+    for board in boards:
+        choices = [f"{s['name']} ({s['id']})" for s in profiles[board]["statuses"] if s["role"] == to_role]
+        parts.append(f"{board}: {', '.join(choices)}")
+    return f". The role {to_role} has several statuses; choose one with --to-status ID ({'; '.join(parts)})"
+
+
 def move(jira, view: dict, selection: List[dict], profiles: Dict[str, dict], to_role: str,
          to_status: Optional[str] = None, allow_close: bool = False,
          now: Optional[Callable[[], str]] = None) -> dict:
@@ -118,7 +132,7 @@ def move(jira, view: dict, selection: List[dict], profiles: Dict[str, dict], to_
                           "to": {"id": chosen["to"]["id"], "name": chosen["to"]["name"], "role": to_role},
                           "transition": chosen["id"]})
     if not items:
-        raise Refused("nothing to move: " + _why(skipped))
+        raise Refused("nothing to move: " + _why(skipped) + _choose_status(profiles, selection, skipped, to_role, to_status))
     return _envelope("move", view, {"to_role": to_role, "to_status": to_status, "allow_close": allow_close},
                      items, skipped, now)
 

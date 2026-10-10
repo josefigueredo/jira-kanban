@@ -88,19 +88,26 @@ def _assign(jira, key: str, who: str, tree: bool, apply: bool, confirm: Callable
         print(f"approximate match: {who!r} -> {person['name']} <{person['email'] or 'email hidden'}>; "
               f"check it is who you mean")
     if apply:
-        planned = sync.assign(jira, key, person, tree=tree, apply=False)["issues"]
-        code = _approve(confirm, len(planned), f"assign {len(planned)} issue(s) to {person['name']}", argv)
-        if code is not None:
-            return code
+        planned = sync.assign(jira, key, person, tree=tree, apply=False)
+        pending = [i for i in planned["issues"] if i["key"] not in planned["already"]]
+        if pending:
+            code = _approve(confirm, len(pending), f"assign {len(pending)} issue(s) to {person['name']}", argv)
+            if code is not None:
+                return code
     result = sync.assign(jira, key, person, tree=tree, apply=apply)
     for issue in result["issues"]:
-        print(f"{issue['key']} [{issue['issuetype']}] {issue['summary']} -> {person['name']}")
+        label = f"{issue['key']} [{issue['issuetype']}] {issue['summary']}"
+        if issue["key"] in result["already"]:
+            print(f"{label} already assigned to {person['name']}")
+        else:
+            print(f"{label} -> {person['name']}")
     for error in result["errors"]:
         sys.stderr.write(f"{error}\n")
+    changing = len(result["issues"]) - len(result["already"])
     if not apply:
-        print(f"dry run: nothing written; --apply assigns {len(result['issues'])} issue(s) to {person['name']}")
+        print(f"dry run: nothing written; --apply assigns {changing} issue(s) to {person['name']}")
     else:
-        print(f"assigned {len(result['issues']) - len(result['errors'])} issue(s) to {person['name']}")
+        print(f"assigned {changing - len(result['errors'])} issue(s) to {person['name']}")
     return FINDINGS if result["errors"] else OK
 
 
