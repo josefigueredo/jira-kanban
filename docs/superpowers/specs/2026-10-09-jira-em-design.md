@@ -280,3 +280,20 @@ Medido con `jk board survey` sobre el Jira real el 2026-10-09 (solo lectura).
 | Estados con la categoría de Jira mal puesta | 42 en 38 proyectos |
 
 En promedio sobre todos los proyectos son 1,9 estados a decidir por board (471 / 253), así que seguir 5 boards son unos 9. Es una cuenta, no una medición sobre los boards de un EM real.
+
+## Resultados de la fase 2
+
+Medido con `jk team` sobre el Jira real el 2026-10-09 (solo lectura). Views de prueba: `plataforma` (boards PLATE y UA, grupo `team`, 7 miembros) y `ayuda` (PEHD y CDSP, sin equipo; CDSP con el perfil sin confirmar).
+
+| Medida | Resultado |
+|---|---|
+| `status plataforma`: abiertos | 159 (PLATE 80, UA 79), más 20 epics excluidos a propósito |
+| Cuenta de Jira para la misma consulta | 179 = 159 + 20 (el invariante se cumple) |
+| Sin asignar (PLATE / UA) | 56 / 76 |
+| `stalled` (7 días o más en la categoría) | 10 de 16 en curso |
+| `blocked` / esperando | 3 / 1 |
+| `flow` (4 semanas) | 60 entregados, 0 descartados; por semana 17 · 9 · 14 · 20; lead time mediana 1 d, p85 16 d (n=60) |
+| `digest` desde 2026-10-01 | 26 entregados · 0 descartados · 163 nuevos; hoy 3 bloqueados y 10 estancados |
+| `desk ayuda` (4 semanas) | PEHD: 12 abiertos, 7 sin asignar, 34 resueltos; CDSP: 8 abiertos, 136 resueltos |
+| `rollup plataforma ayuda` (abiertos / bloqueados / estancados / entregados) | 159 / 3 / 10 / 60 y 20 / 0 / 3 / 170 |
+| Búsquedas que llegaron al tope de 1000 issues | ninguna |
