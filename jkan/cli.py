@@ -9,7 +9,8 @@ import sys
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from . import board_cli, board_profile, config, journal, kanban, people, preview, render, roles, standup, stats, sync, window
+from . import (board_cli, board_profile, config, journal, kanban, people, preview, render, roles, standup, stats, sync,
+               team_cli, views, window)
 from .jira import Jira, JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
@@ -147,6 +148,12 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
     if len(argv) > 1 and argv[0] == "board" and argv[1] in board_cli.VERBS:  # `jk board EPIC` stays the local kanban
         here = Path(".").resolve()
         return board_cli.run(argv[1:], lambda: client(here) if client is not _client else _client(here, command="board"))
+    if len(argv) > 1 and argv[0] == "team" and argv[1] in team_cli.VERBS:
+        here = Path(".").resolve()
+        team_conv = config.load_conventions(here)
+        make = lambda: client(here) if client is not _client else _client(here, command="team")  # noqa: E731
+        return team_cli.run(argv[1:], make, team_conv,
+                            today or (lambda: window.today_in(team_conv.get("timezone"))))
     parser = argparse.ArgumentParser(prog="jk", description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("create", "pull", "push", "show", "board"):
