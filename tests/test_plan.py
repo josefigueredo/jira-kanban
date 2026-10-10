@@ -206,5 +206,57 @@ class DescribeTest(Base):
         self.assertNotIn("TEAM-1:", text)
 
 
+ANA = {"id": "acc-ana", "name": "Ana Gómez", "email": "ana@example.com", "score": 1.0, "exact": True}
+
+
+class AssignTest(Base):
+    def test_an_assign_records_who_had_it_and_who_gets_it(self):
+        a = self.put("TEAM-1", "todo")
+        b = self.put("TEAM-2", "todo", fx.BETO)
+        body = plan.assign(self.view, [a, b], ANA, now=NOW)
+        self.assertEqual(body["kind"], "assign")
+        self.assertEqual(body["options"], {"person": {"id": "acc-ana", "name": "Ana Gómez"}})
+        self.assertEqual(body["items"], [
+            {"key": "TEAM-1", "from": None, "to": {"id": "acc-ana", "name": "Ana Gómez"}},
+            {"key": "TEAM-2", "from": {"id": "acc-beto", "name": "Beto Ruiz"}, "to": {"id": "acc-ana", "name": "Ana Gómez"}}])
+
+    def test_who_already_has_it_is_left_out_and_if_all_do_there_is_no_plan(self):
+        a = self.put("TEAM-1", "todo", fx.ANA)
+        b = self.put("TEAM-2", "todo")
+        body = plan.assign(self.view, [a, b], ANA, now=NOW)
+        self.assertEqual([i["key"] for i in body["items"]], ["TEAM-2"])
+        self.assertEqual(body["skipped"], [{"key": "TEAM-1", "why": "already there"}])
+        with self.assertRaisesRegex(plan.Refused, "nothing to assign: TEAM-1: already there"):
+            plan.assign(self.view, [a], ANA, now=NOW)
+
+    def test_the_summary_reads_from_to(self):
+        a = self.put("TEAM-1", "todo")
+        text = plan.describe(dict(plan.assign(self.view, [a], ANA, now=NOW), id="abcdef123456"))
+        self.assertIn("TEAM-1: unassigned -> Ana Gómez", text)
+
+
+class CommentTest(Base):
+    def test_a_comment_keeps_the_text_once_and_one_item_per_issue(self):
+        a, b = self.put("TEAM-1", "todo"), self.put("TEAM-2", "active")
+        body = plan.comment(self.view, [a, b], "  Revisamos esto el jueves.  ", now=NOW)
+        self.assertEqual(body["kind"], "comment")
+        self.assertEqual(body["options"], {"text": "Revisamos esto el jueves."})
+        self.assertEqual(body["items"], [{"key": "TEAM-1"}, {"key": "TEAM-2"}])
+
+    def test_an_empty_or_huge_text_is_refused(self):
+        a = self.put("TEAM-1", "todo")
+        for bad in ("", "   ", "\n\t"):
+            with self.assertRaisesRegex(plan.Refused, "the comment is empty"):
+                plan.comment(self.view, [a], bad, now=NOW)
+        with self.assertRaisesRegex(plan.Refused, "too long"):
+            plan.comment(self.view, [a], "x" * (plan.MAX_TEXT + 1), now=NOW)
+
+    def test_the_summary_shows_the_text_that_will_be_posted(self):
+        a = self.put("TEAM-1", "todo")
+        text = plan.describe(dict(plan.comment(self.view, [a], "hola equipo", now=NOW), id="abcdef123456"))
+        self.assertIn("Comment: hola equipo", text)
+        self.assertIn("TEAM-1", text)
+
+
 if __name__ == "__main__":
     unittest.main()

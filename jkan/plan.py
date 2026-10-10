@@ -123,6 +123,30 @@ def move(jira, view: dict, selection: List[dict], profiles: Dict[str, dict], to_
                      items, skipped, now)
 
 
+def assign(view: dict, selection: List[dict], person: dict, now: Optional[Callable[[], str]] = None) -> dict:
+    target = {"id": person["id"], "name": person["name"]}
+    items, skipped = [], []
+    for issue in selection:
+        owner = issue.get("assignee")
+        if owner and owner["id"] == person["id"]:
+            skipped.append({"key": issue["key"], "why": "already there"})
+        else:
+            items.append({"key": issue["key"], "from": {"id": owner["id"], "name": owner["name"]} if owner else None,
+                          "to": dict(target)})
+    if not items:
+        raise Refused("nothing to assign: " + _why(skipped))
+    return _envelope("assign", view, {"person": target}, items, skipped, now)
+
+
+def comment(view: dict, selection: List[dict], text: str, now: Optional[Callable[[], str]] = None) -> dict:
+    clean = (text or "").strip()
+    if not clean:
+        raise Refused("the comment is empty")
+    if len(clean) > MAX_TEXT:
+        raise Refused(f"the comment is too long ({len(clean)} characters; the limit is {MAX_TEXT})")
+    return _envelope("comment", view, {"text": clean}, [{"key": i["key"]} for i in selection], [], now)
+
+
 def _who(person: Optional[dict]) -> str:
     return person["name"] if person else "unassigned"
 
