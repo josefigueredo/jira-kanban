@@ -53,7 +53,9 @@ def _announce(saved: dict) -> int:
 
 def _plan(args, jira, conv: dict, today) -> int:
     if args.verb == "revert":
-        raise plan.Refused("revert is not available yet")
+        original = state.load_plan(args.id)
+        _, profiles = team_cli.context(original["view"])
+        return _announce(state.save_plan(plan.revert(jira(), original, profiles)))
     view, profiles = team_cli.context(args.view)
     limit = plan.check_max(args.max)
     client = jira()

@@ -147,6 +147,48 @@ def comment(view: dict, selection: List[dict], text: str, now: Optional[Callable
     return _envelope("comment", view, {"text": clean}, [{"key": i["key"]} for i in selection], [], now)
 
 
+def _status_role(profiles: Dict[str, dict], key: str, status_id: str) -> Optional[str]:
+    profile = profiles.get(roles.project_of(key)) or {"statuses": []}
+    return next((s["role"] for s in profile["statuses"] if s["id"] == status_id), None)
+
+
+def revert(jira, original: dict, profiles: Dict[str, dict], now: Optional[Callable[[], str]] = None) -> dict:
+    """The inverse of what the log says `original` wrote. It does not guarantee undoing: an issue that changed since, or a
+    workflow with no way back, is left out and said; comments are never reverted."""
+    view = {"name": original["view"]}
+    items, skipped = [], []
+    wrote = [e for e in state.entries(original["id"]) if e.get("result") == "ok"]
+    if not wrote:
+        raise Refused(f"plan {original['id']} wrote nothing, so there is nothing to revert")
+    for entry in wrote:
+        key = entry["key"]
+        if original["kind"] == "comment":
+            skipped.append({"key": key, "why": "comments are not reverted"})
+            continue
+        snap = jira.snapshot(key)
+        if original["kind"] == "assign":
+            if (snap["assignee"] or {}).get("id") != entry["a"]["id"]:
+                skipped.append({"key": key, "why": "changed"})
+            else:
+                items.append({"key": key, "from": dict(entry["a"]), "to": dict(entry["de"]) if entry["de"] else None})
+            continue
+        if snap["status_id"] != entry["a"]["id"]:
+            skipped.append({"key": key, "why": "changed"})
+            continue
+        chosen, skip = _route(jira, key, [entry["de"]["id"]])
+        if skip:
+            skipped.append(skip)
+            continue
+        items.append({"key": key, "from": {"id": snap["status_id"], "name": snap["status"]},
+                      "to": {"id": chosen["to"]["id"], "name": chosen["to"]["name"],
+                             "role": _status_role(profiles, key, chosen["to"]["id"])},
+                      "transition": chosen["id"]})
+    if not items:
+        raise Refused("nothing to revert: " + _why(skipped))
+    options = {"revert_of": original["id"]}
+    return _envelope(original["kind"], view, options, items, skipped, now)
+
+
 def _who(person: Optional[dict]) -> str:
     return person["name"] if person else "unassigned"
 

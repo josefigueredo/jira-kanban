@@ -4,7 +4,7 @@ import unittest
 
 import plan_fixtures as pf
 import team_fixtures as fx
-from helpers import CONVENTIONS, FakeJira
+from helpers import CONVENTIONS, FakeJira, state_dir
 from jkan import board_profile, plan, state
 
 TODAY = fx.TODAY
@@ -13,6 +13,7 @@ NOW = lambda: "2026-10-10T12:00:00Z"  # noqa: E731
 
 class Base(unittest.TestCase):
     def setUp(self):
+        self.state = state_dir()
         self.jira = FakeJira()
         pf.workflow(self.jira)
         self.profiles = fx.profiles()
@@ -256,6 +257,63 @@ class CommentTest(Base):
         text = plan.describe(dict(plan.comment(self.view, [a], "hola equipo", now=NOW), id="abcdef123456"))
         self.assertIn("Comment: hola equipo", text)
         self.assertIn("TEAM-1", text)
+
+
+class RevertTest(Base):
+    def applied_move(self, keys=("TEAM-1", "TEAM-2")):
+        from jkan import applier
+        selection = [self.put(k, "todo") for k in keys]
+        saved = state.save_plan(plan.move(self.jira, self.view, selection, self.profiles, "active", now=NOW))
+        applier.run(self.jira, saved, lambda n, s, c: None, "jk apply x", now=NOW)
+        self.jira.writes.clear()
+        return saved
+
+    def test_reverting_a_move_goes_back_to_the_status_it_left_by_its_own_transition(self):
+        saved = self.applied_move()
+        body = plan.revert(self.jira, saved, self.profiles, now=NOW)
+        self.assertEqual((body["kind"], body["options"]), ("move", {"revert_of": saved["id"]}))
+        self.assertEqual(body["items"], [
+            {"key": k, "from": {"id": "2", "name": "En curso"}, "to": {"id": "1", "name": "Backlog", "role": "todo"},
+             "transition": "2>1"} for k in ("TEAM-1", "TEAM-2")])
+        self.assertEqual(self.jira.writes, [])
+
+    def test_an_issue_that_moved_on_since_is_left_out(self):
+        saved = self.applied_move()
+        self.jira.board["TEAM-1"].update(status_id="5", status="Done")
+        body = plan.revert(self.jira, saved, self.profiles, now=NOW)
+        self.assertEqual([i["key"] for i in body["items"]], ["TEAM-2"])
+        self.assertEqual(body["skipped"], [{"key": "TEAM-1", "why": "changed"}])
+
+    def test_a_workflow_without_a_way_back_is_marked(self):
+        saved = self.applied_move(("TEAM-1",))
+        self.jira.workflow["2"] = []
+        with self.assertRaisesRegex(plan.Refused, "TEAM-1: no path"):
+            plan.revert(self.jira, saved, self.profiles, now=NOW)
+
+    def test_reverting_an_assign_goes_back_to_who_had_it_including_nobody(self):
+        from jkan import applier
+        selection = [self.put("TEAM-1", "todo"), self.put("TEAM-2", "todo", fx.BETO)]
+        saved = state.save_plan(plan.assign(self.view, selection, ANA, now=NOW))
+        applier.run(self.jira, saved, lambda n, s, c: None, "jk apply x", now=NOW)
+        body = plan.revert(self.jira, saved, self.profiles, now=NOW)
+        self.assertEqual(body["kind"], "assign")
+        self.assertEqual(body["items"], [
+            {"key": "TEAM-1", "from": {"id": "acc-ana", "name": "Ana Gómez"}, "to": None},
+            {"key": "TEAM-2", "from": {"id": "acc-ana", "name": "Ana Gómez"}, "to": {"id": "acc-beto", "name": "Beto Ruiz"}}])
+        self.assertIn("TEAM-1: Ana Gómez -> unassigned", plan.describe(dict(body, id="abcdef123456")))
+
+    def test_comments_cannot_be_reverted_and_the_plan_says_so(self):
+        from jkan import applier
+        saved = state.save_plan(plan.comment(self.view, [self.put("TEAM-1", "todo")], "hola", now=NOW))
+        applier.run(self.jira, saved, lambda n, s, c: None, "jk apply x", now=NOW)
+        with self.assertRaisesRegex(plan.Refused, "TEAM-1: comments are not reverted"):
+            plan.revert(self.jira, saved, self.profiles, now=NOW)
+
+    def test_a_plan_that_wrote_nothing_has_nothing_to_revert(self):
+        selection = [self.put("TEAM-1", "todo")]
+        saved = state.save_plan(plan.move(self.jira, self.view, selection, self.profiles, "active", now=NOW))
+        with self.assertRaisesRegex(plan.Refused, "wrote nothing"):
+            plan.revert(self.jira, saved, self.profiles, now=NOW)
 
 
 if __name__ == "__main__":

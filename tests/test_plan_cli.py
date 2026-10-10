@@ -221,5 +221,36 @@ class ApplyTest(Base):
         self.assertEqual(code, 0)
 
 
+class RevertCliTest(Base):
+    def test_revert_plans_the_inverse_of_an_applied_plan_and_it_needs_its_own_approval(self):
+        self.put("TEAM-1", "todo")
+        self.serve()
+        _, out, _ = run(["plan", "move", "plataforma", "TEAM-1", "--to", "active"], self.jira)
+        first = plan_id(out)
+        run(["apply", first], self.jira)
+        self.jira.writes.clear()
+        code, out, _ = run(["plan", "revert", first], self.jira)
+        self.assertEqual(code, 0)
+        second = plan_id(out)
+        self.assertNotEqual(first, second)
+        self.assertIn("TEAM-1: En curso -> Backlog", out)
+        self.assertEqual(self.jira.writes, [])
+        asked = []
+        run(["apply", second], self.jira, confirm=lambda n, s, c: asked.append((n, c)))
+        self.assertEqual(asked, [(1, f"jk apply {second}")])
+        self.assertEqual(self.jira.writes, [("transition_id", "TEAM-1", "2>1")])
+
+    def test_reverting_a_plan_that_does_not_exist_or_wrote_nothing_is_refused(self):
+        code, _, err = run(["plan", "revert", "0" * 12], self.jira)
+        self.assertEqual(code, 1)
+        self.assertIn("no plan", err)
+        self.put("TEAM-1", "todo")
+        self.serve()
+        _, out, _ = run(["plan", "move", "plataforma", "TEAM-1", "--to", "active"], self.jira)
+        code, _, err = run(["plan", "revert", plan_id(out)], self.jira)
+        self.assertEqual(code, 1)
+        self.assertIn("wrote nothing", err)
+
+
 if __name__ == "__main__":
     unittest.main()
