@@ -35,7 +35,7 @@ Medido el 2026-10-09 con las credenciales de la persona que escribe la spec, sol
 | SLA | 0 de 43 service desks con datos en `Time to resolution` (42 sin datos, 1 error de JQL); `request/CDSP-2327/sla` devolvió lista vacía. Hay campos de SLA propios (`DG-SLA-GENERAL`, `DPO-SLA`) |
 | Equipo | `assignee in membersOf("team")` funciona; el grupo tiene 7 miembros |
 | Transiciones | `UA-438` ofrece **dos** transiciones a "In Progress" (ids 21 y 3). `CDSP-2327` solo ofrece `En curso` y `Finalizada` (no global). En `PLATE`, `UA` y `CDSP` ninguna transición de la muestra exigía campos (`PDM` no tenía issue abierto) |
-| `jk` hoy | Acepta **como máximo un** proyecto (`--jira-project`; sin él no filtra por proyecto, `jkan/queries.py:24-29`), no usa `/rest/agile` ni `/rest/servicedeskapi`, elige transiciones por **nombre** (`jkan/jira.py:208-216`) y escribe su bitácora en `./.jira-kanban/` del directorio actual (`jkan/journal.py:24`) |
+| `jk` hoy | Acepta **como máximo un** proyecto (`--jira-project`; sin él no filtra por proyecto, `jkan/queries.py:26-34`, `_scope`, que desde la fase 2 acepta también la lista de un view), no usa `/rest/agile` ni `/rest/servicedeskapi`, elige transiciones por **nombre** (`jkan/jira.py:223-256`) y escribe su bitácora en `./.jira-kanban/` del directorio actual (`jkan/journal.py:28`) |
 | Distribución | Cinco repos independientes en `josefigueredo`; se instalan con `git clone` y `./install.sh` (symlinks), solo biblioteca estándar. `arq-review/arqlib/jira.py` es un segundo cliente de Jira que ya divergió del de `jk` |
 
 Inferencia, a verificar antes de depender de ella:

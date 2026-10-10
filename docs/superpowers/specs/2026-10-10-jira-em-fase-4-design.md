@@ -59,7 +59,7 @@ propone el texto en el reporte final.
 ## 3. Bitácora común
 
 Hay dos registros: el global (`~/.local/state/jk/writes.jsonl`, `tool: "jk"`, lo escribe `apply`) y el del proyecto
-(`./.jira-kanban/jira-writes.jsonl`, `tool: "jira-kanban"`, mismo formato que el de WayOfWork; `jkan/journal.py:24`, lo
+(`./.jira-kanban/jira-writes.jsonl`, `tool: "jira-kanban"`, mismo formato que el de WayOfWork; `jkan/journal.py:28`, lo
 escriben `create|push|assign`). Decisión: **el del proyecto no cambia** (WayOfWork y las personas lo usan) y los tres
 comandos viejos escriben **también** en el global.
 

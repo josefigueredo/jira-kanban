@@ -18,9 +18,9 @@ con `--apply`, que corre el usuario.
 
 Medido en el código (commit `f324e58`):
 
-- El espejo local no sirve para (1) ni (4): `jkan/kanban.py:15` guarda `key, kind, issuetype, status, category, blocked,
+- El espejo local no sirve para (1) ni (4): `jkan/kanban.py:14` guarda `key, kind, issuetype, status, category, blocked,
   parent, url`, sin fechas ni asignado, a propósito (un `pull` sin cambios deja los archivos idénticos).
-- `jkan/jira.py:98-108` (`get`) trae summary, status, category y flagged. No trae `resolutiondate`, `duedate`,
+- `jkan/jira.py:110-119` (`get`) trae summary, status, category y flagged. No trae `resolutiondate`, `duedate`,
   `assignee`, `priority` ni `issuelinks`.
 - El espejo solo tiene las épicas con `jk pull` (hoy PLATE-520, 539, 553, 582, 611).
 - `jira-writes.jsonl` registra lo que escribió `jk`, no lo que hizo la persona.
@@ -40,7 +40,7 @@ Descartado: extender `jira-kanban` (mezcla lectura y escritura) y una skill con 
 
 ## Comandos
 
-Todos leen Jira en vivo con JQL (`POST /rest/api/3/search/jql`, ya usado en `jira.py:114`). Opciones comunes:
+Todos leen Jira en vivo con JQL (`POST /rest/api/3/search/jql`, ya usado en `jira.py:129` y `:206`). Opciones comunes:
 `--person "<nombre|email|accountId>"` (por defecto, quien tiene las credenciales), `--jira-project KEY` (opcional),
 `--json`.
 
@@ -133,7 +133,7 @@ regla de nunca reemplazar un directorio real. `standup/SKILL.md` invoca el mismo
   inferencia y se rotula así.
 - "Sus épicas" se define por los issues de la persona y las épicas que ella posee; no cubre épicas donde solo
   participa otra gente.
-- Paginación: `jira.py:114` usa `maxResults: 100`; los comandos nuevos paginan hasta agotar resultados.
+- Paginación: `jira.py:126` y `:203` usan `maxResults: 100`; los comandos nuevos paginan hasta agotar resultados.
 
 ## Pruebas
 

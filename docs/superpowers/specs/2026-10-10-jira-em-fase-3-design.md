@@ -20,8 +20,8 @@ Lo que no cambia: el push y toda escritura a Jira los hace la persona; el modelo
 | `Jira.transition(key, status)` elige la transición por **nombre** del estado destino; el spec exige **id** | `jkan/jira.py:248` |
 | No existe una operación de comentar, ni una de leer solo el estado y el asignado de un issue | `jkan/jira.py` |
 | Los escritores viejos reciben `apply` y escriben en la misma llamada: `sync.create`, `sync.push`, `sync.assign` | `jkan/sync.py:130`, `:240`, `:326` |
-| `--apply` de `create`, `push` y `assign` se declara en el parser | `jkan/cli.py:171`, `:187` |
-| La bitácora actual es por proyecto: `./.jira-kanban/jira-writes.jsonl` | `jkan/journal.py:24` |
+| `--apply` de `create`, `push` y `assign` se declara en el parser | `jkan/cli.py:198`, `:214` |
+| La bitácora actual es por proyecto: `./.jira-kanban/jira-writes.jsonl` | `jkan/journal.py:28` |
 | El directorio de configuración se resuelve con `$JK_CONFIG_DIR` o `~/.config/jk` | `jkan/board_profile.py:33` |
 | Bajo `!` no hay terminal: `test -t 0` dio «no» el 2026-10-10 | medido |
 
@@ -122,7 +122,7 @@ para ese plan.
 
 `<state>/writes.jsonl`, una línea por escritura: `ts`, `tool`, `command`, `plan`, `key`, `action`
 (`move|assign|comment`), `de`, `a`, `result` (`ok` o `error: …`). Los comandos viejos siguen con su bitácora por
-proyecto (`jkan/journal.py:24`); unificarlas es de la fase 4.
+proyecto (`jkan/journal.py:28`); unificarlas es de la fase 4.
 
 ### Revertir
 
