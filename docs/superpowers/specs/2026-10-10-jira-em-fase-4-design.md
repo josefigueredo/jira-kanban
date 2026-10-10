@@ -35,7 +35,7 @@ mencione el comando no se bloquee:
   `jk plan …`, `jk team …` y el resto pasan: planificar solo lee.
 - **R2.** Un comando que combine `jk apply` / `jk.py apply` con una herramienta que da un pseudo-terminal (`tmux`
   en sus formas `send-keys`, `send`, `new-session`…, `expect`, `pexpect`, `unbuffer`, `script`, `pty.`, `socat`) se bloquea
-  aunque `jk apply` no esté al inicio, y también escribir `APRUEBO` con `tmux send` (el rodeo en dos pasos) se bloquea aunque `jk apply` no esté al inicio. Es el
+  aunque `jk apply` no esté al inicio, igual que escribir `APRUEBO` con `tmux send` (el rodeo en dos pasos). Es el
   rodeo que la guarda no puede ver. Falso positivo asumido: un mensaje de commit que nombre las dos cosas a la vez.
 - El mensaje de bloqueo usa el texto existente («No tenés autoridad… lo corre él con `!`»), con el matiz de que `jk
   apply` **no funciona bajo `!`** (no hay TTY, medido en la fase 3): se corre en una ventana de terminal aparte.
