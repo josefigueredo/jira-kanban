@@ -17,7 +17,7 @@ sin caja de texto); la ventana muestra el detalle de lo que se va a hacer, como 
 2. El agente corre `jtk plan …` (solo lee) y muestra el plan en el chat; después corre `jtk apply <id>`.
 3. Aparece una ventana del sistema con el detalle: título del plan, cantidad, y una fila por issue con clave, título y
    el cambio (`sin asignar → Pepito Pérez`, `Backlog → PROCESANDO`, el texto del comentario). Botones: **Cancelar**
-   (predeterminado; Escape y Return lo eligen) y **Apruebo 2**, que solo responde a un clic.
+   (el botón predeterminado, resaltado; Escape lo elige y Return no aprueba nada) y **Apruebo 2**, que solo responde a un clic.
 4. Si cancela, cierra o pasan 100 s, no se escribe nada y el comando sale con un mensaje claro.
 
 ## Decisiones
@@ -32,7 +32,7 @@ sin caja de texto); la ventana muestra el detalle de lo que se va a hacer, como 
    primero y con Escape, el botón de aprobar con `keyEquivalent` vacío, ventana flotante) y `approval.py:21` (timeout de
    100 s porque Cursor corta una herramienta inactiva a los 120 s, medido el 2026-10-07). Se copian, no se importan:
    cada repo es independiente.
-3. **Botones.** Primero `Cancelar` (el predeterminado de `NSAlert`, y Escape), segundo `Apruebo <n>` sin tecla
+3. **Botones.** Primero `Cancelar` (resaltado como predeterminado, con Escape; Return no hace nada, como en pbmcp), segundo `Apruebo <n>` sin tecla
    equivalente: aprobar exige un clic. No hay caja de texto.
 4. **Detalle.** Un módulo `jkan/approval.py` arma un HTML con la misma paleta de chips que pbmcp: encabezado (tipo de
    plan y vista), una fila por cambio y, si el plan dejó issues afuera, la sección «Quedan afuera» con el motivo. La
@@ -75,7 +75,7 @@ sin caja de texto); la ventana muestra el detalle de lo que se va a hacer, como 
 - Hook: casos nuevos en `tools/check-guardrails.sh` (apply solo → pasa; apply con tmux/expect/script → bloquea;
   `osascript` con `System Events` o `cliclick` junto a apply → bloquea).
 - **Aceptación manual con el usuario en Cursor** (no se puede automatizar, como en pbmcp): la ventana aparece al
-  frente, Escape y Return cancelan, solo el clic aprueba, el timeout cancela, se ve bien en modo oscuro.
+  frente, Escape cancela, Return no aprueba, solo el clic aprueba, el timeout cancela, se ve bien en modo oscuro.
 
 ## Riesgos y límites
 
