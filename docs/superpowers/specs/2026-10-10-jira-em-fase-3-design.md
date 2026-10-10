@@ -224,7 +224,13 @@ TDD, en `python3` y `/usr/bin/python3` (3.9), con Jira falso. Casos obligatorios
     escrito no aprueba. La vía vieja `assign … --apply` en la terminal pide `APRUEBO 1` y asigna.
   - **No probado a propósito:** que la herramienta Bash del agente se niegue a correr un apply (paso 2.4); lo cubre
     `tools/check-guardrails.sh` (44/44) y nadie pidió forzarlo.
-  - **Hallazgos menores (diferidos):** `plan move --to active` con un rol de dos estados dice solo
-    `nothing to move: …: ambiguous`, sin sugerir `--to-status`; no hay forma de desasignar con un plan (`plan assign`
-    exige `--person`; `Jira.assign(key, None)` no llega a ningún comando); el comando viejo `assign … --apply` dice
-    `assigned 1 issue(s)` aunque el issue ya fuera de esa persona.
+  - **Desasignar, con Jira real:** un `plan revert` del plan de asignar (`e122c77a7ffc`) dio el plan `b41f89e6b8e7`
+    (`PLATE-666` y `PLATE-667`: Jose Ramon Figueredo → sin dueño). Aplicado desde la terminal el 2026-10-10 a las
+    21:46 UTC: Jira dejó ambas con `assignee: null` (estando en Done), y el registro tiene dos líneas `ok` con
+    `de: <persona>` y `a: null`. Una segunda corrida del mismo plan no escribió nada (`already applied`). Esto cierra
+    la duda de `Jira.assign(key, None)`: llega a Jira a través del revert, que es la única vía (no hay un
+    `plan assign` que desasigne).
+  - **Hallazgos menores:** `plan move --to active` con un rol de dos estados decía solo `nothing to move: …: ambiguous`
+    (arreglado: ahora lista los estados y `--to-status`); el comando viejo `assign … --apply` decía `assigned 1
+    issue(s)` aunque el issue ya fuera de esa persona (arreglado: lo saltea y lo informa). Diferido: no existe un
+    `plan assign` directo para quitar dueño; solo se llega con un revert.
