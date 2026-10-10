@@ -1,0 +1,58 @@
+{
+  "epic": {
+    "summary": "[SANDBOX fase 3] borrar al terminar: prueba real de jtk plan/apply",
+    "why": "Cerrar la fase 3 de jira-em con una prueba real de escritura con guarda, antes de usarla sobre tickets del equipo.",
+    "what": "Una épica con 6 tareas descartables sobre las que se aplican planes move, assign y comment.",
+    "done_when": "Se registró el resultado de la prueba en el spec de la fase 3 y se cerró y borró la épica con sus tareas."
+  },
+  "items": [
+    {
+      "type": "task",
+      "area": "QA",
+      "summary": "[SANDBOX fase 3] tarea 1: descartable",
+      "why": "Probar a mano la escritura con guarda de jtk (fase 3) sobre un issue que se puede romper.",
+      "what": "Tarea 1 de prueba. No hace nada; solo existe para que un plan de jtk la mueva, la asigne o la comente.",
+      "done_when": "Se probó el plan que la incluye y la épica se cerró y se borró."
+    },
+    {
+      "type": "task",
+      "area": "QA",
+      "summary": "[SANDBOX fase 3] tarea 2: descartable",
+      "why": "Probar a mano la escritura con guarda de jtk (fase 3) sobre un issue que se puede romper.",
+      "what": "Tarea 2 de prueba. No hace nada; solo existe para que un plan de jtk la mueva, la asigne o la comente.",
+      "done_when": "Se probó el plan que la incluye y la épica se cerró y se borró."
+    },
+    {
+      "type": "task",
+      "area": "QA",
+      "summary": "[SANDBOX fase 3] tarea 3: descartable",
+      "why": "Probar a mano la escritura con guarda de jtk (fase 3) sobre un issue que se puede romper.",
+      "what": "Tarea 3 de prueba. No hace nada; solo existe para que un plan de jtk la mueva, la asigne o la comente.",
+      "done_when": "Se probó el plan que la incluye y la épica se cerró y se borró."
+    },
+    {
+      "type": "task",
+      "area": "QA",
+      "summary": "[SANDBOX fase 3] tarea 4: descartable",
+      "why": "Probar a mano la escritura con guarda de jtk (fase 3) sobre un issue que se puede romper.",
+      "what": "Tarea 4 de prueba. No hace nada; solo existe para que un plan de jtk la mueva, la asigne o la comente.",
+      "done_when": "Se probó el plan que la incluye y la épica se cerró y se borró."
+    },
+    {
+      "type": "task",
+      "area": "QA",
+      "summary": "[SANDBOX fase 3] tarea 5: descartable",
+      "why": "Probar a mano la escritura con guarda de jtk (fase 3) sobre un issue que se puede romper.",
+      "what": "Tarea 5 de prueba. No hace nada; solo existe para que un plan de jtk la mueva, la asigne o la comente.",
+      "done_when": "Se probó el plan que la incluye y la épica se cerró y se borró."
+    },
+    {
+      "type": "task",
+      "area": "QA",
+      "summary": "[SANDBOX fase 3] tarea 6: descartable",
+      "why": "Probar a mano la escritura con guarda de jtk (fase 3) sobre un issue que se puede romper.",
+      "what": "Tarea 6 de prueba. No hace nada; solo existe para que un plan de jtk la mueva, la asigne o la comente.",
+      "done_when": "Se probó el plan que la incluye y la épica se cerró y se borró."
+    }
+  ]
+}
