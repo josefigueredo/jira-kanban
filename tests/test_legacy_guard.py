@@ -4,7 +4,9 @@ import contextlib
 import functools
 import io
 import json
+import types
 import unittest
+from pathlib import Path
 
 from helpers import FakeJira, epic_with_children, make_project
 from jkan import cli, guard
@@ -139,6 +141,30 @@ class PushTest(unittest.TestCase):
         [row] = asked.calls[0][1].rows
         self.assertEqual(row[0], "PLATE-603")
         self.assertIn("Backlog -> Done", row[2])
+
+    def test_a_push_that_creates_issues_reaches_the_real_window_with_text_rows(self):
+        from jkan import approval
+        seen = []
+
+        def runner(argv):
+            seen.append(Path(argv[4]).read_text(encoding="utf-8"))
+            return types.SimpleNamespace(returncode=0, stdout="approved")
+
+        new = self.project / ".jira-kanban" / self.key / "tasks" / "_new-docs" / "task.md"
+        new.parent.mkdir(parents=True)
+        new.write_text("# [FE] Docs & más\n\nPor qué: no hay guía.\n\nQué: un README.\n\nHecho cuando: se publica.\n",
+                       encoding="utf-8")
+
+        class NoTty:
+            def isatty(self):
+                return False
+
+        window = approval.DialogApprover(runner=runner, platform="darwin")
+        confirm = functools.partial(guard.confirm, streams=(NoTty(),) * 3, dialog=window)
+        code, _, _ = run(self.args("--apply", "--assign-open"), self.jira, confirm)
+        self.assertEqual(code, 0)
+        self.assertIn("Docs &amp; más", seen[0])
+        self.assertTrue([w for w in self.jira.writes if w[0] == "create"])
 
     def test_without_approval_nothing_is_pushed(self):
         self.edit()

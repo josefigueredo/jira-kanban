@@ -24,6 +24,10 @@ _CSS = ("body{font:13px -apple-system,Helvetica,sans-serif;color:#172B4D;margin:
         ".k{font-weight:600;white-space:nowrap}.c{color:#42526E}.out{color:#974F0C;margin-top:12px}.t{color:#42526E}")
 
 
+class Unavailable(Exception):
+    """The window could not be shown (osascript failed or is missing): nobody was asked."""
+
+
 class Summary(str):
     """The text the terminal shows, plus the heading and rows the window shows. A plain string works everywhere a
     Summary does. (`heading`, not `title`: str already has a title() method.)"""
@@ -85,8 +89,12 @@ class DialogApprover:
             argv = [self._osascript, "-l", "JavaScript", str(ALERT_JS), path, title, _INFO, f"Apruebo {n}"]
             try:
                 done = self._run(argv)
-            except (OSError, subprocess.TimeoutExpired):
-                return False
-            return done.returncode == 0 and (done.stdout or "").strip() == "approved"
+            except subprocess.TimeoutExpired:
+                return False  # the window was up and nobody clicked
+            except OSError as exc:
+                raise Unavailable(f"the approval window could not start ({exc})") from None
+            if done.returncode != 0:
+                raise Unavailable(f"the approval window failed (osascript exit {done.returncode})")
+            return (done.stdout or "").strip() == "approved"
         finally:
             Path(path).unlink(missing_ok=True)  # missing_ok exists since 3.8, so it works on 3.9

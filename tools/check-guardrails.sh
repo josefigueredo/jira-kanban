@@ -37,7 +37,13 @@ check 2 "osascript -e 'tell application \"System Events\" to click button \"Apru
 check 2 'cliclick c:100,100; jtk apply abc123def456'
 check 2 "osascript -e 'tell application \"System Events\" to keystroke \"a\"'; jtk assign PLATE-1 Ana --apply"
 check 2 "peekaboo click --on Apruebo && jtk apply abc123def456"
+check 2 "osascript -e 'tell application \"System Events\" to click button \"Apruebo 2\" of window 1 of process \"osascript\"'"
+check 2 "osascript -e 'tell application \"System Events\" to keystroke \" \"'"
+check 2 "osascript -e 'tell application \"System Events\" to perform action \"AXPress\" of button 1'"
+check 2 'cliclick c:600,500'
+check 2 'peekaboo click --on Apruebo'
 check 0 "osascript -e 'display notification \"hola\"'"
+check 0 "osascript -e 'tell application \"Finder\" to get name of startup disk'"
 # blocked: a pseudo-terminal typing the approval for it
 check 2 "tmux send-keys 'jtk apply abc123def456' Enter"
 check 2 "expect -c 'spawn jtk apply abc123def456'"

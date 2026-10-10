@@ -25,15 +25,16 @@
  
  # Rodeo que la guarda APRUEBO no ve: un pseudo-terminal que escribe la aprobación (tmux send-keys, expect, script, pty...).
  # Va aunque `jk apply` no esté al inicio del comando. Falso positivo asumido: un mensaje que nombre las dos cosas a la vez.
-@@ -73,6 +68,11 @@
+@@ -73,6 +68,12 @@
  if coincide "$APLICA_ESCRIBE" && coincide "$PTY"; then
    bloquear_terminal "jtk create / push / assign con --apply a través de un pseudo-terminal salta la aprobación de una persona"
  fi
 +# Rodeo de la ventana: mandarle clics o teclas (osascript con System Events, cliclick, peekaboo) para «aprobar» por la persona.
-+UI='(osascript[^;&|]*(System Events|click|keystroke|key code)|(^|[^[:alnum:]_])(cliclick|peekaboo)([[:space:]]|$))'
-+if { coincide "$APLICA" || coincide "$APLICA_ESCRIBE"; } && coincide "$UI"; then
-+  bloquear_terminal "jtk apply junto a clics o teclas automáticos salta la aprobación de una persona"
-+fi
++# Va SIEMPRE, no solo junto a `jtk apply`: se puede lanzar el apply en un comando y apretar el botón en el siguiente.
++# Es una segunda capa (no ve scripts en archivos, Quartz, pyautogui...); la defensa de fondo es no darle permiso de
++# accesibilidad a la herramienta que corre al agente.
++UI='(osascript[^;&|]*(System Events|click|keystroke|key code|AXPress|perform action)|(^|[^[:alnum:]_])(cliclick|peekaboo)([[:space:]]|$))'
++coincide "$UI" && bloquear "automatizar clics o teclas sobre la ventana de aprobación salta la aprobación de una persona"
  # La otra mitad del mismo rodeo, en dos pasos: abrir la sesión por un lado y escribir la aprobación por el otro.
  coincide "tmux[[:space:]]+send(-keys)?[[:space:]].*APRUEBO" \
    && bloquear_terminal "escribir APRUEBO en una sesión tmux salta la aprobación de una persona"

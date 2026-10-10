@@ -1,8 +1,10 @@
 """The one gate every write to Jira passes through: a person at a real terminal types «APRUEBO <n>».
 
-The script enforces it, not the model's discipline: with no terminal it writes nothing and prints the command for the
-person to run in their own window. The answer is read from /dev/tty (never stdin), once, and must match exactly. There
-is no flag, environment variable or config that skips it; tests replace it only through cli.main(confirm=...)."""
+The script enforces it, not the model's discipline. At a terminal the answer is typed and read from /dev/tty (never
+stdin), once, and must match exactly. With no terminal, on macOS, a native window lists the changes and a person clicks
+«Apruebo <n>» (jkan/approval.py); if no window can be shown either, it writes nothing and prints the command for the
+person to run in a terminal. There is no flag, environment variable or config that skips it; tests replace it only
+through cli.main(confirm=...) or the `dialog`/`open_tty` parameters."""
 from __future__ import annotations
 
 import sys
@@ -73,7 +75,11 @@ def _via_window(n: int, summary: str, command: str, dialog) -> None:
     dialog = dialog if dialog is not None else _default_dialog()
     if not dialog.available():
         raise NotApproved(_needs_terminal(command))
-    if not dialog.approve(summary, n):
+    try:
+        approved = dialog.approve(summary, n)
+    except approval.Unavailable:
+        raise NotApproved(_needs_terminal(command)) from None
+    if not approved:
         raise NotApproved("not approved in the window (cancelled, closed or timed out); nothing was written. "
                           "Do not run it again unless the person asks.")
 

@@ -48,7 +48,8 @@ def _parser() -> argparse.ArgumentParser:
 def _announce(saved: dict) -> int:
     print(plan.describe(saved))
     print(f"\nPlan {saved['id']} saved in {state.plan_path(saved['id'])}. Nothing was written to Jira.\n"
-          f"To apply it, run this in your own terminal (it asks for your approval there):\n  jtk apply {saved['id']}")
+          f"To apply it, run: jtk apply {saved['id']}\n(a window shows the changes and a person clicks Apruebo; with no window, "
+          f"it asks for your approval in a terminal)")
     return OK
 
 

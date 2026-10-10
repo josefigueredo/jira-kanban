@@ -83,3 +83,21 @@ sin caja de texto); la ventana muestra el detalle de lo que se va a hacer, como 
   alguna máquina falla, el timeout cancela sin escribir.
 - El timeout de 100 s significa que un plan largo de revisar vence: se vuelve a pedir `apply`.
 - Hasta que el usuario aplique el parche nuevo del hook, el agente sigue bloqueado y todo funciona como hoy.
+
+## Resultados de la implementación (revisión final)
+
+- Suite: 666 tests en `python3` y en `/usr/bin/python3` (3.9). La suite nunca abre una ventana real: `tests/helpers.py`
+  reemplaza `guard._default_dialog` por una ventana nula.
+- Hook: `tools/check-guardrails.sh` = 56 casos; contra el hook actual del usuario 40/56, contra una copia con
+  `git-guardrails-dialog.patch` 56/56. El hook real no se tocó.
+- Revisión final (`fable`), arreglada en una pasada con test en rojo antes:
+  - `jtk push --apply` con issues nuevos fallaba antes de mostrar la ventana (`Path` en vez de texto en una fila).
+  - `defaultButtonCell` en `alert.js` le quitaba Escape a Cancelar; se sacó (pbmcp no lo usa).
+  - Una ventana que no puede abrirse (`osascript` falla) ya no se informa como «cancelada»: pide la terminal.
+  - El hook bloquea siempre los clics y teclas automáticos, no solo junto a `apply` (el rodeo en dos pasos estaba abierto).
+  - Se sacó un `cli.py.bak` que se coló en un commit, y se actualizaron los textos viejos (`jtk plan` y la guarda).
+- Límites que quedan dichos: el hook no ve scripts en archivos, `Quartz` ni `pyautogui`; un agente con permisos de
+  accesibilidad podría hacer clic; la prueba real de la ventana (al frente, Escape, Return, tiempo) es manual:
+  `docs/superpowers/acceptance/aprobacion-con-dialogo.md`.
+- Menores diferidos: `render_html` recibe `n` y no lo usa; el «100 s» del texto de la ventana está repetido en vez de salir
+  de `TIMEOUT`; falsos positivos del hook ante un mensaje de commit que nombre `osascript … click` y `jtk apply`.

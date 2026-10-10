@@ -323,7 +323,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
                 planned = sync.push(jira, project, args.epic, apply=False, conv=conv, assign_open=args.assign_open)
                 n = len(planned["changes"]) + len(planned["new"])
                 rows = [(c["key"], "", f"{c['field']}: {_short(c['from'])} -> {_short(c['to'])}") for c in planned["changes"]]
-                rows += [(n_["path"], n_["summary"], "create") for n_ in planned["new"]]
+                rows += [(str(n_["path"]), n_["summary"], "create") for n_ in planned["new"]]
                 code = _approve(confirm, n, approval.Summary(f"push {n} write(s) to {args.epic}", f"Subir cambios a {args.epic}", rows), argv)
                 if code is not None:
                     return code

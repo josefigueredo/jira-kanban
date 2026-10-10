@@ -63,11 +63,17 @@ class ApproveTest(unittest.TestCase):
     def test_only_a_clean_exit_with_approved_counts(self):
         self.assertTrue(approver().approve(SUMMARY, 2))
 
-    def test_everything_else_is_a_refusal(self):
-        for result in (Done(0, "cancelled"), Done(0, ""), Done(1, "approved"), Done(0, "approved extra"), Done(2, "")):
+    def test_a_person_who_did_not_click_approve_is_a_refusal(self):
+        for result in (Done(0, "cancelled"), Done(0, ""), Done(0, "approved extra")):
             self.assertFalse(approver(result).approve(SUMMARY, 2), result.stdout)
-        self.assertFalse(approver(boom=OSError("no osascript")).approve(SUMMARY, 2))
         self.assertFalse(approver(boom=subprocess.TimeoutExpired("osascript", 100)).approve(SUMMARY, 2))
+
+    def test_a_window_that_could_not_start_is_not_a_refusal_by_the_person(self):
+        for result in (Done(1, "approved"), Done(2, ""), Done(1, "")):
+            with self.assertRaises(approval.Unavailable, msg=result.stdout):
+                approver(result).approve(SUMMARY, 2)
+        with self.assertRaises(approval.Unavailable):
+            approver(boom=OSError("no osascript")).approve(SUMMARY, 2)
 
     def test_it_runs_the_absolute_osascript_with_the_button_label_and_a_timeout_under_cursors(self):
         seen = []
@@ -94,7 +100,8 @@ class ApproveTest(unittest.TestCase):
         def boom(argv):
             raise OSError("the window could not start")
 
-        approval.DialogApprover(runner=boom, platform="darwin", plans_dir=folder).approve(SUMMARY, 2)
+        with self.assertRaises(approval.Unavailable):
+            approval.DialogApprover(runner=boom, platform="darwin", plans_dir=folder).approve(SUMMARY, 2)
         self.assertEqual(list(folder.iterdir()), [])
 
     def test_it_is_not_available_outside_macos(self):
@@ -111,7 +118,10 @@ class AlertScriptTest(unittest.TestCase):
     def test_cancel_is_first_and_default_and_escape_is_bound_to_it(self):
         self.assertLess(self.js.index("addButtonWithTitle('Cancelar')"), self.js.index("addButtonWithTitle(argv[3])"))
         self.assertIn("cancel.keyEquivalent = '\\u001b'", self.js)
-        self.assertIn("defaultButtonCell", self.js)
+
+    def test_nothing_resets_the_key_equivalents_after_they_are_set(self):
+        # NSWindow.defaultButtonCell would give Cancelar the Return key and take Escape away from it
+        self.assertNotIn("defaultButtonCell", self.js)
 
     def test_the_approve_button_has_no_key_equivalent_so_it_takes_a_click(self):
         self.assertIn("ok.keyEquivalent = ''", self.js)

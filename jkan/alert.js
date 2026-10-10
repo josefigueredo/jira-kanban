@@ -1,7 +1,8 @@
 // jtk's approval alert: a native NSAlert with a scrollable, read-only render of the plan's HTML.
 // argv: <html file> <title> <informative text> <approve button label>. Prints "approved" only when the second button is clicked.
-// Cancelar is first, highlighted as the default and bound to Escape; the approve button has no key equivalent, so
-// approving always takes a click (Return does nothing). Pattern: product-brain-mcp/src/pbmcp/alert.js.
+// Cancelar is the first button (NSAlert's default look) and is bound to Escape; the approve button has no key
+// equivalent, so approving always takes a click (Return does nothing). Do not mark Cancelar as the window default cell: that gives it
+// the Return key and takes Escape away. Pattern: product-brain-mcp/src/pbmcp/alert.js.
 ObjC.import('Cocoa');
 
 function run(argv) {
@@ -31,7 +32,6 @@ function run(argv) {
   cancel.keyEquivalent = '\u001b';
   const ok = alert.addButtonWithTitle(argv[3]);
   ok.keyEquivalent = '';
-  alert.window.defaultButtonCell = cancel.cell;
   alert.accessoryView = scroll;
   alert.window.appearance = $.NSAppearance.appearanceNamed($.NSAppearanceNameAqua);
   alert.window.level = $.NSFloatingWindowLevel;

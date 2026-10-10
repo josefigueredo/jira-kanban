@@ -9,7 +9,7 @@ descartables. El agente arma los planes y lee Jira para verificar; **vos hacés 
 2. Aplicá el parche nuevo del hook, **solo si ya probaste la ventana en el paso 2** (mientras tanto el hook sigue
    bloqueando al agente y los pasos 2 a 8 los corrés vos con `!`, que también muestra la ventana):
    `! patch -N ~/.claude/hooks/git-guardrails.sh < ~/CurrentCode/SPECKIT/Harness/jira-kanban/tools/git-guardrails-dialog.patch`
-   y después `! ~/CurrentCode/SPECKIT/Harness/jira-kanban/tools/check-guardrails.sh` tiene que decir `50/50`.
+   y después `! ~/CurrentCode/SPECKIT/Harness/jira-kanban/tools/check-guardrails.sh` tiene que decir `56/56`.
 3. Las tareas descartables: las de la prueba anterior (`PLATE-664` a `PLATE-669`) sirven; si ya las borraste, creá otras
    con el spec de `docs/superpowers/acceptance/fase-3-sandbox-spec.json`.
 
@@ -21,7 +21,7 @@ descartables. El agente arma los planes y lee Jira para verificar; **vos hacés 
 | 2 | Corré `! jtk apply <id>` (con `!`) | **Aparece una ventana al frente de Cursor** con título, una fila (clave, título, `Backlog -> PROCESANDO`) y dos botones: **Cancelar** (resaltado) y **Apruebo 1** |
 | 3 | Hacé clic en **Cancelar** | El comando sale con código 3 y dice que no se aprobó; Jira no cambia |
 | 4 | Repetí y apretá **Escape** | Igual que el paso 3 |
-| 5 | Repetí y apretá **Return** | **No aprueba**: no pasa nada o se mantiene la ventana; Jira no cambia |
+| 5 | Repetí y apretá **Return** | **No aprueba** (no hay tecla que apruebe); Jira no cambia. Anotá si la ventana sigue abierta |
 | 6 | Repetí y esperá 100 s sin tocar nada | La ventana se cierra sola, no se escribe nada |
 | 7 | Repetí y hacé clic en **Apruebo 1** | Dice `applied`; Jira muestra la tarea en PROCESANDO |
 | 8 | Un plan de 3 tareas, una con un título que lleve `<b>` y `&` | La ventana muestra las 3 filas y el título **literal**, sin negrita |

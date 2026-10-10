@@ -138,6 +138,16 @@ class DialogTest(unittest.TestCase):
         guard.confirm(1, "S", "jtk apply abc", streams=REAL, open_tty=no_tty, dialog=dialog)
         self.assertEqual(len(dialog.asked), 1)
 
+    def test_a_window_that_cannot_start_asks_for_a_terminal_instead_of_saying_cancelled(self):
+        class Broken(FakeDialog):
+            def approve(self, summary, n):
+                from jkan import approval
+                raise approval.Unavailable("osascript failed")
+
+        with self.assertRaisesRegex(guard.NotApproved, "Run it yourself") as caught:
+            guard.confirm(1, "S", "jtk apply abc", streams=self.NO_TTY, dialog=Broken(True))
+        self.assertNotIn("cancelled", str(caught.exception))
+
     def test_without_a_terminal_and_without_a_window_it_refuses_like_before(self):
         with self.assertRaisesRegex(guard.NotApproved, "Run it yourself"):
             guard.confirm(1, "S", "jtk apply abc", streams=self.NO_TTY, dialog=FakeDialog(True, available=False))
