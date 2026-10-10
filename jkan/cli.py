@@ -108,10 +108,11 @@ def _report(jira, args, conv: dict, today: _dt.date) -> int:
             until = window.horizon(args.until, today)
         elif args.cmd in ("load", "stats"):
             weeks = window.weeks(args.weeks)
-        person = people.resolve(jira, args.person, conv.get("project")) if args.person else None
+        scope = conv.get("project")  # one project key, or the boards of a view
+        person = people.resolve(jira, args.person, scope[0] if isinstance(scope, list) else scope) if args.person else None
         pid, owner = (person["id"], person["name"]) if person else (None, "vos")
         link = lambda key: f"[{key}]({jira.browse_url(key)})"  # noqa: E731
-        project = conv.get("project")
+        project = ", ".join(scope) if isinstance(scope, list) else scope
         if args.cmd == "done":
             result = standup.gather_done(jira, pid, since, until, conv)
             _emit(args, conv, result, render.render_done(render.head("Hecho", owner, today, (since, until), project), result))
@@ -193,6 +194,8 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
         r.add_argument("--jira-project", help="only this Jira project, e.g. PLATE")
         r.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
         r.add_argument("--json", action="store_true", help="machine-readable output")
+        if name in ("done", "next", "blocked"):
+            r.add_argument("--view", help="only the boards of this saved view (see jk team setup)")
         if name == "done":
             r.add_argument("--since", required=True, help="first day, YYYY-MM-DD")
             r.add_argument("--until", help="last day, YYYY-MM-DD (default: today)")
@@ -205,6 +208,14 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
     conv = config.load_conventions(project)
     if getattr(args, "jira_project", None):
         conv["project"] = args.jira_project
+    if getattr(args, "view", None):
+        if getattr(args, "jira_project", None):
+            parser.error("--view and --jira-project cannot be used together")
+        try:
+            conv["project"] = views.load(args.view)["boards"]
+        except views.BadView as exc:
+            sys.stderr.write(f"jk: {exc}\n")
+            return FINDINGS
     try:
         if args.cmd == "show":
             _show(project, args.epic)
