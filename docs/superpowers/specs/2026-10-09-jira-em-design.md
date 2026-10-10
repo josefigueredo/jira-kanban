@@ -262,8 +262,8 @@ cierre sin `--allow-close`, ejecución sin TTY y `APRUEBO` con un `n` equivocado
 - **Scrum y sprints:** 3 de 50 boards y sin API Agile; fuera de la versión 1.
 - **Escritura que ya existe sin guardia:** `jk create|push|assign --apply` no exige terminal interactiva ni `APRUEBO`; solo
   los frena el hook local `git-guardrails.sh`, que los EM no tienen, y `jk` es un solo binario, así que una instalación de
-  solo lectura también los contiene. Decisión pendiente: aplicar el mismo guardia a esos tres comandos, o dejarlos
-  fuera de la instalación por defecto.
+  solo lectura también los contiene. Resuelto: la guarda de la fase 3 cubre esos tres comandos y el hook de la fase 4 bloquea
+  `jk apply` y su rodeo por pseudo-terminal.
 
 ## Resultados de la fase 1
 

@@ -115,3 +115,24 @@ TDD, en `python3` y `/usr/bin/python3` (3.9), con Jira falso. Línea base: 599 t
 - **Prueba real de la fase 3** pendiente: la unificación de bitácoras se prueba con Jira falso; el comportamiento de
   `Jira.assign(key, None)` y de las transiciones con campos obligatorios solo se confirma en el sandbox.
 - **Renombre:** la persona decide el nombre y el momento; hasta entonces los docs usan el actual.
+
+## Resultados de la fase 4
+
+- **Qué se entregó:** el tee de `journal.journal(…, also=)` apuntado a `state.log_write` desde `cli._client` (los tres
+  comandos viejos escriben también en la bitácora común, sin `plan`); `jk apply` revalida perfiles antes de pedir la
+  aprobación (y rechaza un plan cuyo board perdió el perfil, que antes habría terminado en `KeyError`);
+  `jk plan revert ID [--allow-close]`; `tools/check-guardrails.sh` y `tools/git-guardrails-jk-apply.patch`; `AGENTS.md`
+  y el `README.md` de la raíz de SPECKIT editados en el lugar (no es un repo git; copias en el scratchpad); README de
+  este repo.
+- **Tests:** 611 en `python3` y en `/usr/bin/python3` (3.9), con Jira falso (línea base 599).
+- **Hook, medido el 2026-10-10:** `tools/check-guardrails.sh` sobre el hook real daba **14/23** (fallaban justo los 9
+  casos nuevos de `jk apply` y pseudo-terminal) y sobre la copia parchada **23/23**; el parche reproduce byte a byte el
+  archivo probado (`patch` + `cmp`). El hook real no se tocó. Aplicado por la persona y verificado: pendiente.
+- **Citas `archivo:línea`:** 15 revisadas abriendo la línea. Vigentes: `jira.py:248` (transition), `board_profile.py:33`,
+  `sync.py:130|:240|:326`, `jira.py:110-120` (get). Corregidas: `kanban.py:15`→`:14`; `jira.py:98-108`→`:110-119` (get);
+  `jira.py:114` (search/jql, children)→`:129` y `:206`; `jira.py:114` (maxResults)→`:126` y `:203`;
+  `queries.py:24-29`→`:26-34` (ahora `_scope` acepta la lista de un view); `jira.py:208-216` (transiciones por nombre)→`:223-256`;
+  `journal.py:24`→`:28` (cuatro citas); `cli.py:171|:187`→`:198|:214`.
+- **Pendiente:** aplicar el parche del hook (comando en el reporte), prueba real de la fase 3 en el sandbox, renombre del
+  repo (el nombre lo elige la persona), los dos menores de la fase 3 que quedaron afuera (el `n` de los viejos cuenta
+  issues; el resumen de un re-apply no nombra lo ya hecho), los menores de la fase 1 y `jk done|stats` por categoría.

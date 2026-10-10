@@ -172,9 +172,13 @@ Las claves pueden ir solas o combinadas con `--unassigned`, `--older-than DÍAS`
 
 **`apply` necesita una terminal de verdad**: no funciona desde el chat, ni desde `!` de Claude Code, ni con un `echo APRUEBO 3 | …`. Corrélo en una ventana de terminal aparte. Lo mismo vale ahora para `jk create`, `jk push` y `jk assign` con `--apply`. Si no hay terminal, el comando no escribe nada, imprime la línea para copiar y sale con código 3.
 
-Antes de cada escritura, `apply` vuelve a leer el issue: si alguien lo movió o reasignó después de planificar, lo saltea y lo informa. Reaplicar un plan es seguro (saltea lo ya hecho). Cada escritura queda en `~/.local/state/jk/writes.jsonl`.
+Antes de cada escritura, `apply` vuelve a leer el issue: si alguien lo movió o reasignó después de planificar, lo saltea y lo informa. Reaplicar un plan es seguro (saltea lo ya hecho). Cada escritura queda en `~/.local/state/jk/writes.jsonl`, también las de `jk create|push|assign --apply` (el registro de cada proyecto, `.jira-kanban/jira-writes.jsonl`, sigue como antes). Las líneas de un plan llevan `plan`; las de los comandos viejos, no.
 
 La skill `jira-em-ops` (solo con `./install.sh --with-write`) prepara los planes; **nunca** corre `apply`.
+
+### Segunda capa: el hook de Claude Code
+
+La guarda `APRUEBO` frena lo accidental y lo inducido desde el chat, `!` o la herramienta Bash, pero **no a un agente que abra un pseudo-terminal y escriba la aprobación**. Para eso, `~/.claude/hooks/git-guardrails.sh` bloquea `jk apply` y cualquier comando que lo combine con `tmux send-keys`, `expect`, `unbuffer`, `socat`, `script -` o `pty.`. `jk plan …` pasa. Se verifica con `tools/check-guardrails.sh` (23 casos); el parche está en `tools/git-guardrails-jk-apply.patch` y lo aplica la persona. El hook solo cubre a Claude Code: en Codex y Cursor quedan la guarda y las reglas de `AGENTS.md`.
 
 ## Perfiles de board
 
