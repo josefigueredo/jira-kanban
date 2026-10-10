@@ -34,11 +34,31 @@ class ViewFlagTest(unittest.TestCase):
         _, out, _ = run(["done", "--since", "2026-10-01", "--view", "plataforma"], jira)
         self.assertIn("**Proyecto:** TEAM, DESK", out)
 
-    def test_a_person_is_looked_up_among_the_people_assignable_in_the_first_board(self):
+    def test_the_first_board_that_knows_the_person_is_enough(self):
         jira = FakeJira()
         code, _, _ = run(["next", "--person", "Ana Gómez", "--view", "plataforma"], jira)
         self.assertEqual(code, 0)
         self.assertEqual(set(jira.search_projects), {"TEAM"})
+
+    def test_a_person_assignable_only_in_a_later_board_is_still_found(self):
+        class ByBoard(FakeJira):
+            def search_users(self, query, project=None, limit=100):
+                return super().search_users(query, project, limit) if project == "DESK" else []
+
+        jira = ByBoard()
+        code, out, err = run(["next", "--person", "Ana Gómez", "--view", "plataforma"], jira)
+        self.assertEqual((code, err), (0, ""))
+        self.assertIn("DESK", set(jira.search_projects))
+        self.assertIn("Ana Gómez", out)
+
+    def test_two_people_are_never_guessed_between_boards(self):
+        class Two(FakeJira):
+            def search_users(self, query, project=None, limit=100):
+                return super().search_users(query, project, limit) if project == "TEAM" else []
+
+        code, _, err = run(["next", "--person", "Martin", "--view", "plataforma"], Two())
+        self.assertEqual(code, 1)
+        self.assertIn("matches 2 people", err)
 
     def test_an_unknown_view_is_refused_before_asking_jira(self):
         jira = FakeJira()

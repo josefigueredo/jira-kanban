@@ -169,9 +169,9 @@ def render_digest(report: dict, show_all: bool, link: Link) -> str:
 
 def render_desk(report: dict, show_all: bool) -> str:
     labels = list(report["boards"][0]["age"]) if report["boards"] else []
-    body = table(["Board", "Abiertos"] + labels + ["Sin asignar", "Esperando", "Resueltos"],
+    body = table(["Board", "Abiertos"] + labels + ["Sin asignar", "Esperando", "Sin rol", "Resueltos"],
                  [[r["board"], r["open"]] + [r["age"][label] for label in labels]
-                  + [r["unassigned"], r["waiting"], r["resolved_n"]] for r in report["boards"]], show_all)
+                  + [r["unassigned"], r["waiting"], r["unknown"], r["resolved_n"]] for r in report["boards"]], show_all)
     times = "\n".join(f"- **{r['board']}:** " + _spread(r["resolution"], "sin resueltos en el período")
                       for r in report["boards"])
     return "\n\n".join(["### Abiertos por antigüedad (sin contar lo que espera a un tercero)\n" + body,

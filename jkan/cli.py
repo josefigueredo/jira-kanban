@@ -109,7 +109,8 @@ def _report(jira, args, conv: dict, today: _dt.date) -> int:
         elif args.cmd in ("load", "stats"):
             weeks = window.weeks(args.weeks)
         scope = conv.get("project")  # one project key, or the boards of a view
-        person = people.resolve(jira, args.person, scope[0] if isinstance(scope, list) else scope) if args.person else None
+        person = ((people.resolve_in(jira, args.person, scope) if isinstance(scope, list) else people.resolve(jira, args.person, scope))
+                  if args.person else None)
         pid, owner = (person["id"], person["name"]) if person else (None, "vos")
         link = lambda key: f"[{key}]({jira.browse_url(key)})"  # noqa: E731
         project = ", ".join(scope) if isinstance(scope, list) else scope
@@ -149,7 +150,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
     if len(argv) > 1 and argv[0] == "board" and argv[1] in board_cli.VERBS:  # `jk board EPIC` stays the local kanban
         here = Path(".").resolve()
         return board_cli.run(argv[1:], lambda: client(here) if client is not _client else _client(here, command="board"))
-    if len(argv) > 1 and argv[0] == "team" and argv[1] in team_cli.VERBS:
+    if argv and argv[0] == "team":  # unlike `board`, no legacy command shares the name: argparse names a bad verb
         here = Path(".").resolve()
         team_conv = config.load_conventions(here)
         make = lambda: client(here) if client is not _client else _client(here, command="team")  # noqa: E731

@@ -49,6 +49,7 @@ def _profile_rows(view: dict, profiles: dict, problems: dict) -> list:
 
 def _setup(args, jira) -> int:
     boards = [b.strip() for b in args.boards.split(",") if b.strip()]
+    views.build(args.name, boards, None, args.stalled_days)  # a bad name or board is refused before Jira is asked anything
     chosen = None
     note = ""
     if args.group:
@@ -152,7 +153,7 @@ def _digest(args, jira, view, profiles, conv, today) -> Result:
     report = team.digest_report(delivered, dropped, created, issues, conv, since, until, today, view["stalled_days"])
     return Result("Resumen del período", (since, until), report,
                   team_render.render_digest(report, args.all, _link(jira)),
-                  issues + delivered + dropped, cut1 or cut2 or cut3 or cut4)
+                  issues + delivered + dropped + created, cut1 or cut2 or cut3 or cut4)
 
 
 def _desk(args, jira, view, profiles, conv, today) -> Result:

@@ -146,7 +146,7 @@ def _read(path: Path) -> dict:
     statuses = data.get("statuses")
     if not (data.get("project") == path.stem and isinstance(statuses, list) and _wip_ok(data.get("wip_limit"))
             and all(isinstance(s, dict) and isinstance(s.get("id"), str) and isinstance(s.get("name"), str)
-                    and (s.get("role") is None or s.get("role") in roles.ROLES) for s in statuses)):
+                    and "role" in s and (s["role"] is None or s["role"] in roles.ROLES) for s in statuses)):
         raise BadProfile(f"{path.name} is not a profile (wrong shape)")
     return data
 

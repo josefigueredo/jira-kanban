@@ -182,6 +182,7 @@ def desk_report(open_issues: List[dict], delivered: List[dict], view: dict, prof
         rows.append({"board": board, "open": len(mine), "age": age,
                      "unassigned": sum(1 for i in mine if not i["assignee"]),
                      "waiting": sum(1 for i in mine if roles.role_of(i) == "waiting"),
+                     "unknown": sum(1 for i in mine if roles.role_of(i) not in ("todo", "active", "blocked", "waiting")),
                      "resolved_n": len(solved), "resolution": stats.spread(stats.lead_days(solved))})
     return {"weeks": weeks, "since": first, "boards": rows}
 

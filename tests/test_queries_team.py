@@ -70,6 +70,17 @@ class TeamQueriesTest(unittest.TestCase):
         self.assertIsNone(queries.team_scope({}))
 
 
+class GroupNameTest(unittest.TestCase):
+    def test_real_group_names_with_parentheses_or_accents_are_fine_and_stay_inside_the_quotes(self):
+        for name in ("Team (Platform)", "équipe plateforme", "Ingeniería-QA"):
+            self.assertIn(f'membersOf("{name}")', queries.team_open(["TEAM"], fx.profiles(), {"group": name}))
+
+    def test_quotes_backslashes_and_line_breaks_are_still_refused(self):
+        for name in ('a"b', "a\\b", "a\nb", "a\tb", ""):
+            with self.assertRaises(ValueError, msg=repr(name)):
+                queries.team_scope({"group": name})
+
+
 class ScopeTest(unittest.TestCase):
     def test_a_single_project_reads_as_before(self):
         jql = queries.open_of(None, "PLATE")

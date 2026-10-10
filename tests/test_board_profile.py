@@ -140,7 +140,8 @@ class PersistenceTest(unittest.TestCase):
         wrong = ["{not json", "{}", '{"version": "2"}', '{"version": true, "project": "UA", "statuses": []}',
                  '{"version": 1, "project": "UA", "statuses": "x"}',
                  '{"version": 1, "project": "OTHER", "statuses": []}',
-                 '{"version": 1, "project": "UA", "statuses": [{"id": "1", "name": "x", "role": "hecho"}]}']
+                 '{"version": 1, "project": "UA", "statuses": [{"id": "1", "name": "x", "role": "hecho"}]}',
+                 '{"version": 1, "project": "UA", "statuses": [{"id": "1", "name": "x"}]}']
         for text in wrong:
             (self.base / "profiles" / "UA.json").write_text(text, encoding="utf-8")
             with self.assertRaises(bp.BadProfile, msg=text):

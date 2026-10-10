@@ -99,6 +99,20 @@ def _listing(candidates: List[dict]) -> str:
     return "\n".join(f"  - {c['name']} <{c['email'] or 'email hidden'}> ({c['id']})" for c in candidates)
 
 
+def resolve_in(jira, query: str, projects: List[str]) -> dict:
+    """Like resolve, over the boards of a view in order: the first board that knows the person wins. Several people in
+    one board are never guessed between, and a board that does not know them is not an error while another does."""
+    first: Optional[NotResolved] = None
+    for project in projects:
+        try:
+            return resolve(jira, query, project)
+        except NotResolved as exc:
+            if exc.result["status"] == "ambiguous":
+                raise
+            first = first or exc
+    raise first if first else NotResolved(f"nobody in Jira matches {query!r}.", {"status": "none", "candidates": []})
+
+
 def resolve(jira, query: str, project: Optional[str] = None) -> dict:
     """The one person the query names, or NotResolved: never a guess between several."""
     result = find(jira, query, project)

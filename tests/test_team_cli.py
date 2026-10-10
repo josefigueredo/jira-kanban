@@ -57,6 +57,13 @@ class SetupTest(unittest.TestCase):
         with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
             run(["setup", "nuevo", "--boards", "TEAM", "--group", "g", "--people", "Ana"], self.jira)
 
+    def test_bad_boards_or_name_are_refused_before_jira_is_asked_anything(self):
+        for args in (["--boards", "TEAM,x y", "--people", "Ana Gómez"], ["--boards", "TEAM", "--group", "no-such-group"]):
+            for name in ("Mal Nombre",):
+                code, _, _ = run(["setup", name] + args, self.jira)
+                self.assertEqual(code, 1, args)
+        self.assertEqual((self.jira.searches, self.jira.search_projects), ([], []))
+
     def test_bad_input_is_refused_before_anything_is_saved(self):
         for args in (["--boards", "TEAM,x y"], ["--boards", ""], ["--boards", "TEAM", "--stalled-days", "0"]):
             code, _, err = run(["setup", "nuevo"] + args, self.jira)
@@ -210,8 +217,14 @@ class ReportsTest(unittest.TestCase):
                                                     fx.at("DESK-2", "waiting", created="2026-08-01")])
         code, out, _ = run(["desk", "plataforma"], self.jira)
         self.assertEqual(code, 0)
-        self.assertIn("| DESK | 2 | 1 | 0 | 0 | 0 | 0 | 1 | 0 |", out)
+        self.assertIn("| DESK | 2 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |", out)
         self.assertIn("Sin SLA", out)
+        self.jira.search_answer = fx.answers(open_=[fx.at("DESK-1", None, created="2026-10-07"),
+                                                    fx.at("DESK-2", "todo", created="2026-10-07")])
+        _, as_json, _ = run(["desk", "plataforma", "--json"], self.jira)
+        row = json.loads(as_json)["report"]["boards"][0]
+        self.assertEqual(row["unknown"], 1)
+        self.assertEqual(row["open"], sum(row["age"].values()) + row["waiting"] + row["unknown"])
         views.save(fx.view(boards=("TEAM",), name="solo"))
         code, _, err = run(["desk", "solo"], FakeJira())
         self.assertEqual(code, 1)
@@ -282,6 +295,19 @@ class ReportsTest(unittest.TestCase):
         _, flow, _ = run(["flow", "lento"], self.jira)
         self.assertIn("**0 de 1 en curso**", stalled)
         self.assertNotIn("estancado", flow)
+
+    def test_digest_announces_a_new_issue_in_a_status_the_profile_does_not_know(self):
+        self.jira.search_answer = fx.answers(created=[fx.at("TEAM-9", None, created="2026-10-02")])
+        _, out, _ = run(["digest", "plataforma", "--since", "2026-10-01"], self.jira)
+        self.assertIn("Estado desconocido", out)
+
+    def test_an_unknown_team_verb_is_named_by_the_parser(self):
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err), self.assertRaises(SystemExit) as raised:
+            cli.main(["team", "statuz", "plataforma"], client=lambda project: self.jira)
+        self.assertEqual(raised.exception.code, 2)
+        self.assertIn("statuz", err.getvalue())
+        self.assertNotIn("invalid choice: 'team'", err.getvalue())
 
     def test_no_report_writes_anything_to_jira(self):
         self.jira.search_answer = fx.answers(open_=self.open_work())

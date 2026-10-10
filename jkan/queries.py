@@ -11,7 +11,7 @@ from typing import Dict, Iterable, List, Optional, Union
 KEY = re.compile(r"^[A-Z][A-Z0-9_]*-\d+$")
 PROJECT = re.compile(r"^[A-Z][A-Z0-9_]*$")
 ACCOUNT = re.compile(r"^[A-Za-z0-9:_-]+$")
-GROUP = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ._@:-]{0,99}")
+GROUP = re.compile(r"\w[\w ._@:()-]{0,99}")  # letters of any language; never a quote, a backslash or a line break
 STATUS_ID = re.compile(r"\d+")
 
 
