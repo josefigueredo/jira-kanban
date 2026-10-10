@@ -214,7 +214,11 @@ class FakeJira:
         return key
 
     def snapshot(self, key: str) -> dict:
-        shot = self.board[key]
+        shot = self.board.get(key)
+        if shot is None:  # an issue that only lives in `issues`: its owner is whatever assign() last wrote
+            owner = self.issues[key].get("assignee")
+            return {"status_id": "", "status": "", "assignee": None if owner is None else
+                    {"id": owner, "name": (self.user(owner) or {}).get("name", owner)}}
         return {"status_id": shot["status_id"], "status": shot["status"],
                 "assignee": dict(shot["assignee"]) if shot["assignee"] else None}
 

@@ -324,16 +324,20 @@ def descendants(jira, key: str) -> List[dict]:
 
 
 def assign(jira, key: str, person: dict, tree: bool = False, apply: bool = False) -> dict:
-    """Assign `key` (and, with tree, everything under it) to a person. One rejected issue never stops the rest."""
+    """Assign `key` (and, with tree, everything under it) to a person. One rejected issue never stops the rest, and an
+    issue that is already theirs is not written (`already` lists those keys)."""
     issues = [jira.get(key)] + (descendants(jira, key) if tree else [])
+    already = {i["key"] for i in issues if ((jira.snapshot(i["key"]).get("assignee")) or {}).get("id") == person["id"]}
     errors: List[str] = []
     if apply:
         for issue in issues:
+            if issue["key"] in already:
+                continue
             try:
                 jira.assign(issue["key"], person["id"])
             except Exception as exc:  # noqa: BLE001 — report it and keep going
                 errors.append(f"{issue['key']}: not assigned ({exc})")
-    return {"issues": issues, "person": person, "errors": errors}
+    return {"issues": issues, "person": person, "errors": errors, "already": already}
 
 
 GROUPS = ("blocked", "todo", "in_progress", "done")

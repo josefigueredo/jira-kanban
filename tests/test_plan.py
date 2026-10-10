@@ -155,6 +155,15 @@ class MoveTest(Base):
         self.assertEqual([(i["key"], i["to"]["id"]) for i in body["items"]], [("TEAM-1", "2"), ("TEAM-2", "2")])
         self.assertEqual(body["options"]["to_status"], "2")
 
+    def test_when_nothing_moves_because_of_ambiguity_the_message_names_the_statuses_to_choose_from(self):
+        board_profile.assign(self.profiles["TEAM"], "active", ["Blocked"])  # En curso (2) and Blocked (3) are both «active»
+        selection = [self.put("TEAM-1", "todo")]
+        with self.assertRaises(plan.Refused) as caught:
+            plan.move(self.jira, self.view, selection, self.profiles, "active", now=NOW)
+        text = str(caught.exception)
+        for part in ("--to-status", "En curso (2)", "Blocked (3)", "TEAM"):
+            self.assertIn(part, text)
+
     def test_the_ambiguous_issue_lists_its_options_while_others_still_move(self):
         board_profile.assign(self.profiles["TEAM"], "active", ["Blocked"])  # En curso (2) and Blocked (3) are both «active»
         self.jira.workflow["4"] = [t for t in self.jira.workflow["4"] if t["id"] != "4>3"]  # from «waiting» only 2 is reachable
