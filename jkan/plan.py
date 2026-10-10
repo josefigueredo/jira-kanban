@@ -1,0 +1,149 @@
+"""Plans: what `jk plan move|assign|comment|revert` decides about a selection of issues, written as a file `jk apply` runs
+exactly. Planning only reads Jira. Everything a write needs (the status it leaves and reaches, the transition id, the person)
+is resolved here, once; apply never evaluates the query again."""
+from __future__ import annotations
+
+import re
+from typing import Callable, Dict, List, Optional
+
+from . import board_profile, roles, state, team
+
+KEY = re.compile(r"[A-Z][A-Z0-9_]*-[0-9]+")
+TO_ROLES = ("todo", "active", "blocked", "waiting", "delivered", "dropped")
+CLOSING = ("delivered", "dropped")
+DEFAULT_MAX, LIMIT_MAX = 25, 200
+MAX_TEXT = 30000
+
+
+class Refused(ValueError):
+    """The plan cannot be made as asked; nothing was saved."""
+
+
+def check_max(value: Optional[int]) -> int:
+    if value is None:
+        return DEFAULT_MAX
+    if not 1 <= value <= LIMIT_MAX:
+        raise Refused(f"--max must be between 1 and {LIMIT_MAX}")
+    return value
+
+
+def select(jira, view: dict, profiles: Dict[str, dict], conv: dict, open_issues: List[dict], today, keys: List[str],
+           unassigned: bool, older_than: Optional[int], role: Optional[str], limit: int) -> List[dict]:
+    """The issues the plan is about: what the filters pick out of the open issues, then the explicit keys, each once."""
+    filtering = unassigned or older_than is not None or role is not None
+    if not keys and not filtering:
+        raise Refused("say which issues: pass keys or at least one of --unassigned, --older-than, --role")
+    for key in keys:
+        if not KEY.fullmatch(key):
+            raise Refused(f"{key!r} is not an issue key")
+        if roles.project_of(key) not in view["boards"]:
+            raise Refused(f"{key} is not in the boards of view {view['name']!r} ({', '.join(view['boards'])})")
+    chosen: Dict[str, dict] = {}
+    if filtering:
+        by_key = {i["key"]: i for i in open_issues}
+        for row in team.list_issues(open_issues, view["boards"], today, unassigned, older_than, role):
+            chosen[row["key"]] = by_key[row["key"]]
+    missing = [k for k in dict.fromkeys(keys) if k not in chosen]
+    if missing:
+        found = {i["key"]: i for i in roles.annotate(jira.search(f"key in ({', '.join(missing)})"), profiles)}
+        absent = [k for k in missing if k not in found]
+        if absent:
+            raise Refused(f"Jira does not show {', '.join(absent)}")
+        for key in missing:
+            chosen[key] = found[key]
+    selection = list(chosen.values())
+    if not selection:
+        raise Refused("no issue matches")
+    if len(selection) > limit:
+        raise Refused(f"{len(selection)} issues; the limit is {limit} (raise it with --max, up to {LIMIT_MAX})")
+    return selection
+
+
+def check_profiles(selection: List[dict], profiles: Dict[str, dict]) -> None:
+    for board in sorted({roles.project_of(i["key"]) for i in selection}):
+        pending = board_profile.open_statuses(profiles[board])
+        if pending:
+            raise Refused(f"the profile of {board} has {len(pending)} status(es) without a role: decide them with "
+                          f"jk board set before planning a write")
+
+
+def _envelope(kind: str, view: dict, options: dict, items: List[dict], skipped: List[dict],
+              now: Optional[Callable[[], str]] = None) -> dict:
+    return {"version": 1, "kind": kind, "view": view["name"], "created": (now or state.utc_now)(),
+            "options": options, "items": items, "skipped": skipped}
+
+
+def _why(skipped: List[dict]) -> str:
+    return "; ".join(f"{s['key']}: {s['why']}" for s in skipped)
+
+
+def _route(jira, key: str, target_ids: List[str]):
+    """The one transition from where the issue is to one of `target_ids`, or the reason there is none."""
+    options = [t for t in jira.transitions(key) if t["to"]["id"] in target_ids]
+    if not options:
+        return None, {"key": key, "why": "no path"}
+    if len(options) > 1:
+        return None, {"key": key, "why": "ambiguous",
+                      "options": sorted(f"{t['to']['name']} (transition {t['id']})" for t in options)}
+    if options[0]["required"]:
+        return None, {"key": key, "why": "required fields", "fields": options[0]["required"]}
+    return options[0], None
+
+
+def move(jira, view: dict, selection: List[dict], profiles: Dict[str, dict], to_role: str,
+         to_status: Optional[str] = None, allow_close: bool = False,
+         now: Optional[Callable[[], str]] = None) -> dict:
+    if to_role not in TO_ROLES:
+        raise Refused(f"role must be one of {', '.join(TO_ROLES)}, not {to_role!r}")
+    if to_role in CLOSING and not allow_close:
+        raise Refused(f"moving to {to_role} closes issues: add --allow-close")
+    items, skipped = [], []
+    for issue in selection:
+        profile = profiles[roles.project_of(issue["key"])]
+        targets = [s["id"] for s in profile["statuses"] if s["role"] == to_role]
+        if to_status is not None:
+            if to_status not in targets:
+                raise Refused(f"status {to_status} of {profile['project']} does not play the role {to_role}")
+            targets = [to_status]
+        if not targets:
+            skipped.append({"key": issue["key"], "why": f"{profile['project']} has no status with the role {to_role}"})
+        elif issue["status_id"] in targets:
+            skipped.append({"key": issue["key"], "why": "already there"})
+        else:
+            chosen, skip = _route(jira, issue["key"], targets)
+            if skip:
+                skipped.append(skip)
+                continue
+            items.append({"key": issue["key"], "from": {"id": issue["status_id"], "name": issue["status"]},
+                          "to": {"id": chosen["to"]["id"], "name": chosen["to"]["name"], "role": to_role},
+                          "transition": chosen["id"]})
+    if not items:
+        raise Refused("nothing to move: " + _why(skipped))
+    return _envelope("move", view, {"to_role": to_role, "to_status": to_status, "allow_close": allow_close},
+                     items, skipped, now)
+
+
+def _who(person: Optional[dict]) -> str:
+    return person["name"] if person else "unassigned"
+
+
+def describe(plan: dict, only: Optional[List[str]] = None) -> str:
+    """What the plan will do, in words. Apply shows this before asking for the approval."""
+    items = [i for i in plan["items"] if only is None or i["key"] in only]
+    head = f"Plan {plan['id']} · {plan['kind']} · view {plan['view']} · {len(items)} issue(s)"
+    if plan["kind"] == "move":
+        closes = sum(1 for i in items if i["to"].get("role") in CLOSING)
+        head += f" · closes {closes}" if closes else ""
+        rows = [f"  {i['key']}: {i['from']['name']} -> {i['to']['name']}" for i in items]
+    elif plan["kind"] == "assign":
+        rows = [f"  {i['key']}: {_who(i['from'])} -> {_who(i['to'])}" for i in items]
+    else:
+        rows = [f"  {i['key']}" for i in items] + [f"  Comment: {plan['options']['text']}"]
+    lines = [head] + rows
+    if plan.get("skipped"):
+        lines.append("Left out:")
+        for skip in plan["skipped"]:
+            extra = f" ({', '.join(skip['options'])})" if skip.get("options") else ""
+            extra += f" ({', '.join(skip['fields'])})" if skip.get("fields") else ""
+            lines.append(f"  {skip['key']}: {skip['why']}{extra}")
+    return "\n".join(lines)
