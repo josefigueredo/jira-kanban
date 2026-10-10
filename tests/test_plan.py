@@ -117,10 +117,15 @@ class MoveTest(Base):
         body = self.move(["TEAM-1"])
         self.assertEqual(body["kind"], "move")
         self.assertEqual((body["view"], body["version"], body["created"]), ("plataforma", 1, "2026-10-10T12:00:00Z"))
-        self.assertEqual(body["items"], [{"key": "TEAM-1", "from": {"id": "1", "name": "Backlog"},
+        self.assertEqual(body["items"], [{"key": "TEAM-1", "title": "Summary of TEAM-1", "from": {"id": "1", "name": "Backlog"},
                                           "to": {"id": "2", "name": "En curso", "role": "active"}, "transition": "1>2"}])
         self.assertEqual(body["skipped"], [])
         self.assertEqual(body["options"], {"to_role": "active", "to_status": None, "allow_close": False})
+
+    def test_every_item_keeps_the_issue_title_for_the_approval_window(self):
+        issue = self.put("TEAM-1", "todo", summary="Migrar el login")
+        body = plan.move(self.jira, self.view, [issue], self.profiles, "active", now=NOW)
+        self.assertEqual(body["items"][0]["title"], "Migrar el login")
 
     def test_planning_never_writes(self):
         self.move(["TEAM-1", "TEAM-2"])
@@ -227,8 +232,12 @@ class AssignTest(Base):
         self.assertEqual(body["kind"], "assign")
         self.assertEqual(body["options"], {"person": {"id": "acc-ana", "name": "Ana Gómez"}})
         self.assertEqual(body["items"], [
-            {"key": "TEAM-1", "from": None, "to": {"id": "acc-ana", "name": "Ana Gómez"}},
-            {"key": "TEAM-2", "from": {"id": "acc-beto", "name": "Beto Ruiz"}, "to": {"id": "acc-ana", "name": "Ana Gómez"}}])
+            {"key": "TEAM-1", "title": "Summary of TEAM-1", "from": None, "to": {"id": "acc-ana", "name": "Ana Gómez"}},
+            {"key": "TEAM-2", "title": "Summary of TEAM-2", "from": {"id": "acc-beto", "name": "Beto Ruiz"}, "to": {"id": "acc-ana", "name": "Ana Gómez"}}])
+
+    def test_an_assign_item_keeps_the_issue_title(self):
+        issue = self.put("TEAM-1", "todo", summary="Migrar el login")
+        self.assertEqual(plan.assign(self.view, [issue], ANA, now=NOW)["items"][0]["title"], "Migrar el login")
 
     def test_who_already_has_it_is_left_out_and_if_all_do_there_is_no_plan(self):
         a = self.put("TEAM-1", "todo", fx.ANA)
@@ -251,7 +260,11 @@ class CommentTest(Base):
         body = plan.comment(self.view, [a, b], "  Revisamos esto el jueves.  ", now=NOW)
         self.assertEqual(body["kind"], "comment")
         self.assertEqual(body["options"], {"text": "Revisamos esto el jueves."})
-        self.assertEqual(body["items"], [{"key": "TEAM-1"}, {"key": "TEAM-2"}])
+        self.assertEqual(body["items"], [{"key": "TEAM-1", "title": "Summary of TEAM-1"}, {"key": "TEAM-2", "title": "Summary of TEAM-2"}])
+
+    def test_a_comment_item_keeps_the_issue_title(self):
+        issue = self.put("TEAM-1", "todo", summary="Migrar el login")
+        self.assertEqual(plan.comment(self.view, [issue], "hola", now=NOW)["items"][0]["title"], "Migrar el login")
 
     def test_an_empty_or_huge_text_is_refused(self):
         a = self.put("TEAM-1", "todo")
@@ -282,9 +295,24 @@ class RevertTest(Base):
         body = plan.revert(self.jira, saved, self.profiles, now=NOW)
         self.assertEqual((body["kind"], body["options"]), ("move", {"revert_of": saved["id"]}))
         self.assertEqual(body["items"], [
-            {"key": k, "from": {"id": "2", "name": "En curso"}, "to": {"id": "1", "name": "Backlog", "role": "todo"},
+            {"key": k, "title": f"Summary of {k}", "from": {"id": "2", "name": "En curso"}, "to": {"id": "1", "name": "Backlog", "role": "todo"},
              "transition": "2>1"} for k in ("TEAM-1", "TEAM-2")])
         self.assertEqual(self.jira.writes, [])
+
+    def test_a_revert_keeps_the_titles_of_the_plan_it_undoes(self):
+        from jkan import applier
+        selection = [self.put("TEAM-1", "todo", summary="Uno"), self.put("TEAM-2", "todo", summary="Dos")]
+        saved = state.save_plan(plan.move(self.jira, self.view, selection, self.profiles, "active", now=NOW))
+        applier.run(self.jira, saved, lambda n, s, c: None, "jtk apply x", now=NOW)
+        body = plan.revert(self.jira, saved, self.profiles, now=NOW)
+        self.assertEqual([i["title"] for i in body["items"]], ["Uno", "Dos"])
+
+    def test_reverting_a_plan_saved_before_titles_existed_still_works(self):
+        saved = self.applied_move()
+        for item in saved["items"]:
+            item.pop("title", None)
+        body = plan.revert(self.jira, saved, self.profiles, now=NOW)
+        self.assertEqual([i["title"] for i in body["items"]], ["", ""])
 
     def test_an_issue_that_moved_on_since_is_left_out(self):
         saved = self.applied_move()
@@ -307,8 +335,8 @@ class RevertTest(Base):
         body = plan.revert(self.jira, saved, self.profiles, now=NOW)
         self.assertEqual(body["kind"], "assign")
         self.assertEqual(body["items"], [
-            {"key": "TEAM-1", "from": {"id": "acc-ana", "name": "Ana Gómez"}, "to": None},
-            {"key": "TEAM-2", "from": {"id": "acc-ana", "name": "Ana Gómez"}, "to": {"id": "acc-beto", "name": "Beto Ruiz"}}])
+            {"key": "TEAM-1", "title": "Summary of TEAM-1", "from": {"id": "acc-ana", "name": "Ana Gómez"}, "to": None},
+            {"key": "TEAM-2", "title": "Summary of TEAM-2", "from": {"id": "acc-ana", "name": "Ana Gómez"}, "to": {"id": "acc-beto", "name": "Beto Ruiz"}}])
         self.assertIn("TEAM-1: Ana Gómez -> unassigned", plan.describe(dict(body, id="abcdef123456")))
 
     def test_comments_cannot_be_reverted_and_the_plan_says_so(self):
@@ -351,7 +379,7 @@ class RevertOfRevertTest(Base):
         second = state.save_plan(plan.revert(self.jira, first, self.profiles, now=NOW))
         applier.run(self.jira, second, lambda n, s, c: None, "jtk apply y", now=NOW)
         body = plan.revert(self.jira, second, self.profiles, now=NOW)
-        self.assertEqual(body["items"], [{"key": "TEAM-1", "from": None,
+        self.assertEqual(body["items"], [{"key": "TEAM-1", "title": "Summary of TEAM-1", "from": None,
                                           "to": {"id": "acc-ana", "name": "Ana Gómez"}}])
 
 

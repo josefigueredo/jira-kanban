@@ -128,7 +128,8 @@ def move(jira, view: dict, selection: List[dict], profiles: Dict[str, dict], to_
             if skip:
                 skipped.append(skip)
                 continue
-            items.append({"key": issue["key"], "from": {"id": issue["status_id"], "name": issue["status"]},
+            items.append({"key": issue["key"], "title": issue.get("summary") or "",
+                          "from": {"id": issue["status_id"], "name": issue["status"]},
                           "to": {"id": chosen["to"]["id"], "name": chosen["to"]["name"], "role": to_role},
                           "transition": chosen["id"]})
     if not items:
@@ -145,7 +146,8 @@ def assign(view: dict, selection: List[dict], person: dict, now: Optional[Callab
         if owner and owner["id"] == person["id"]:
             skipped.append({"key": issue["key"], "why": "already there"})
         else:
-            items.append({"key": issue["key"], "from": {"id": owner["id"], "name": owner["name"]} if owner else None,
+            items.append({"key": issue["key"], "title": issue.get("summary") or "",
+                          "from": {"id": owner["id"], "name": owner["name"]} if owner else None,
                           "to": dict(target)})
     if not items:
         raise Refused("nothing to assign: " + _why(skipped))
@@ -158,7 +160,7 @@ def comment(view: dict, selection: List[dict], text: str, now: Optional[Callable
         raise Refused("the comment is empty")
     if len(clean) > MAX_TEXT:
         raise Refused(f"the comment is too long ({len(clean)} characters; the limit is {MAX_TEXT})")
-    return _envelope("comment", view, {"text": clean}, [{"key": i["key"]} for i in selection], [], now)
+    return _envelope("comment", view, {"text": clean}, [{"key": i["key"], "title": i.get("summary") or ""} for i in selection], [], now)
 
 
 def _status_role(profiles: Dict[str, dict], key: str, status_id: str) -> Optional[str]:
@@ -173,6 +175,7 @@ def revert(jira, original: dict, profiles: Dict[str, dict], now: Optional[Callab
     view = {"name": original["view"]}
     items, skipped = [], []
     wrote = [e for e in state.entries(original["id"]) if e.get("result") == "ok"]
+    titles = {i["key"]: i.get("title", "") for i in original["items"]}  # plans saved before titles existed have none
     if not wrote:
         raise Refused(f"plan {original['id']} wrote nothing, so there is nothing to revert")
     for entry in wrote:
@@ -185,7 +188,7 @@ def revert(jira, original: dict, profiles: Dict[str, dict], now: Optional[Callab
             if (snap["assignee"] or {}).get("id") != (entry["a"] or {}).get("id"):
                 skipped.append({"key": key, "why": "changed"})
             else:
-                items.append({"key": key, "from": dict(entry["a"]) if entry["a"] else None,
+                items.append({"key": key, "title": titles.get(key, ""), "from": dict(entry["a"]) if entry["a"] else None,
                               "to": dict(entry["de"]) if entry["de"] else None})
             continue
         if snap["status_id"] != entry["a"]["id"]:
@@ -195,7 +198,7 @@ def revert(jira, original: dict, profiles: Dict[str, dict], now: Optional[Callab
         if skip:
             skipped.append(skip)
             continue
-        items.append({"key": key, "from": {"id": snap["status_id"], "name": snap["status"]},
+        items.append({"key": key, "title": titles.get(key, ""), "from": {"id": snap["status_id"], "name": snap["status"]},
                       "to": {"id": chosen["to"]["id"], "name": chosen["to"]["name"],
                              "role": _status_role(profiles, key, chosen["to"]["id"])},
                       "transition": chosen["id"]})
