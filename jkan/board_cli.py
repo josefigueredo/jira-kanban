@@ -13,7 +13,7 @@ from . import board_profile, render, roles
 from .jira import JiraError
 
 OK, FINDINGS, CANNOT, NEEDS_DECISION = 0, 1, 2, 3
-VERBS = ("setup", "set", "show", "check", "survey")
+VERBS = ("setup", "set", "show", "check", "survey", "limit")
 CATEGORY = {"todo": "por hacer", "in_progress": "en curso", "done": "hecho"}
 
 
@@ -77,6 +77,26 @@ def _set(args) -> int:
     board_profile.save(profile)
     print(_render(profile))
     return _verdict(profile)
+
+
+def _limit(args) -> int:
+    profile = _needs_profile(args.key)
+    if profile is None:
+        return FINDINGS
+    text = args.value.strip().lower()
+    try:
+        value = None if text == "none" else int(text)
+    except ValueError:
+        sys.stderr.write(f"the WIP limit must be a whole number or none, not {args.value!r}\n")
+        return FINDINGS
+    try:
+        board_profile.set_wip_limit(profile, value)
+    except board_profile.BadSelection as exc:
+        sys.stderr.write(f"{exc}\n")
+        return FINDINGS
+    board_profile.save(profile)
+    print(f"{args.key}: límite de WIP {'sin límite' if value is None else value}.")
+    return OK
 
 
 def _show(args) -> int:
@@ -151,6 +171,9 @@ def run(argv: List[str], jira: Callable[[], object]) -> int:
     give.add_argument("key")
     give.add_argument("role", choices=roles.ROLES)
     give.add_argument("status", nargs="+")
+    cap = sub.add_parser("limit", help="set how much work a person may have in flight on this board (the WIP limit), or none")
+    cap.add_argument("key")
+    cap.add_argument("value", help="a whole number of 1 or more, or none")
     for name, text in (("show", "print the saved profile"), ("check", "compare the profile with Jira's statuses now")):
         sub.add_parser(name, help=text).add_argument("key")
     survey = sub.add_parser("survey", help="propose roles for many projects and count what needs a decision; saves nothing")
@@ -163,6 +186,8 @@ def run(argv: List[str], jira: Callable[[], object]) -> int:
             return _setup(jira(), args)
         if args.verb == "set":
             return _set(args)
+        if args.verb == "limit":
+            return _limit(args)
         if args.verb == "show":
             return _show(args)
         if args.verb == "check":

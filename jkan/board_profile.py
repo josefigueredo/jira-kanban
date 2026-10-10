@@ -99,15 +99,35 @@ def assign(profile: dict, role: str, tokens: List[str]) -> dict:
     return profile
 
 
-def save(profile: dict, base: Optional[Path] = None) -> Path:
-    path = path_of(profile["project"], base)
+def _wip_ok(value) -> bool:
+    return value is None or (isinstance(value, int) and not isinstance(value, bool) and value >= 1)
+
+
+def set_wip_limit(profile: dict, value: Optional[int]) -> dict:
+    """The most work a person should have in flight on this board; None means no limit."""
+    if not _wip_ok(value):
+        raise BadSelection("the WIP limit must be a whole number of 1 or more, or none")
+    profile["wip_limit"] = value
+    return profile
+
+
+def write_json(path: Path, data: dict) -> Path:
+    """Write `data` as JSON atomically (a temporary file in the same folder, then a rename); no stray file on failure."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=str(path.parent), prefix=".tmp-", suffix=".json")
-    with os.fdopen(fd, "w", encoding="utf-8") as handle:
-        json.dump(profile, handle, ensure_ascii=False, indent=2)
-        handle.write("\n")
-    os.replace(tmp, path)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(data, handle, ensure_ascii=False, indent=2)
+            handle.write("\n")
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
     return path
+
+
+def save(profile: dict, base: Optional[Path] = None) -> Path:
+    return write_json(path_of(profile["project"], base), profile)
 
 
 def _read(path: Path) -> dict:
@@ -124,7 +144,7 @@ def _read(path: Path) -> dict:
     if version > VERSION:
         raise NewerProfile(f"{path.name} was written by a newer jk (profile version {version}); update jk")
     statuses = data.get("statuses")
-    if not (data.get("project") == path.stem and isinstance(statuses, list)
+    if not (data.get("project") == path.stem and isinstance(statuses, list) and _wip_ok(data.get("wip_limit"))
             and all(isinstance(s, dict) and isinstance(s.get("id"), str) and isinstance(s.get("name"), str)
                     and (s.get("role") is None or s.get("role") in roles.ROLES) for s in statuses)):
         raise BadProfile(f"{path.name} is not a profile (wrong shape)")
