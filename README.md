@@ -178,7 +178,17 @@ La skill `jira-em-ops` (solo con `./install.sh --with-write`) prepara los planes
 
 ### Segunda capa: el hook de Claude Code
 
-La guarda `APRUEBO` frena lo accidental y lo inducido desde el chat, `!` o la herramienta Bash, pero **no a un agente que abra un pseudo-terminal y escriba la aprobación**. Para eso, `~/.claude/hooks/git-guardrails.sh` bloquea `jtk apply` y cualquier comando que lo combine con `tmux` (`send-keys`, `send`, `new-session`…, y escribir `APRUEBO` en una sesión), `expect`, `pexpect`, `unbuffer`, `socat`, `script` o `pty.`. `jtk plan …` pasa. Se verifica con `tools/check-guardrails.sh` (33 casos); el parche está en `tools/git-guardrails-jtk-apply.patch` y lo aplica la persona. El hook solo cubre a Claude Code: en Codex y Cursor quedan la guarda y las reglas de `AGENTS.md`.
+La guarda `APRUEBO` frena lo accidental y lo inducido desde el chat, `!` o la herramienta Bash, pero **no a un agente que abra un pseudo-terminal y escriba la aprobación**. Para eso, `~/.claude/hooks/git-guardrails.sh` bloquea `jtk apply` (y el nombre viejo `jk apply`) y cualquier comando que lo combine con `tmux` (`send-keys`, `send`, `new-session`…, y escribir `APRUEBO` en una sesión), `expect`, `pexpect`, `unbuffer`, `socat`, `script` o `pty.`. `jtk plan …` pasa. Se verifica con `tools/check-guardrails.sh` (38 casos). Los parches los aplica la persona, en este orden y uno encima del otro: `tools/git-guardrails-jk-apply.patch` (fase 4, el hook original con `jk`) y después `tools/git-guardrails-jtk.patch` (el renombre: reconoce `jtk` y `jk`), con `patch ~/.claude/hooks/git-guardrails.sh < tools/git-guardrails-jtk.patch`. El hook solo cubre a Claude Code: en Codex y Cursor quedan la guarda y las reglas de `AGENTS.md`.
+
+### Si venías usando `jk`
+
+El comando se llama `jtk` y el nombre viejo no se conserva. El orden importa, porque el hook tiene que reconocer `jtk` **antes** de que exista el comando:
+
+1. Mergear esta rama y aplicar el parche del hook (sección anterior); `tools/check-guardrails.sh` tiene que dar 38/38.
+2. Correr `./install.sh` (con `--with-write` si lo usás). Borra `~/.local/bin/jk` solo si era el enlace de este repo, linkea `jtk` y **imprime** los `mv` de tus datos sin ejecutarlos.
+3. Correr esos `mv` vos: `~/.config/jk` pasa a `~/.config/jtk` (perfiles y views) y `~/.local/state/jk` a `~/.local/state/jtk` (planes y registro de escrituras).
+
+Las variables pasan a `JTK_CONFIG_DIR` y `JTK_STATE_DIR`; las viejas ya no se leen y `install.sh` avisa si las tenés exportadas. El registro conserva sus líneas anteriores (`"tool": "jk"`) y un plan aplicado a medias se puede retomar.
 
 ## Perfiles de board
 

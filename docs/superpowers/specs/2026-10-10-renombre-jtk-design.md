@@ -23,7 +23,8 @@ pierdan los perfiles y el registro de escrituras reales del usuario.
    medias antes del renombre se sigue reconociendo.
 6. **Instalación:** `install.sh` crea `~/.local/bin/jtk`; borra `~/.local/bin/jk` **solo si es un enlace que apunta a
    este repo**; si apunta a otra cosa, avisa y no lo toca.
-7. **Hook (del usuario):** parche nuevo `tools/git-guardrails-jk-apply.patch` → renombrado `git-guardrails-jtk-apply.patch`;
+7. **Hook (del usuario):** parche nuevo `tools/git-guardrails-jtk.patch`, un delta que se aplica encima del de fase 4
+   (`git-guardrails-jk-apply.patch`, ya aplicado por el usuario, se conserva como historia y no se renombra);
    las reglas R1–R3 reconocen `jtk` **y** `jk` (cuesta una alternativa en la regex y cubre scripts o historial
    viejos). `tools/check-guardrails.sh` pasa a casos sobre `jtk` más casos que prueban que `jk apply` sigue bloqueado.
 8. **Fuera del repo:** `~/CurrentCode/SPECKIT/AGENTS.md`, `README.md` de la raíz y la prosa de WayOfWork
@@ -53,3 +54,12 @@ Así nunca hay un `jtk` instalado con un hook que no lo ve. El agente no toca `~
 - Entre el merge y el paso 2 el repo ya dice `jtk` pero el hook viejo no lo ve: no instalar antes (el orden lo evita).
 - El parche del hook sigue siendo segunda capa y solo cubre Claude Code (límite ya documentado en fase 4).
 - Planes guardados en `~/.local/state/jk/plans` son archivos con hash de contenido: moverlos no cambia el id.
+
+## Resultados
+
+- Suite: 624 tests en `python3` y en `/usr/bin/python3` (3.9); RED observado antes de cada cambio (6/7 en `test_rename`,
+  5/5 en los de `install.sh`).
+- Hook: `tools/check-guardrails.sh` = 38 casos. Contra el hook actual del usuario, 21/38 (los 17 casos de `jtk` fallan, los
+  del nombre viejo pasan); contra una copia con `git-guardrails-jtk.patch` aplicado, 38/38. El hook real no se tocó
+  (`cmp` contra la copia original).
+- Desvío del plan: ninguno de fondo; el parche es delta (nota en el punto 7).
