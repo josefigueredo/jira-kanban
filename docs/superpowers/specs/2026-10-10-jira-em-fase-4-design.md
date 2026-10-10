@@ -130,12 +130,12 @@ TDD, en `python3` y `/usr/bin/python3` (3.9), con Jira falso. Línea base: 599 t
   casos nuevos de `jk apply` y pseudo-terminal). La revisión final encontró rodeos naturales que la primera versión no
   cubría (tmux en dos pasos, `tmux send`, `pty.spawn` con lista, `pexpect`, `script` sin guion): se agregaron como casos,
   la copia parchada falló 6 de 33, y con la regex ampliada da **33/33**; el parche reproduce byte a byte el archivo
-  probado (`patch` + `cmp`). El hook real no se tocó. Aplicado por la persona y verificado: pendiente.
+  probado (`patch` + `cmp`). El hook real no se tocó. Aplicado por la persona el 2026-10-10 (backup `git-guardrails.sh.bak-2026-10-10`) y verificado sobre el hook real: **33/33**.
 - **Citas `archivo:línea`:** 15 revisadas abriendo la línea. Vigentes: `jira.py:248` (transition), `board_profile.py:33`,
   `sync.py:130|:240|:326`, `jira.py:110-120` (get). Corregidas: `kanban.py:15`→`:14`; `jira.py:98-108`→`:110-119` (get);
   `jira.py:114` (search/jql, children)→`:129` y `:206`; `jira.py:114` (maxResults)→`:126` y `:203`;
   `queries.py:24-29`→`:26-34` (ahora `_scope` acepta la lista de un view); `jira.py:208-216` (transiciones por nombre)→`:223-256`;
   `journal.py:24`→`:28` (cuatro citas); `cli.py:171|:187`→`:198|:214`.
-- **Pendiente:** aplicar el parche del hook (comando en el reporte), prueba real de la fase 3 en el sandbox, renombre del
+- **Pendiente:** prueba real de la fase 3 en el sandbox, renombre del
   repo (el nombre lo elige la persona), los dos menores de la fase 3 que quedaron afuera (el `n` de los viejos cuenta
   issues; el resumen de un re-apply no nombra lo ya hecho), los menores de la fase 1 y `jk done|stats` por categoría.
