@@ -127,14 +127,14 @@ def blocked_report(open_issues: List[dict], conv: dict, today: _dt.date) -> dict
 
 
 def flow_report(delivered: List[dict], dropped: List[dict], open_issues: List[dict], today: _dt.date,
-                weeks: int) -> dict:
+                weeks: int, stalled_days: int = stats.STALLED_DAYS) -> dict:
     """Deliveries per week, lead time and the age of the work in flight. Only `delivered` counts as delivery."""
     first = first_week(today, weeks).isoformat()
     mine = [dict(i, changed=delivery_day(i)) for i in delivered if (delivery_day(i) or "") >= first]
     gone = [i for i in dropped if (i.get("changed") or "") >= first]
     return {"weeks": weeks, "since": first, "delivered_n": len(mine), "dropped_n": len(gone),
             "weekly": stats.throughput(mine, today, weeks), "lead": stats.spread(stats.lead_days(mine)),
-            "wip": stats.wip(open_issues, today)}
+            "wip": stats.wip(open_issues, today, stalled_days)}
 
 
 def digest_report(delivered: List[dict], dropped: List[dict], created: List[dict], open_issues: List[dict],
@@ -189,7 +189,7 @@ def desk_report(open_issues: List[dict], delivered: List[dict], view: dict, prof
 def rollup_row(view: dict, open_issues: List[dict], delivered: List[dict], conv: dict, today: _dt.date,
                weeks: int = 4) -> dict:
     blocked = blocked_report(open_issues, conv, today)
-    flow = flow_report(delivered, [], open_issues, today, weeks)
+    flow = flow_report(delivered, [], open_issues, today, weeks, view["stalled_days"])
     return {"view": view["name"], "open": len(open_issues),
             "blocked": len({r["issue"]["key"] for r in blocked["blocked"]}),
             "stalled": len(stalled_report(open_issues, today, view["stalled_days"])["rows"]),

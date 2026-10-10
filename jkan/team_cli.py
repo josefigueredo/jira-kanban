@@ -29,10 +29,17 @@ def _describe(view: dict) -> str:
             f"**Equipo:** {team_render.team_label(view['team'])} · **Estancado desde:** {view['stalled_days']} días")
 
 
-def _profile_rows(view: dict, profiles: dict) -> list:
+def _lacking(boards, problems: dict) -> str:
+    """The boards without a usable profile; a file nobody can read is named with the reason, not called missing."""
+    return ", ".join(f"{b} ({problems[b][1]})" if b in problems else b for b in boards)
+
+
+def _profile_rows(view: dict, profiles: dict, problems: dict) -> list:
     rows = []
     for board in view["boards"]:
-        if board not in profiles:
+        if board in problems:
+            rows.append([board, f"ilegible: {problems[board][1]}"])
+        elif board not in profiles:
             rows.append([board, "sin perfil"])
         else:
             pending = len(board_profile.open_statuses(profiles[board]))
@@ -62,18 +69,18 @@ def _setup(args, jira) -> int:
     print(_describe(view))
     if note:
         print("\n" + note)
-    profiles, _ = board_profile.scan()
+    profiles, problems = board_profile.scan()
     lacking = team.missing_profiles(view, profiles)
     if lacking:
-        print(f"\nFalta el perfil de: {', '.join(lacking)}. Corré `jk board setup KEY` para cada uno antes de pedir reportes.")
+        print(f"\nFalta el perfil de: {_lacking(lacking, problems)}. Corré `jk board setup KEY` para cada uno antes de pedir reportes.")
     print(f"\nView guardado en {path}")
     return OK
 
 
 def _show(args) -> int:
     view = views.load(args.name)
-    profiles, _ = board_profile.scan()
-    print(_describe(view) + "\n\n" + team_render.table(["Board", "Perfil"], _profile_rows(view, profiles), True))
+    profiles, problems = board_profile.scan()
+    print(_describe(view) + "\n\n" + team_render.table(["Board", "Perfil"], _profile_rows(view, profiles, problems), True))
     return OK
 
 
@@ -94,9 +101,9 @@ def _context(name: str):
     profiles, problems = board_profile.scan()
     lacking = team.missing_profiles(view, profiles)
     if lacking:
-        broken = [b for b in lacking if b in problems]
-        extra = f" ({', '.join(f'{b}: {problems[b][1]}' for b in broken)})" if broken else ""
-        raise Refusal(f"no profile for {', '.join(lacking)}{extra}: run jk board setup {lacking[0]}")
+        newer = any(problems.get(b, ("",))[0] == "newer" for b in lacking)
+        todo = "update jk" if newer else f"run jk board setup {lacking[0]}"
+        raise Refusal(f"no profile for {_lacking(lacking, problems)}: {todo}")
     return view, profiles
 
 
@@ -131,7 +138,7 @@ def _flow(args, jira, view, profiles, conv, today) -> Result:
     issues, cut1 = team.gather_open(jira, view, profiles, conv)
     delivered, cut2 = team.gather_closed(jira, view, profiles, conv, ("delivered",), first)
     dropped, cut3 = team.gather_closed(jira, view, profiles, conv, ("dropped",), first)
-    report = team.flow_report(delivered, dropped, issues, today, weeks)
+    report = team.flow_report(delivered, dropped, issues, today, weeks, view["stalled_days"])
     return Result("Flujo", (first, today), report, team_render.render_flow(report, args.all, _link(jira)),
                   issues + delivered + dropped, cut1 or cut2 or cut3)
 
@@ -185,24 +192,27 @@ def _report(args, jira, conv: dict, today: _dt.date) -> int:
     return OK
 
 
+def _rollup_row(client, name: str, profiles: dict, problems: dict, conv: dict, today: _dt.date, first: _dt.date) -> dict:
+    view = views.load(name)
+    lacking = team.missing_profiles(view, profiles)
+    if lacking:
+        raise Refusal(f"sin perfil: {_lacking(lacking, problems)}")
+    issues, cut1 = team.gather_open(client, view, profiles, conv)
+    delivered, cut2 = team.gather_closed(client, view, profiles, conv, ("delivered",), first)
+    return dict(team.rollup_row(view, issues, delivered, conv, today), truncated=cut1 or cut2)
+
+
 def _rollup(args, jira, conv: dict, today: _dt.date) -> int:
-    profiles, _ = board_profile.scan()
+    profiles, problems = board_profile.scan()
     client = jira()
     first = team.first_week(today, 4)
     rows, failed = [], False
     for name in args.views:
-        try:
-            view = views.load(name)
-            lacking = team.missing_profiles(view, profiles)
-            if lacking:
-                raise Refusal(f"sin perfil: {', '.join(lacking)}")
-        except (views.BadView, Refusal) as exc:
+        try:  # one view that cannot be computed is a row with its reason; it never hides the others
+            rows.append(_rollup_row(client, name, profiles, problems, conv, today, first))
+        except (views.BadView, Refusal, ValueError, JiraError) as exc:
             rows.append({"view": name, "error": str(exc)})
             failed = True
-            continue
-        issues, cut1 = team.gather_open(client, view, profiles, conv)
-        delivered, cut2 = team.gather_closed(client, view, profiles, conv, ("delivered",), first)
-        rows.append(dict(team.rollup_row(view, issues, delivered, conv, today), truncated=cut1 or cut2))
     if args.json:
         print(json.dumps({"consulted": today.isoformat(), "rows": rows}, ensure_ascii=False, indent=2, default=str))
     else:

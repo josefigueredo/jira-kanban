@@ -50,11 +50,11 @@ def lead_days(done: List[dict]) -> List[int]:
     return days
 
 
-def wip(open_issues: List[dict], today: _dt.date) -> List[dict]:
+def wip(open_issues: List[dict], today: _dt.date, threshold: int = STALLED_DAYS) -> List[dict]:
     rows = [{"issue": i, "days": (today - _day(i["changed"])).days}
             for i in open_issues if roles.role_of(i) in roles.IN_FLIGHT and i["changed"]]
     rows.sort(key=lambda r: (-r["days"], r["issue"]["key"]))
-    return [dict(r, stalled=r["days"] >= STALLED_DAYS) for r in rows]
+    return [dict(r, stalled=r["days"] >= threshold) for r in rows]
 
 
 def on_time(done: List[dict]) -> Optional[dict]:

@@ -8,6 +8,7 @@ import unittest
 import team_fixtures as fx
 from helpers import FakeJira, config_dir, issue
 from jkan import board_profile, cli, views
+from jkan.jira import JiraError
 
 
 def run(args, jira):
@@ -225,6 +226,62 @@ class ReportsTest(unittest.TestCase):
         self.assertIn("| otro | sin perfil: UA |", out)
         data = json.loads(run(["rollup", "plataforma", "--json"], self.jira)[1])
         self.assertEqual(data["rows"][0]["open"], 4)
+
+    def test_rollup_keeps_the_other_rows_when_one_view_fails_inside_jira(self):
+        views.save(fx.view(boards=("DESK",), team={"group": "gone-group"}, name="otro"))
+        views.save(fx.view(boards=("TEAM",), name="solo"))
+        good = fx.answers(open_=self.open_work())
+
+        def answer(jql):
+            if "gone-group" in jql:
+                raise JiraError("POST /rest/api/3/search/jql: HTTP 400 group does not exist")
+            return good(jql)
+
+        self.jira.search_answer = answer
+        code, out, _ = run(["rollup", "solo", "otro"], self.jira)
+        self.assertEqual(code, 1)
+        self.assertIn("| solo |", out)
+        self.assertIn("| otro | POST /rest/api/3/search/jql: HTTP 400", out)
+
+    def test_rollup_keeps_the_other_rows_when_a_profile_holds_data_that_cannot_be_queried(self):
+        path = self.base / "profiles" / "DESK.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        for status in data["statuses"]:
+            if status["id"] == "15":
+                status["id"] = "abc"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        views.save(fx.view(boards=("DESK",), name="otro"))
+        views.save(fx.view(boards=("TEAM",), name="solo"))
+        self.jira.search_answer = fx.answers(open_=self.open_work())
+        code, out, _ = run(["rollup", "solo", "otro"], self.jira)
+        self.assertEqual(code, 1)
+        self.assertIn("| solo |", out)
+        self.assertIn("| otro | not status ids", out)
+
+    def test_an_unreadable_profile_is_named_in_rollup_and_show_not_called_missing(self):
+        (self.base / "profiles" / "DESK.json").write_text("{not json", encoding="utf-8")
+        views.save(fx.view(boards=("DESK",), name="otro"))
+        _, out, _ = run(["rollup", "otro"], self.jira)
+        self.assertIn("DESK.json", out)
+        _, shown, _ = run(["show", "otro"], self.jira)
+        self.assertIn("DESK.json", shown)
+
+    def test_a_profile_from_a_newer_jk_says_to_update_jk_not_to_run_setup(self):
+        path = self.base / "profiles" / "DESK.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["version"] = 99
+        path.write_text(json.dumps(data), encoding="utf-8")
+        _, _, err = run(["status", "plataforma"], self.jira)
+        self.assertIn("update jk", err)
+        self.assertNotIn("run jk board setup", err)
+
+    def test_flow_marks_as_stalled_with_the_days_of_the_view_like_stalled_does(self):
+        views.save(fx.view(name="lento", stalled_days=14))
+        self.jira.search_answer = fx.answers(open_=[fx.at("TEAM-1", "active", changed="2026-09-28")])  # 10 days
+        _, stalled, _ = run(["stalled", "lento"], self.jira)
+        _, flow, _ = run(["flow", "lento"], self.jira)
+        self.assertIn("**0 de 1 en curso**", stalled)
+        self.assertNotIn("estancado", flow)
 
     def test_no_report_writes_anything_to_jira(self):
         self.jira.search_answer = fx.answers(open_=self.open_work())
