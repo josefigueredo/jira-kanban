@@ -1,6 +1,6 @@
 --- a/git-guardrails.sh
 +++ b/git-guardrails.sh
-@@ -48,6 +48,27 @@
+@@ -48,6 +48,30 @@
  coincide "${JK}(create|push|assign)([[:space:]]+[^;&|]*)?[[:space:]]--apply([[:space:]]|$)" \
    && bloquear "jk create / jk push / jk assign con --apply escriben en Jira"
  
@@ -19,11 +19,14 @@
 +
 +# Rodeo que la guarda APRUEBO no ve: un pseudo-terminal que escribe la aprobación (tmux send-keys, expect, script, pty...).
 +# Va aunque `jk apply` no esté al inicio del comando. Falso positivo asumido: un mensaje que nombre las dos cosas a la vez.
-+APLICA='jk(\.py)?[[:space:]]+apply([[:space:]]|$)'
-+PTY='(tmux[[:space:]]+send-keys|(^|[^[:alnum:]_])(expect|unbuffer|socat)([[:space:]]|$)|script[[:space:]]+-|pty\.)'
++APLICA='jk(\.py)?["'"'"']?[[:space:],]+["'"'"']?apply(["'"'"'[:space:]]|$)'
++PTY='(tmux[[:space:]]+(send-keys|send|new-session|new|new-window|neww|split-window|splitw|respawn-pane|run-shell)|(^|[^[:alnum:]_])(expect|pexpect|unbuffer|socat|script)([[:space:]]|\.|$)|pty\.)'
 +if coincide "$APLICA" && coincide "$PTY"; then
 +  bloquear_terminal "jk apply a través de un pseudo-terminal salta la aprobación de una persona"
 +fi
++# La otra mitad del mismo rodeo, en dos pasos: abrir la sesión por un lado y escribir la aprobación por el otro.
++coincide "tmux[[:space:]]+send(-keys)?[[:space:]].*APRUEBO" \
++  && bloquear_terminal "escribir APRUEBO en una sesión tmux salta la aprobación de una persona"
 +
  # Spec-Kit: /spec-kit.sync-status transiciona historias en Jira; se corre sólo desde Cursor, nunca mandado desde acá
  # (wow sk run/send, run-in-cursor, tmux send-keys o cursor-agent). Los demás /spec-kit.* sí se pueden mandar.

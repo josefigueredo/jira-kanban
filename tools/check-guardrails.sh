@@ -37,6 +37,12 @@ check 2 "tmux send-keys 'jk apply abc123def456' Enter"
 check 2 "expect -c 'spawn jk apply abc123def456'"
 check 2 'script -q /dev/null jk apply abc123def456'
 check 2 "python3 -c 'import pty; pty.spawn(\"jk apply abc123def456\".split())'"
+check 2 "tmux send -t s 'jk apply abc123def456' Enter"
+check 2 "tmux new-session -d -s s 'jk apply abc123def456'"
+check 2 "tmux send-keys -t s 'APRUEBO 1' Enter"
+check 2 "python3 -c 'import pty; pty.spawn([\"jk\",\"apply\",\"abc123def456\"])'"
+check 2 "python3 -c 'import pexpect; pexpect.spawn(\"jk apply abc123def456\")'"
+check 2 'script /tmp/out jk apply abc123def456'
 # allowed
 check 0 'jk plan move plataforma TEAM-1 --to active'
 check 0 'jk plan revert abc123def456'
@@ -48,6 +54,10 @@ check 0 'git status'
 check 0 'git commit -m "docs: jk apply"'
 check 0 'echo jk apply'
 check 0 'rg -n "jk apply" docs'
+check 0 'rg -n "jk apply" scripts/'
+check 0 'tmux ls'
+check 0 "tmux send-keys -t s 'ls' Enter"
+check 0 "tmux new-session -d -s build 'make'"
 
 echo "$((total - wrong))/$total cases behaved as expected"
 [ "$wrong" -eq 0 ]

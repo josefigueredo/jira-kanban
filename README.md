@@ -178,7 +178,7 @@ La skill `jira-em-ops` (solo con `./install.sh --with-write`) prepara los planes
 
 ### Segunda capa: el hook de Claude Code
 
-La guarda `APRUEBO` frena lo accidental y lo inducido desde el chat, `!` o la herramienta Bash, pero **no a un agente que abra un pseudo-terminal y escriba la aprobación**. Para eso, `~/.claude/hooks/git-guardrails.sh` bloquea `jk apply` y cualquier comando que lo combine con `tmux send-keys`, `expect`, `unbuffer`, `socat`, `script -` o `pty.`. `jk plan …` pasa. Se verifica con `tools/check-guardrails.sh` (23 casos); el parche está en `tools/git-guardrails-jk-apply.patch` y lo aplica la persona. El hook solo cubre a Claude Code: en Codex y Cursor quedan la guarda y las reglas de `AGENTS.md`.
+La guarda `APRUEBO` frena lo accidental y lo inducido desde el chat, `!` o la herramienta Bash, pero **no a un agente que abra un pseudo-terminal y escriba la aprobación**. Para eso, `~/.claude/hooks/git-guardrails.sh` bloquea `jk apply` y cualquier comando que lo combine con `tmux` (`send-keys`, `send`, `new-session`…, y escribir `APRUEBO` en una sesión), `expect`, `pexpect`, `unbuffer`, `socat`, `script` o `pty.`. `jk plan …` pasa. Se verifica con `tools/check-guardrails.sh` (33 casos); el parche está en `tools/git-guardrails-jk-apply.patch` y lo aplica la persona. El hook solo cubre a Claude Code: en Codex y Cursor quedan la guarda y las reglas de `AGENTS.md`.
 
 ## Perfiles de board
 

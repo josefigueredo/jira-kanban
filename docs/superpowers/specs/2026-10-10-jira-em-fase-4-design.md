@@ -33,8 +33,9 @@ mencione el comando no se bloquee:
 
 - **R1.** `jk apply …` (con los mismos prefijos que ya acepta: `rtk`, `python3 …/jk.py`, ruta absoluta) se bloquea.
   `jk plan …`, `jk team …` y el resto pasan: planificar solo lee.
-- **R2.** Un comando que combine `jk apply` / `jk.py apply` con una herramienta que da un pseudo-terminal (`tmux
-  send-keys`, `expect`, `unbuffer`, `script -`, `pty.`, `socat`) se bloquea aunque `jk apply` no esté al inicio. Es el
+- **R2.** Un comando que combine `jk apply` / `jk.py apply` con una herramienta que da un pseudo-terminal (`tmux`
+  en sus formas `send-keys`, `send`, `new-session`…, `expect`, `pexpect`, `unbuffer`, `script`, `pty.`, `socat`) se bloquea
+  aunque `jk apply` no esté al inicio, y también escribir `APRUEBO` con `tmux send` (el rodeo en dos pasos) se bloquea aunque `jk apply` no esté al inicio. Es el
   rodeo que la guarda no puede ver. Falso positivo asumido: un mensaje de commit que nombre las dos cosas a la vez.
 - El mensaje de bloqueo usa el texto existente («No tenés autoridad… lo corre él con `!`»), con el matiz de que `jk
   apply` **no funciona bajo `!`** (no hay TTY, medido en la fase 3): se corre en una ventana de terminal aparte.
@@ -120,14 +121,16 @@ TDD, en `python3` y `/usr/bin/python3` (3.9), con Jira falso. Línea base: 599 t
 
 - **Qué se entregó:** el tee de `journal.journal(…, also=)` apuntado a `state.log_write` desde `cli._client` (los tres
   comandos viejos escriben también en la bitácora común, sin `plan`); `jk apply` revalida perfiles antes de pedir la
-  aprobación (y rechaza un plan cuyo board perdió el perfil, que antes habría terminado en `KeyError`);
+  aprobación (y rechaza un plan cuyo board salió del view o perdió el perfil; antes `apply` escribía sin revalidar);
   `jk plan revert ID [--allow-close]`; `tools/check-guardrails.sh` y `tools/git-guardrails-jk-apply.patch`; `AGENTS.md`
   y el `README.md` de la raíz de SPECKIT editados en el lugar (no es un repo git; copias en el scratchpad); README de
   este repo.
-- **Tests:** 611 en `python3` y en `/usr/bin/python3` (3.9), con Jira falso (línea base 599).
+- **Tests:** 612 en `python3` y en `/usr/bin/python3` (3.9), con Jira falso (línea base 599).
 - **Hook, medido el 2026-10-10:** `tools/check-guardrails.sh` sobre el hook real daba **14/23** (fallaban justo los 9
-  casos nuevos de `jk apply` y pseudo-terminal) y sobre la copia parchada **23/23**; el parche reproduce byte a byte el
-  archivo probado (`patch` + `cmp`). El hook real no se tocó. Aplicado por la persona y verificado: pendiente.
+  casos nuevos de `jk apply` y pseudo-terminal). La revisión final encontró rodeos naturales que la primera versión no
+  cubría (tmux en dos pasos, `tmux send`, `pty.spawn` con lista, `pexpect`, `script` sin guion): se agregaron como casos,
+  la copia parchada falló 6 de 33, y con la regex ampliada da **33/33**; el parche reproduce byte a byte el archivo
+  probado (`patch` + `cmp`). El hook real no se tocó. Aplicado por la persona y verificado: pendiente.
 - **Citas `archivo:línea`:** 15 revisadas abriendo la línea. Vigentes: `jira.py:248` (transition), `board_profile.py:33`,
   `sync.py:130|:240|:326`, `jira.py:110-120` (get). Corregidas: `kanban.py:15`→`:14`; `jira.py:98-108`→`:110-119` (get);
   `jira.py:114` (search/jql, children)→`:129` y `:206`; `jira.py:114` (maxResults)→`:126` y `:203`;
