@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import os
+import pty
 import unittest
 
 from helpers import ROOT  # noqa: F401  (puts the skill on sys.path)
@@ -98,6 +99,40 @@ class TerminalTest(unittest.TestCase):
 
         with self.assertRaisesRegex(guard.NotApproved, "Run it yourself"):
             guard.confirm(1, "S", "jtk apply abc", streams=REAL, open_tty=no_tty)
+
+
+class RealTerminalTest(unittest.TestCase):
+    """The fakes above never touch /dev/tty. This runs the real guard in a child that has a real terminal (a pty), the
+    way a person's window has one: opening /dev/tty read-write in text mode used to fail with «not seekable»."""
+
+    def run_in_terminal(self, typed: str) -> int:
+        pid, fd = pty.fork()
+        if pid == 0:
+            code = 99
+            try:
+                guard.confirm(1, "SUMMARY", "the command")
+                code = 0
+            except guard.NotApproved:
+                code = 2
+            except BaseException:
+                code = 1
+            os._exit(code)
+        os.write(fd, typed.encode())
+        while True:  # drain what the terminal echoes: a child cannot exit while its output is unread
+            try:
+                if not os.read(fd, 1024):
+                    break
+            except OSError:
+                break
+        _, status = os.waitpid(pid, 0)
+        os.close(fd)
+        return os.WEXITSTATUS(status)
+
+    def test_a_person_at_a_real_terminal_can_approve(self):
+        self.assertEqual(self.run_in_terminal("APRUEBO 1\n"), 0)
+
+    def test_a_real_terminal_with_a_wrong_answer_does_not_approve(self):
+        self.assertEqual(self.run_in_terminal("no\n"), 2)
 
 
 class NoBypassTest(unittest.TestCase):
