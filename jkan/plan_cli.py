@@ -9,7 +9,7 @@ import argparse
 import sys
 from typing import Callable, List
 
-from . import applier, guard, people, plan, state, team, team_cli
+from . import applier, guard, people, plan, roles, state, team, team_cli
 from .jira import JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
@@ -96,7 +96,11 @@ def run_apply(argv: List[str], jira: Callable[[], object], confirm: Callable) ->
     args = parser.parse_args(argv)
     try:
         saved = state.load_plan(args.id)
-        team_cli.context(saved["view"])
+        _, profiles = team_cli.context(saved["view"])
+        lacking = sorted({roles.project_of(i["key"]) for i in saved["items"]} - set(profiles))
+        if lacking:
+            raise plan.Refused(f"no profile for {', '.join(lacking)}: run jk board setup {lacking[0]}, then plan again")
+        plan.check_profiles(saved["items"], profiles)
         outcomes, code = applier.run(jira(), saved, confirm, f"jk apply {saved['id']}")
     except guard.NotApproved as exc:
         sys.stderr.write(f"jk: {exc}\n")

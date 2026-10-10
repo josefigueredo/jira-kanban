@@ -216,6 +216,23 @@ class ApplyTest(Base):
             with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 run(args, self.jira)
 
+    def test_a_profile_that_lost_its_roles_after_planning_is_refused_before_asking(self):
+        pid = self.planned()
+        board_profile.save(fx.profile("TEAM", decide_waiting=False))
+        asked = []
+        code, _, err = run(["apply", pid], self.jira, confirm=lambda n, s, c: asked.append(n))
+        self.assertEqual((code, asked, self.jira.writes), (1, [], []))
+        self.assertIn("without a role", err)
+
+    def test_a_plan_whose_board_has_no_profile_any_more_is_refused_not_a_crash(self):
+        pid = self.planned()  # TEAM-1
+        views.save(fx.view(boards=("DESK",)))
+        (self.config / "profiles" / "TEAM.json").unlink()
+        asked = []
+        code, _, err = run(["apply", pid], self.jira, confirm=lambda n, s, c: asked.append(n))
+        self.assertEqual((code, asked, self.jira.writes), (1, [], []))
+        self.assertIn("no profile for TEAM", err)
+
     def test_a_read_only_command_never_needs_the_guard(self):
         code, _, _ = run(["team", "list"], self.jira)
         self.assertEqual(code, 0)
