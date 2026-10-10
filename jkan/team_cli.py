@@ -97,7 +97,7 @@ def _list() -> int:
     return OK
 
 
-def _context(name: str):
+def context(name: str):
     view = views.load(name)
     profiles, problems = board_profile.scan()
     lacking = team.missing_profiles(view, profiles)
@@ -195,7 +195,7 @@ def _emit(args, verb: str, view: dict, profiles: dict, today: _dt.date, result: 
 
 
 def _report(args, jira, conv: dict, today: _dt.date) -> int:
-    view, profiles = _context(args.view)
+    view, profiles = context(args.view)
     client = jira()
     _emit(args, args.verb, view, profiles, today, BUILDERS[args.verb](args, client, view, profiles, conv, today))
     return OK

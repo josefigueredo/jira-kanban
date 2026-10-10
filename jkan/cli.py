@@ -1,4 +1,4 @@
-"""jk: create | pull | push | show | board | who | assign | done | next | blocked | load | stats | board setup|set|show|check|survey. Every Jira write is a dry run unless --apply is passed; the reports only read."""
+"""jk: create | pull | push | show | board | who | assign | done | next | blocked | load | stats | board setup|set|show|check|survey | team … | plan … | apply. Every Jira write is a dry run unless --apply is passed; the reports only read."""
 from __future__ import annotations
 
 import argparse
@@ -9,8 +9,8 @@ import sys
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from . import (board_cli, board_profile, config, journal, kanban, people, preview, render, roles, standup, stats, sync,
-               team_cli, views, window)
+from . import (board_cli, board_profile, config, guard, journal, kanban, people, plan_cli, preview, render, roles, standup,
+               stats, sync, team_cli, views, window)
 from .jira import Jira, JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
@@ -145,7 +145,7 @@ def _report(jira, args, conv: dict, today: _dt.date) -> int:
 
 
 def main(argv: Optional[List[str]] = None, client: Callable = _client,
-         today: Optional[Callable[[], _dt.date]] = None) -> int:
+         today: Optional[Callable[[], _dt.date]] = None, confirm: Callable = guard.confirm) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
     if len(argv) > 1 and argv[0] == "board" and argv[1] in board_cli.VERBS:  # `jk board EPIC` stays the local kanban
         here = Path(".").resolve()
@@ -156,6 +156,14 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
         make = lambda: client(here) if client is not _client else _client(here, command="team")  # noqa: E731
         return team_cli.run(argv[1:], make, team_conv,
                             today or (lambda: window.today_in(team_conv.get("timezone"))))
+    if argv and argv[0] in ("plan", "apply"):  # the guarded writes; the global log is their record, so no per-project journal
+        here = Path(".").resolve()
+        plan_conv = config.load_conventions(here)
+        make = lambda: client(here) if client is not _client else _client(here, command=None)  # noqa: E731
+        if argv[0] == "apply":
+            return plan_cli.run_apply(argv[1:], make, confirm)
+        return plan_cli.run_plan(argv[1:], make, plan_conv,
+                                 today or (lambda: window.today_in(plan_conv.get("timezone"))))
     parser = argparse.ArgumentParser(prog="jk", description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("create", "pull", "push", "show", "board"):
