@@ -1,13 +1,13 @@
 ---
 name: jira-em-ops
-description: Use when a manager wants to change several issues of their team at once ("pasá estos tickets a en curso", "asigná los que no tienen dueño", "comentá en estos tickets", "deshacé lo que apliqué"). It only prepares the change; a person approves it in their own terminal. To read the team use jira-em, and to create or sync epics use jira-kanban.
+description: Use when a manager wants to change several issues of their team at once ("pasá estos tickets a en curso", "asigná los que no tienen dueño", "comentá en estos tickets", "deshacé lo que apliqué"). It only prepares the change; a person approves it in a window with the changes (button Apruebo <n>). To read the team use jira-em, and to create or sync epics use jira-kanban.
 ---
 
 # jira-em-ops
 
 Prepares changes to **several issues of the team's boards**: move to a status, assign, comment. It never writes to Jira
-by itself: `jtk plan …` only reads and saves a plan; the person runs `jtk apply <id>` in a terminal window and types
-`APRUEBO <n>` there.
+by itself: `jtk plan …` only reads and saves a plan; `jtk apply <id>` opens a window that lists every change, and a
+person clicks **Apruebo <n>** there. With no click, nothing is written.
 
 ```bash
 jtk plan move    VIEW [KEY …] [--unassigned] [--older-than D] [--role R] --to ROLE [--to-status ID] [--allow-close] [--max N]
@@ -30,14 +30,17 @@ jtk plan revert  PLAN_ID
    them first with `--list` so the plan is about exactly those issues.
 2. **Plan.** Run the `jtk plan …` command and show its output as it is: it already names every issue, what changes and
    what was left out. A plan has at most 25 issues (`--max` up to 200).
-3. **Hand it over.** Give the user the line the plan prints, `jtk apply <id>`, and tell them to run it **in their own
-   terminal window**. Then stop and wait: do not poll, do not retry.
+3. **Ask to apply.** Ask the user whether to apply the plan. Only after a yes, tell them a window is about to appear
+   with the changes and the buttons **Cancelar** and **Apruebo <n>**, then run `jtk apply <id>` and wait for it to
+   finish. The window is the approval; your question is not.
 4. **After they applied it**, offer `jtk team status VIEW` to see the result, or `jtk plan revert <id>` if they want it back.
 
 ## Rules
 
-- **Never run `jtk apply`**, nor the older writers (create, push, assign) with `--apply`. Only a person at a
-  terminal can approve a write; an approval typed in the chat counts for nothing.
+- Run `jtk apply <id>` only after the person asked to apply that plan, and never the older writers (create, push,
+  assign) with `--apply` from this skill. Only a person clicking **Apruebo <n>** can approve a write; a yes typed in
+  the chat counts for nothing, and never click, type or automate anything into the window.
+- If the person cancels, closes the window or it times out, say so and never run it again unless they ask.
 - Exit code 3 means "a person has to do this", not "try again". Exit code 1 means the plan was refused: read the reason,
   fix the selection, plan again.
 - Read only otherwise: never `jtk board` writes other than the profile commands the user asks for.

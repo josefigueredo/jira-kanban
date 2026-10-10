@@ -166,19 +166,30 @@ Sirve para pasar de «7 sin asignar» a «asignados». Es en dos pasos, y el seg
 | `jtk plan assign VIEW [KEY …] --person "Ana"` | Plan para reasignar. La persona nunca se adivina: si hay dos, lista las dos |
 | `jtk plan comment VIEW [KEY …] --text "…"` | Plan para dejar el mismo comentario |
 | `jtk plan revert ID` | Plan inverso de uno aplicado; no garantiza deshacer y lo dice |
-| `jtk apply ID` | Aplica **exactamente** ese plan. Muestra qué va a hacer y pide escribir `APRUEBO <n>` |
+| `jtk apply ID` | Aplica **exactamente** ese plan. Abre una ventana con el detalle y dos botones, **Cancelar** y **Apruebo <n>**; sin terminal y sin ventana, no escribe |
 
 Las claves pueden ir solas o combinadas con `--unassigned`, `--older-than DÍAS` y `--role ROL` (los mismos filtros que `--list`). Un plan lleva hasta 25 issues (`--max`, hasta 200); mover a `delivered` o `dropped` exige `--allow-close`.
 
-**`apply` necesita una terminal de verdad**: no funciona desde el chat, ni desde `!` de Claude Code, ni con un `echo APRUEBO 3 | …`. Corrélo en una ventana de terminal aparte. Lo mismo vale ahora para `jtk create`, `jtk push` y `jtk assign` con `--apply`. Si no hay terminal, el comando no escribe nada, imprime la línea para copiar y sale con código 3.
+**La aprobación es de una persona, con un clic.** En macOS, `jtk apply` y los `--apply` de `create`, `push` y `assign`
+abren una ventana nativa con el detalle: una fila por issue (clave, título y qué cambia), lo que quedó afuera y dos botones,
+**Cancelar** (el predeterminado; también Escape) y **Apruebo <n>**, que solo responde a un clic: Return no aprueba. Si cancelás,
+la cerrás o pasan 100 s, no se escribe nada y el comando sale con código 3. El detalle sale del plan guardado, no de lo que cuente
+un agente. Si corrés `jtk apply` en una terminal real, sigue pidiendo escribir `APRUEBO <n>` ahí. Sin terminal y sin ventana
+(no es macOS, `ssh`, sin sesión gráfica), no escribe nada, imprime la línea para copiar y sale con código 3.
+
+Qué protege y qué no: frena el error (un nombre equivocado, un plan equivocado) y las instrucciones inducidas, porque la
+respuesta la da un clic humano. Un agente no puede hacer clic sin permisos de accesibilidad del sistema: **si le diste ese
+permiso a Cursor o a Terminal, esa defensa se debilita**. No protege de un agente malicioso con control total de la máquina.
 
 Antes de cada escritura, `apply` vuelve a leer el issue: si alguien lo movió o reasignó después de planificar, lo saltea y lo informa. Reaplicar un plan es seguro (saltea lo ya hecho). Cada escritura queda en `~/.local/state/jtk/writes.jsonl`, también las de `jtk create|push|assign --apply` (el registro de cada proyecto, `.jira-kanban/jira-writes.jsonl`, sigue como antes). Las líneas de un plan llevan `plan`; las de los comandos viejos, no.
 
-La skill `jira-em-ops` (solo con `./install.sh --with-write`) prepara los planes; **nunca** corre `apply`.
+La skill `jira-em-ops` (solo con `./install.sh --with-write`) prepara los planes y corre `apply` solo cuando la persona lo pidió; la aprobación es el clic en la ventana. Si cancelás, no reintenta.
 
 ### Segunda capa: el hook de Claude Code
 
-La guarda `APRUEBO` frena lo accidental y lo inducido desde el chat, `!` o la herramienta Bash, pero **no a un agente que abra un pseudo-terminal y escriba la aprobación**. Para eso, `~/.claude/hooks/git-guardrails.sh` bloquea `jtk apply` (y el nombre viejo `jk apply`) y cualquier comando que lo combine con `tmux` (`send-keys`, `send`, `new-session`…, y escribir `APRUEBO` en una sesión), `expect`, `pexpect`, `unbuffer`, `socat`, `script` o `pty.`. `jtk plan …` pasa. Se verifica con `tools/check-guardrails.sh` (44 casos). Los parches los aplica la persona, en este orden y uno encima del otro: `tools/git-guardrails-jk-apply.patch` (fase 4, el hook original con `jk`) y después `tools/git-guardrails-jtk.patch` (el renombre: reconoce `jtk` y `jk`), con `patch -N ~/.claude/hooks/git-guardrails.sh < tools/git-guardrails-jtk.patch` (`-N` importa: sin él, correrlo dos veces te ofrece revertirlo). También bloquea `create|push|assign --apply` cuando se los pasa por un pseudo-terminal. El hook solo cubre a Claude Code: en Codex y Cursor quedan la guarda y las reglas de `AGENTS.md`.
+Con la ventana, el agente puede lanzar `jtk apply` y los `--apply`, porque la barrera ya no es que no pueda ejecutarlos sino que solo un clic humano aprueba. El hook `~/.claude/hooks/git-guardrails.sh` deja pasar esos comandos y bloquea los rodeos que aprobarían por la persona: combinarlos con un pseudo-terminal (`tmux send-keys`, `send`, `new-session`…, escribir `APRUEBO` en una sesión, `expect`, `pexpect`, `unbuffer`, `socat`, `script`, `pty.`) o con clics y teclas automáticos (`osascript` con `System Events`, `click` o `keystroke`, `cliclick`, `peekaboo`). `jtk plan …` pasa. Se verifica con `tools/check-guardrails.sh` (50 casos).
+
+Los parches los aplica la persona, uno encima del otro y en este orden, siempre con `patch -N` (sin `-N`, correrlo dos veces te ofrece revertirlo): `tools/git-guardrails-jk-apply.patch` (fase 4), `tools/git-guardrails-jtk.patch` (el renombre) y `tools/git-guardrails-dialog.patch` (la ventana). El último es el que deja de bloquear `apply`: **aplicalo después de tener esta versión de `jtk` instalada**, porque con la guarda vieja un agente seguiría necesitando terminal pero el hook ya no lo frenaría. El hook solo cubre a Claude Code: en Codex y Cursor quedan la guarda y las reglas de `AGENTS.md`.
 
 ### Si venías usando `jk`
 

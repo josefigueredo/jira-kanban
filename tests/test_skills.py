@@ -56,12 +56,15 @@ class SkillsTest(unittest.TestCase):
         self.assertIn("jira-em", description)
         self.assertIn("jira-kanban", description)
 
-    def test_the_ops_skill_only_plans_and_never_runs_apply_or_the_legacy_writers(self):
+    def test_the_ops_skill_applies_only_when_asked_through_the_window_and_never_retries_a_cancel(self):
         text = (ROOT / "ops" / "SKILL.md").read_text(encoding="utf-8")
         self.assertNotIn("jtk.py", text)
         for forbidden in ("jtk create", "jtk push", "jtk assign"):
             self.assertNotIn(forbidden, text)
-        self.assertIn("Never run `jtk apply`", text)
+        self.assertNotIn("Never run `jtk apply`", text)
+        self.assertIn("Run `jtk apply <id>` only after the person asked to apply that plan", text)
+        self.assertIn("Apruebo <n>", text)
+        self.assertIn("never run it again", text)
 
     def test_every_plan_command_the_ops_skill_mentions_exists(self):
         text = (ROOT / "ops" / "SKILL.md").read_text(encoding="utf-8")

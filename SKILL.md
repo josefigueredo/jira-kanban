@@ -28,9 +28,10 @@ jtk <create|pull|push|show|board> ... --project .
 5. **Preview:** `jtk create --spec <file> --jira-project KEY --html <scratchpad>/vista.html` (dry run). Show the tree and
    `open` the HTML, a Jira-like view of what this pass does. If any issue shows "a decidir", ask the user whether to
    assign the open ones to them. Wait for an explicit yes.
-6. **Create:** hand the user the exact command to run with `!`: `jtk create --spec <file> --jira-project KEY --apply`,
-   plus `--assign-open` or `--no-assign-open` with their answer. Never run `--apply` yourself: a guardrail hook
-   blocks it. If Jira rejects an issue halfway, jtk keeps what was created and names the keys: fix the cause and hand
+6. **Create:** only after that explicit yes, tell the user a window will show the issues to create, then run
+   `jtk create --spec <file> --jira-project KEY --apply` plus `--assign-open` or `--no-assign-open` with their answer.
+   The window (**Cancelar** / **Apruebo <n>**) is the approval; never click or automate it, and if they cancel, do not
+   run it again unless they ask. If Jira rejects an issue halfway, jtk keeps what was created and names the keys: fix the cause and hand
    the user the same command again; it resumes without duplicating. If only a move to
    Done or in progress fails, every issue exists: never rerun create; finish it with a status edit and push.
 7. **Sync:** `jtk pull KEY` refreshes from Jira. Local edits go back with `jtk push KEY` (dry run), then hand the user
@@ -49,7 +50,7 @@ jtk <create|pull|push|show|board> ... --project .
 
 ## Rules
 
-- Every Jira write needs `--apply`, run by the user, and is logged in `./.jira-kanban/jira-writes.jsonl`.
+- Every Jira write needs `--apply`, approved by the user in the window, and is logged in `./.jira-kanban/jira-writes.jsonl`.
 - Progress: `jtk board KEY` (after a pull) groups by Jira status category, never by status names; blocked means a
   status in `blocked_statuses` or the Flagged field.
 - Project defaults live in `conventions.json`; a project overrides them in `./.jira-kanban/conventions.json`.
