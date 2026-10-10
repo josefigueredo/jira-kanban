@@ -21,17 +21,23 @@ check() {  # check <expected exit code> <command line>
   fi
 }
 
-# blocked: the writers that already existed
+# blocked: the other writers
 check 2 'git push origin main'
-check 2 'jtk push PLATE-1 --apply'
-check 2 'jtk create --spec s.json --apply'
-check 2 'jtk assign PLATE-1 Ana --apply'
-# blocked: applying a plan, behind every prefix the hook accepts
-check 2 'jtk apply abc123def456'
-check 2 'rtk jtk apply abc123def456'
-check 2 'python3 /Users/x/jira-kanban/jtk.py apply abc123def456'
-check 2 'cd /tmp && jtk apply abc123def456'
-check 2 '/Users/x/.local/bin/jtk apply abc123def456'
+# allowed: the jtk writers ask a person in a native window (or at a terminal), so the agent may launch them
+check 0 'jtk push PLATE-1 --apply'
+check 0 'jtk create --spec s.json --apply'
+check 0 'jtk assign PLATE-1 Ana --apply'
+check 0 'jtk apply abc123def456'
+check 0 'rtk jtk apply abc123def456'
+check 0 'python3 /Users/x/jira-kanban/jtk.py apply abc123def456'
+check 0 'cd /tmp && jtk apply abc123def456'
+check 0 '/Users/x/.local/bin/jtk apply abc123def456'
+# blocked: clicking or typing into the approval window for the person
+check 2 "osascript -e 'tell application \"System Events\" to click button \"Apruebo 2\"' && jtk apply abc123def456"
+check 2 'cliclick c:100,100; jtk apply abc123def456'
+check 2 "osascript -e 'tell application \"System Events\" to keystroke \"a\"'; jtk assign PLATE-1 Ana --apply"
+check 2 "peekaboo click --on Apruebo && jtk apply abc123def456"
+check 0 "osascript -e 'display notification \"hola\"'"
 # blocked: a pseudo-terminal typing the approval for it
 check 2 "tmux send-keys 'jtk apply abc123def456' Enter"
 check 2 "expect -c 'spawn jtk apply abc123def456'"
@@ -67,11 +73,12 @@ check 2 "python3 -c 'import pty; pty.spawn(\"jtk assign PLATE-1 Ana --apply\".sp
 check 2 "expect -c 'spawn jk push PLATE-1 --apply'"
 check 0 "expect -c 'spawn jtk push PLATE-1'"
 
-# the old name stays blocked too: old scripts and shell history still say jk
-check 2 'jk apply abc123def456'
-check 2 'jk push PLATE-1 --apply'
+# the old name behaves like the new one: old scripts and shell history still say jk
+check 0 'jk apply abc123def456'
+check 0 'jk push PLATE-1 --apply'
 check 2 "tmux send-keys 'jk apply abc123def456' Enter"
-check 2 'python3 /Users/x/jira-kanban/jk.py apply abc123def456'
+check 2 "osascript -e 'tell application \"System Events\" to click button \"Apruebo 1\"'; jk apply abc123def456"
+check 0 'python3 /Users/x/jira-kanban/jk.py apply abc123def456'
 check 0 'jk plan move plataforma TEAM-1 --to active'
 
 echo "$((total - wrong))/$total cases behaved as expected"
