@@ -20,6 +20,16 @@ def config_dir() -> Path:
 
 config_dir()  # every test run starts isolated, even the tests that never ask for a profile
 
+
+def state_dir() -> Path:
+    """Point jk at an empty state directory, so no test reads or writes the real ~/.local/state/jk."""
+    path = Path(tempfile.mkdtemp(prefix="jk-state-"))
+    os.environ["JK_STATE_DIR"] = str(path)
+    return path
+
+
+state_dir()  # every test run starts isolated
+
 CONVENTIONS = {
     "project": "PLATE",
     "issue_types": {"epic": "Epic", "story": "Story (migrated)", "task": "Tarea", "subtask": "Subtarea"},
