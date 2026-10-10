@@ -66,6 +66,13 @@ class MoveTest(Base):
         self.assertEqual((len(self.approve.calls), n, command), (1, 2, f"jtk apply {saved['id']}"))
         self.assertIn("TEAM-1: Backlog -> En curso", summary)
 
+    def test_the_approval_window_gets_a_row_per_pending_change(self):
+        saved = self.saved_move(["TEAM-1", "TEAM-2"], role="todo")
+        self.apply(saved)
+        summary = self.approve.calls[0][1]
+        self.assertEqual(summary.rows, [("TEAM-1", "Summary of TEAM-1", "Backlog -> En curso"),
+                                        ("TEAM-2", "Summary of TEAM-2", "Backlog -> En curso")])
+
     def test_without_approval_nothing_is_written_and_nothing_is_logged(self):
         saved = self.saved_move(["TEAM-1"], role="todo")
         with self.assertRaises(guard.NotApproved):

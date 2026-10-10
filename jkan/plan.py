@@ -6,7 +6,7 @@ from __future__ import annotations
 import re
 from typing import Callable, Dict, List, Optional
 
-from . import board_profile, roles, state, team
+from . import approval, board_profile, roles, state, team
 
 KEY = re.compile(r"[A-Z][A-Z0-9_]*-[0-9]+")
 TO_ROLES = ("todo", "active", "blocked", "waiting", "delivered", "dropped")
@@ -234,3 +234,21 @@ def describe(plan: dict, only: Optional[List[str]] = None) -> str:
             extra += f" ({', '.join(skip['fields'])})" if skip.get("fields") else ""
             lines.append(f"  {skip['key']}: {skip['why']}{extra}")
     return "\n".join(lines)
+
+
+def _change(plan: dict, item: dict) -> str:
+    if plan["kind"] == "move":
+        return f"{item['from']['name']} -> {item['to']['name']}"
+    if plan["kind"] == "assign":
+        return f"{_who(item['from'])} -> {_who(item['to'])}"
+    return f"Comment: {plan['options']['text']}"
+
+
+def summary(plan: dict, only: Optional[List[str]] = None) -> approval.Summary:
+    """`describe` for the terminal, plus a row per change (key, title, change) and what was left out, for the approval
+    window. Built from the saved plan, never from what an agent says."""
+    items = [i for i in plan["items"] if only is None or i["key"] in only]
+    rows = [(i["key"], i.get("title", ""), _change(plan, i)) for i in items]
+    left_out = [(s["key"], s["why"]) for s in plan.get("skipped", [])]
+    text = describe(plan, only)
+    return approval.Summary(text, text.splitlines()[0], rows, left_out)

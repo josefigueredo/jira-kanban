@@ -53,6 +53,14 @@ class AssignTest(unittest.TestCase):
         self.assertIn("--tree --apply", command)
         self.assertIn("assigned 4 issue", out)
 
+    def test_the_window_gets_a_row_per_issue_that_would_change(self):
+        asked = Asked()
+        run(self.args(self.epic, "--tree", "--apply"), self.jira, asked)
+        rows = asked.calls[0][1].rows
+        self.assertEqual([r[0] for r in rows], ["PLATE-600", "PLATE-601", "PLATE-602", "PLATE-603"])
+        self.assertTrue(all(r[2] == "-> Matías Andrés Fernandez" for r in rows))
+        self.assertIn("Matías Andrés Fernandez", asked.calls[0][1].heading)
+
     def test_without_approval_nothing_is_written_and_the_exit_code_is_3(self):
         code, _, err = run(self.args("PLATE-601", "--apply"), self.jira, Asked(approve=False))
         self.assertEqual((code, self.jira.writes), (guard.EXIT_NEEDS_PERSON, []))
@@ -89,6 +97,13 @@ class CreateTest(unittest.TestCase):
         self.assertEqual(n, len([w for w in self.jira.writes if w[0] == "create"]))
         self.assertIn(f"create {n} issue(s) in PLATE", summary)
 
+    def test_the_window_gets_a_row_per_issue_to_create(self):
+        asked = Asked()
+        run(self.args("--apply", "--assign-open"), self.jira, asked)
+        summary = asked.calls[0][1]
+        self.assertEqual(len(summary.rows), asked.calls[0][0])
+        self.assertTrue(all(r[2] == "create" and r[1] for r in summary.rows))
+
     def test_without_approval_nothing_is_created_and_no_local_folder_appears(self):
         code, _, err = run(self.args("--apply", "--assign-open"), self.jira, Asked(approve=False))
         self.assertEqual((code, self.jira.writes), (3, []))
@@ -116,6 +131,14 @@ class PushTest(unittest.TestCase):
         self.assertEqual(run(self.args("--apply"), self.jira, asked)[0], 0)
         self.assertEqual(asked.calls[0][0], 1)
         self.assertEqual(self.jira.issues["PLATE-603"]["status"], "Done")
+
+    def test_the_window_shows_what_changes_in_each_issue(self):
+        self.edit()
+        asked = Asked()
+        run(self.args("--apply"), self.jira, asked)
+        [row] = asked.calls[0][1].rows
+        self.assertEqual(row[0], "PLATE-603")
+        self.assertIn("Backlog -> Done", row[2])
 
     def test_without_approval_nothing_is_pushed(self):
         self.edit()

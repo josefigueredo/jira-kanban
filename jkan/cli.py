@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from . import (board_cli, board_profile, config, guard, journal, kanban, people, plan_cli, preview, render, roles, standup,
+from . import (approval, board_cli, board_profile, config, guard, journal, kanban, people, plan_cli, preview, render, roles, standup,
                state, stats, sync, team_cli, views, window)
 from .jira import Jira, JiraError
 
@@ -66,6 +66,11 @@ def _who(jira, name: str, project: Optional[str], as_json: bool) -> int:
     return OK if result["status"] == "unique" else FINDINGS
 
 
+def _short(value, limit: int = 60) -> str:
+    text = " ".join(str(value or "").split())
+    return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
 def _approve(confirm: Callable, n: int, summary: str, argv: List[str]) -> Optional[int]:
     """None when the write may go ahead (nothing to write, or a person approved); otherwise the exit code to return."""
     if n == 0:
@@ -91,7 +96,9 @@ def _assign(jira, key: str, who: str, tree: bool, apply: bool, confirm: Callable
         planned = sync.assign(jira, key, person, tree=tree, apply=False)
         pending = [i for i in planned["issues"] if i["key"] not in planned["already"]]
         if pending:
-            code = _approve(confirm, len(pending), f"assign {len(pending)} issue(s) to {person['name']}", argv)
+            text = f"assign {len(pending)} issue(s) to {person['name']}"
+            rows = [(i["key"], i["summary"], f"-> {person['name']}") for i in pending]
+            code = _approve(confirm, len(pending), approval.Summary(text, f"Asignar a {person['name']}", rows), argv)
             if code is not None:
                 return code
     result = sync.assign(jira, key, person, tree=tree, apply=apply)
@@ -276,7 +283,9 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
             try:
                 if args.apply:  # a silent dry run says how many issues the person is about to approve
                     planned = sync.create(jira, project, epic_spec, conv, apply=False, assign_open=args.assign_open)["ops"]
-                    code = _approve(confirm, len(planned), f"create {len(planned)} issue(s) in {conv['project']}", argv)
+                    text = f"create {len(planned)} issue(s) in {conv['project']}"
+                    rows = [(op.get("ref", ""), op.get("summary", ""), "create") for op in planned]
+                    code = _approve(confirm, len(planned), approval.Summary(text, f"Crear en {conv['project']}", rows), argv)
                     if code is not None:
                         return code
                 result = sync.create(jira, project, epic_spec, conv, apply=args.apply, assign_open=args.assign_open)
@@ -313,7 +322,9 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
             if args.apply:
                 planned = sync.push(jira, project, args.epic, apply=False, conv=conv, assign_open=args.assign_open)
                 n = len(planned["changes"]) + len(planned["new"])
-                code = _approve(confirm, n, f"push {n} write(s) to {args.epic}", argv)
+                rows = [(c["key"], "", f"{c['field']}: {_short(c['from'])} -> {_short(c['to'])}") for c in planned["changes"]]
+                rows += [(n_["path"], n_["summary"], "create") for n_ in planned["new"]]
+                code = _approve(confirm, n, approval.Summary(f"push {n} write(s) to {args.epic}", f"Subir cambios a {args.epic}", rows), argv)
                 if code is not None:
                     return code
             result = sync.push(jira, project, args.epic, apply=args.apply, conv=conv, assign_open=args.assign_open)

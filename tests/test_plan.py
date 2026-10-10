@@ -202,6 +202,34 @@ class MoveTest(Base):
 
 
 class DescribeTest(Base):
+    BODY = {"id": "x" * 12, "version": 1, "kind": "move", "view": "plataforma", "created": "2026-10-10T12:00:00Z",
+            "options": {"to_role": "active", "to_status": None, "allow_close": False},
+            "items": [{"key": "TEAM-1", "title": "Uno", "from": {"id": "1", "name": "Backlog"},
+                       "to": {"id": "2", "name": "En curso", "role": "active"}, "transition": "1>2"},
+                      {"key": "TEAM-2", "title": "Dos", "from": {"id": "1", "name": "Backlog"},
+                       "to": {"id": "2", "name": "En curso", "role": "active"}, "transition": "1>2"}],
+            "skipped": [{"key": "TEAM-3", "why": "already there"}]}
+
+    def test_the_summary_for_the_window_has_a_row_per_change_and_the_left_out(self):
+        summary = plan.summary(self.BODY)
+        self.assertEqual(str(summary), plan.describe(self.BODY))
+        self.assertEqual(summary.rows, [("TEAM-1", "Uno", "Backlog -> En curso"), ("TEAM-2", "Dos", "Backlog -> En curso")])
+        self.assertEqual(summary.left_out, [("TEAM-3", "already there")])
+
+    def test_only_the_pending_keys_get_a_row(self):
+        self.assertEqual([r[0] for r in plan.summary(self.BODY, ["TEAM-2"]).rows], ["TEAM-2"])
+
+    def test_an_old_plan_without_titles_still_summarises(self):
+        body = dict(self.BODY, items=[{k: v for k, v in i.items() if k != "title"} for i in self.BODY["items"]])
+        self.assertEqual([r[1] for r in plan.summary(body).rows], ["", ""])
+
+    def test_an_assign_and_a_comment_summarise_too(self):
+        who = {"id": "acc-ana", "name": "Ana Gómez"}
+        assign = dict(self.BODY, kind="assign", items=[{"key": "TEAM-1", "title": "Uno", "from": None, "to": who}], skipped=[])
+        self.assertEqual(plan.summary(assign).rows, [("TEAM-1", "Uno", "unassigned -> Ana Gómez")])
+        comment = dict(self.BODY, kind="comment", options={"text": "hola"}, items=[{"key": "TEAM-1", "title": "Uno"}], skipped=[])
+        self.assertEqual(plan.summary(comment).rows, [("TEAM-1", "Uno", "Comment: hola")])
+
     def test_the_summary_names_every_issue_what_changes_and_what_was_left_out(self):
         self.put("TEAM-1", "todo")
         self.put("TEAM-2", "active")
