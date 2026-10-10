@@ -131,6 +131,29 @@ Todos aceptan `--person "NOMBRE"` (si el nombre es ambiguo lista a los candidato
 `wip_limit` está en `./.jira-kanban/conventions.json`. Límites: Jira guarda solo el último cambio de estado (un issue
 que pasó por «en curso» y luego a Done figura con la fecha de Done) y «hecho» significa asignado a la persona.
 
+## Reportes de equipo
+
+Para quien sigue varios boards y un equipo (EM, Sr EM). Primero se guarda un **view**: los boards y el equipo.
+Cada board tiene que tener su perfil (`jk board setup KEY`); sin él, `jk team` se niega y dice cuál falta. Con el perfil
+sin confirmar corre y lo avisa en la primera línea.
+
+| Comando | Responde |
+|---|---|
+| `jk team setup NOMBRE --boards PLATE,UA --group team` | Guarda un view. El equipo es un grupo de Jira (`--group`) o personas (`--people "Ana Gómez" …`); sin equipo, todo lo asignado |
+| `jk team show NOMBRE` · `jk team list` | Ver un view y el estado de los perfiles de sus boards · listar los views |
+| `jk team status VIEW` | Trabajo abierto por rol, por board y por persona; lo que nadie tiene. Con límite de WIP (`jk board limit KEY N`), un veredicto de carga |
+| `jk team stalled VIEW [--days N]` | Lo `active` que lleva N días o más sin cambiar de categoría, con los días desde la última edición |
+| `jk team blocked VIEW` | Bloqueado (rol, flag o link) y, aparte, lo que espera a un tercero |
+| `jk team flow VIEW [--weeks N]` | Entregas por semana, lead time (mediana y p85, con su n) y edad de lo que está en curso |
+| `jk team digest VIEW --since D [--until D]` | Entregado, descartado y nuevo del período, más lo bloqueado y estancado de hoy |
+| `jk team desk VIEW [--weeks N]` | Boards `helpdesk`: antigüedad de lo abierto, sin asignar, esperando y tiempo de resolución. Sin SLA |
+| `jk team rollup VIEW VIEW …` | Una fila por view: abiertos, bloqueados, estancados, entregados y lead time p85 |
+
+Todos aceptan `--json` y `--all`. Cada reporte abre con el view, los boards, el equipo, la ventana y el estado de los
+perfiles; muestra el `n` de cada número; corta las tablas en 20 filas con un `… y N más`; avisa si la búsqueda llegó a su
+tope de 1000 issues; y cierra con **Límites**. Para un 1:1, `jk done|next|blocked --person "X" --view VIEW` mira a una
+persona dentro de los boards del view.
+
 ## Perfiles de board
 
 Cada board dice «hecho» a su manera (`Done`, `Finalizado`, `Resuelto`) y Jira a veces archiva mal un estado: medido el

@@ -19,7 +19,14 @@ def fresh_home() -> Path:
 
 
 class InstallTest(unittest.TestCase):
-    def test_by_default_only_the_read_only_skill_is_linked_for_every_host(self):
+    def test_by_default_the_team_skill_is_linked_for_every_host_too(self):
+        home = fresh_home()
+        self.assertEqual(install(home).returncode, 0)
+        self.assertEqual(os.readlink(home / ".agents/skills/jira-em"), str(ROOT / "em"))
+        for host in (".claude", ".codex", ".cursor"):
+            self.assertEqual(os.readlink(home / host / "skills/jira-em"), "../../.agents/skills/jira-em")
+
+    def test_by_default_only_the_read_only_skills_are_linked_for_every_host(self):
         home = fresh_home()
         self.assertEqual(install(home).returncode, 0)
         self.assertEqual(os.readlink(home / ".agents/skills/jira-standup"), str(ROOT / "standup"))

@@ -159,8 +159,11 @@ Un **view** vive en `~/.config/jk/views/<nombre>.json`: boards (claves de proyec
 (`--group`, usado como `assignee in membersOf("…")`) o una lista de personas. Sin equipo se toma a quien tenga asignado
 algo en esos boards. Se crea con `jk team setup NOMBRE --boards PLATE,UA --group team`.
 
-Las consultas se arman con los **roles** del perfil como `status in (<ids>)`. Varios boards salen en **una** búsqueda
-(`project in (…)`).
+Lo abierto se pide por board como `status not in (<ids de lo cerrado>)`, así entran los estados todavía sin rol (salen como
+«sin rol»); lo entregado y lo descartado, como `status in (<ids>)`. Los ids van **sin comillas**: entre comillas Jira
+devuelve otra cosa (medido: 142 issues contra 240). Cada consulta es una sola búsqueda, con un bloque
+`(project = X AND …)` por board. Un board sin perfil no se calcula: `jk team` se niega y pide `jk board setup`; con el
+perfil sin confirmar corre y lo avisa.
 
 | Comando | Responde |
 |---|---|

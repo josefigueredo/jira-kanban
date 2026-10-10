@@ -41,6 +41,9 @@ jk <done|next|blocked|load|stats> ... --project .
    status the profile has never seen. Show it as it is. To fix it run `jk board setup KEY`: it prints what it
    understood and exits 3 while statuses are undecided. Relay each undecided status to the user, ask which role it
    plays, and apply the answer with `jk board set KEY <role> "<status>"`. Never choose a role yourself.
+7. **Team questions.** If the user asks about their team or their boards as a whole
+   ("cómo viene mi equipo", "qué está bloqueado en mis boards"), that is `jira-em`, not this skill. Reports about
+   one person inside a saved view take `--view VIEW` here: `jk done|next|blocked --person "<name>" --view VIEW`.
 
 ## Rules
 
