@@ -8,6 +8,8 @@ from __future__ import annotations
 import sys
 from typing import Callable, Optional, Sequence
 
+from . import approval
+
 APPROVAL = "APRUEBO"
 EXIT_NEEDS_PERSON = 3
 
@@ -62,18 +64,33 @@ def _needs_terminal(command: str) -> str:
             f"Run it yourself in a terminal window:\n  {command}")
 
 
+def _default_dialog():
+    return approval.DialogApprover()
+
+
+def _via_window(n: int, summary: str, command: str, dialog) -> None:
+    """No terminal: a person clicks «Apruebo <n>» in a native window. Without a window there is nothing to ask."""
+    dialog = dialog if dialog is not None else _default_dialog()
+    if not dialog.available():
+        raise NotApproved(_needs_terminal(command))
+    if not dialog.approve(summary, n):
+        raise NotApproved("not approved in the window (cancelled, closed or timed out); nothing was written. "
+                          "Do not run it again unless the person asks.")
+
+
 def confirm(n: int, summary: str, command: str, streams: Optional[Sequence] = None,
-            open_tty: Optional[Callable] = None) -> None:
-    """Return when a person approved `n` writes; raise NotApproved otherwise. `streams` and `open_tty` exist for tests."""
+            open_tty: Optional[Callable] = None, dialog=None) -> None:
+    """Return when a person approved `n` writes; raise NotApproved otherwise. `streams`, `open_tty` and `dialog` exist
+    for tests; none of them skips the approval."""
     if n < 1:
         raise ValueError("there is nothing to approve")
     streams = streams if streams is not None else (sys.stdin, sys.stdout, sys.stderr)
     if not all(_is_tty(s) for s in streams):
-        raise NotApproved(_needs_terminal(command))
+        return _via_window(n, summary, command, dialog)
     try:
         tty = (open_tty or _open_tty)()
     except OSError:
-        raise NotApproved(_needs_terminal(command)) from None
+        return _via_window(n, summary, command, dialog)
     with tty:
         tty.write(f"{summary}\n\nType {APPROVAL} {n} to write {n} change(s) to Jira; anything else cancels: ")
         tty.flush()

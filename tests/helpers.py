@@ -11,6 +11,21 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 
+class _NoWindow:
+    """The suite never opens a real approval window: it would wait a person for 100 s."""
+
+    def available(self):
+        return False
+
+    def approve(self, summary, n):
+        raise AssertionError("a test reached the real approval window")
+
+
+from jkan import guard as _guard  # noqa: E402
+
+_guard._default_dialog = lambda: _NoWindow()
+
+
 def config_dir() -> Path:
     """Point jtk at an empty config directory, so no test reads or writes the real ~/.config/jtk."""
     path = Path(tempfile.mkdtemp(prefix="jtk-config-"))

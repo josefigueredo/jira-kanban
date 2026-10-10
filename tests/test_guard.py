@@ -101,6 +101,52 @@ class TerminalTest(unittest.TestCase):
             guard.confirm(1, "S", "jtk apply abc", streams=REAL, open_tty=no_tty)
 
 
+class FakeDialog:
+    def __init__(self, answer, available=True):
+        self.answer, self.is_available, self.asked = answer, available, []
+
+    def available(self):
+        return self.is_available
+
+    def approve(self, summary, n):
+        self.asked.append((str(summary), n))
+        return self.answer
+
+
+class DialogTest(unittest.TestCase):
+    NO_TTY = (Stream(False),) * 3
+
+    def test_without_a_terminal_a_click_approves(self):
+        dialog = FakeDialog(True)
+        guard.confirm(2, "THE SUMMARY", "jtk apply abc", streams=self.NO_TTY, dialog=dialog)
+        self.assertEqual(dialog.asked, [("THE SUMMARY", 2)])
+
+    def test_cancelling_the_window_is_not_an_approval_and_says_not_to_retry(self):
+        with self.assertRaisesRegex(guard.NotApproved, "not approved.*nothing was written.*[Dd]o not run it again"):
+            guard.confirm(2, "S", "jtk apply abc", streams=self.NO_TTY, dialog=FakeDialog(False))
+
+    def test_with_a_terminal_the_window_is_never_opened(self):
+        dialog = FakeDialog(True)
+        guard.confirm(1, "S", "jtk apply abc", streams=REAL, open_tty=lambda: Tty("APRUEBO 1"), dialog=dialog)
+        self.assertEqual(dialog.asked, [])
+
+    def test_a_terminal_that_cannot_be_opened_falls_back_to_the_window(self):
+        def no_tty():
+            raise OSError("Device not configured")
+
+        dialog = FakeDialog(True)
+        guard.confirm(1, "S", "jtk apply abc", streams=REAL, open_tty=no_tty, dialog=dialog)
+        self.assertEqual(len(dialog.asked), 1)
+
+    def test_without_a_terminal_and_without_a_window_it_refuses_like_before(self):
+        with self.assertRaisesRegex(guard.NotApproved, "Run it yourself"):
+            guard.confirm(1, "S", "jtk apply abc", streams=self.NO_TTY, dialog=FakeDialog(True, available=False))
+
+    def test_the_default_window_is_never_a_real_one_in_the_suite(self):
+        # tests/helpers.py replaces guard._default_dialog: a test that reached a real window would hang for 100 s
+        self.assertFalse(guard._default_dialog().available())
+
+
 class RealTerminalTest(unittest.TestCase):
     """The fakes above never touch /dev/tty. This runs the real guard in a child that has a real terminal (a pty), the
     way a person's window has one: opening /dev/tty read-write in text mode used to fail with «not seekable»."""
@@ -136,9 +182,9 @@ class RealTerminalTest(unittest.TestCase):
 
 
 class NoBypassTest(unittest.TestCase):
-    def test_the_only_knobs_are_the_streams_and_the_tty_opener_for_tests(self):
+    def test_the_only_knobs_are_the_streams_the_tty_opener_and_the_window_for_tests(self):
         names = list(inspect.signature(guard.confirm).parameters)
-        self.assertEqual(names, ["n", "summary", "command", "streams", "open_tty"])
+        self.assertEqual(names, ["n", "summary", "command", "streams", "open_tty", "dialog"])
 
     def test_no_environment_variable_skips_it(self):
         saved = dict(os.environ)
