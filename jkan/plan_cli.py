@@ -97,10 +97,11 @@ def run_apply(argv: List[str], jira: Callable[[], object], confirm: Callable) ->
     args = parser.parse_args(argv)
     try:
         saved = state.load_plan(args.id)
-        _, profiles = team_cli.context(saved["view"])
-        lacking = sorted({roles.project_of(i["key"]) for i in saved["items"]} - set(profiles))
-        if lacking:
-            raise plan.Refused(f"no profile for {', '.join(lacking)}: run jk board setup {lacking[0]}, then plan again")
+        view, profiles = team_cli.context(saved["view"])
+        outside = [i["key"] for i in saved["items"] if roles.project_of(i["key"]) not in view["boards"]]
+        if outside:
+            raise plan.Refused(f"{', '.join(outside)} is not in the boards of view {saved['view']!r} "
+                               f"({', '.join(view['boards'])}) any more: plan again")
         plan.check_profiles(saved["items"], profiles)
         outcomes, code = applier.run(jira(), saved, confirm, f"jk apply {saved['id']}")
     except guard.NotApproved as exc:

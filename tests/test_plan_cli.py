@@ -225,13 +225,20 @@ class ApplyTest(Base):
         self.assertIn("without a role", err)
 
     def test_a_plan_whose_board_has_no_profile_any_more_is_refused_not_a_crash(self):
-        pid = self.planned()  # TEAM-1
-        views.save(fx.view(boards=("DESK",)))
+        pid = self.planned()  # TEAM-1, and TEAM stays in the view
         (self.config / "profiles" / "TEAM.json").unlink()
         asked = []
         code, _, err = run(["apply", pid], self.jira, confirm=lambda n, s, c: asked.append(n))
         self.assertEqual((code, asked, self.jira.writes), (1, [], []))
         self.assertIn("no profile for TEAM", err)
+
+    def test_a_plan_whose_board_left_the_view_is_refused_even_if_its_profile_is_still_there(self):
+        pid = self.planned()  # TEAM-1
+        views.save(fx.view(boards=("DESK",)))
+        asked = []
+        code, _, err = run(["apply", pid], self.jira, confirm=lambda n, s, c: asked.append(n))
+        self.assertEqual((code, asked, self.jira.writes), (1, [], []))
+        self.assertIn("TEAM-1 is not in the boards of view 'plataforma'", err)
 
     def test_a_read_only_command_never_needs_the_guard(self):
         code, _, _ = run(["team", "list"], self.jira)
