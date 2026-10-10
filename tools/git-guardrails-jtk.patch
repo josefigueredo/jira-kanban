@@ -12,7 +12,7 @@
  
  # jk apply escribe en Jira lo que dice un plan guardado (jk plan solo lee y pasa). Lo corre el usuario en una ventana de
  # terminal aparte, donde escribe APRUEBO <n>: bajo `!` tampoco funciona porque no hay terminal interactiva.
-@@ -59,14 +59,14 @@
+@@ -59,14 +59,19 @@
  EOF
    exit 2
  }
@@ -27,6 +27,11 @@
  if coincide "$APLICA" && coincide "$PTY"; then
 -  bloquear_terminal "jk apply a través de un pseudo-terminal salta la aprobación de una persona"
 +  bloquear_terminal "jtk apply a través de un pseudo-terminal salta la aprobación de una persona"
++fi
++# Lo mismo para los escritores con --apply: la regla de arriba pide el comando al inicio y un prefijo (expect, script, tmux) la saltea.
++APLICA_ESCRIBE='(^|[^[:alnum:]_])(jtk|jk)(\.py)?[[:space:]]+(create|push|assign)[[:space:]].*--apply(["'"'"'[:space:]]|$)'
++if coincide "$APLICA_ESCRIBE" && coincide "$PTY"; then
++  bloquear_terminal "jtk create / push / assign con --apply a través de un pseudo-terminal salta la aprobación de una persona"
  fi
  # La otra mitad del mismo rodeo, en dos pasos: abrir la sesión por un lado y escribir la aprobación por el otro.
  coincide "tmux[[:space:]]+send(-keys)?[[:space:]].*APRUEBO" \

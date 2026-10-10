@@ -59,6 +59,14 @@ check 0 'tmux ls'
 check 0 "tmux send-keys -t s 'ls' Enter"
 check 0 "tmux new-session -d -s build 'make'"
 
+# create|push|assign --apply through a pseudo-terminal skip the approval just like apply does
+check 2 'script -q /dev/null jtk push PLATE-1 --apply'
+check 2 "expect -c 'spawn jtk push PLATE-1 --apply'"
+check 2 "tmux new-session -d 'jtk create --spec s.json --apply'"
+check 2 "python3 -c 'import pty; pty.spawn(\"jtk assign PLATE-1 Ana --apply\".split())'"
+check 2 "expect -c 'spawn jk push PLATE-1 --apply'"
+check 0 "expect -c 'spawn jtk push PLATE-1'"
+
 # the old name stays blocked too: old scripts and shell history still say jk
 check 2 'jk apply abc123def456'
 check 2 'jk push PLATE-1 --apply'

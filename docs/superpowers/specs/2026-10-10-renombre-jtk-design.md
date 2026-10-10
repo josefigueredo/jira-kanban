@@ -35,10 +35,10 @@ pierdan los perfiles y el registro de escrituras reales del usuario.
 ## Orden obligatorio de despliegue
 
 1. Rama `feat/rename-jtk` con tests verdes (3.x y `/usr/bin/python3` 3.9).
-2. El usuario mergea, aplica el parche del hook con `!` y `tools/check-guardrails.sh` da verde.
-3. Recién entonces: `./install.sh --with-write` y los `mv` de datos.
+2. El usuario aplica el parche del hook con `!` (`patch -N`, antes de mergear: sigue bloqueando `jk`) y `tools/check-guardrails.sh` da verde.
+3. Mergea. Recién entonces: `./install.sh --with-write` y los `mv` de datos.
 
-Así nunca hay un `jtk` instalado con un hook que no lo ve. El agente no toca `~/.claude/hooks`.
+Así nunca hay un `jtk` que un agente pueda correr con un hook que no lo ve. El agente no toca `~/.claude/hooks`.
 
 ## Pruebas
 
@@ -51,7 +51,7 @@ Así nunca hay un `jtk` instalado con un hook que no lo ve. El agente no toca `~
 
 ## Riesgos y límites
 
-- Entre el merge y el paso 2 el repo ya dice `jtk` pero el hook viejo no lo ve: no instalar antes (el orden lo evita).
+- Desde que `jtk.py` existe en el árbol (checkout de la rama) y hasta que el hook reconoce `jtk`, un agente podría correr `jtk apply` por un pseudo-terminal sin que el hook lo vea: el parche va **antes** del merge (revisión final, hallazgo 1).
 - El parche del hook sigue siendo segunda capa y solo cubre Claude Code (límite ya documentado en fase 4).
 - Planes guardados en `~/.local/state/jk/plans` son archivos con hash de contenido: moverlos no cambia el id.
 
@@ -59,7 +59,7 @@ Así nunca hay un `jtk` instalado con un hook que no lo ve. El agente no toca `~
 
 - Suite: 624 tests en `python3` y en `/usr/bin/python3` (3.9); RED observado antes de cada cambio (6/7 en `test_rename`,
   5/5 en los de `install.sh`).
-- Hook: `tools/check-guardrails.sh` = 38 casos. Contra el hook actual del usuario, 21/38 (los 17 casos de `jtk` fallan, los
-  del nombre viejo pasan); contra una copia con `git-guardrails-jtk.patch` aplicado, 38/38. El hook real no se tocó
+- Hook: `tools/check-guardrails.sh` = 44 casos. Contra el hook actual del usuario, 22/44 (fallan los 22 que bloquean `jtk`, y el del nombre viejo por pseudo-terminal; los
+  del nombre viejo pasan); contra una copia con `git-guardrails-jtk.patch` aplicado, 44/44. Tras la revisión final se agregó una regla: `create|push|assign --apply` por pseudo-terminal (hallazgo 2, ya existía desde fase 4). El hook real no se tocó
   (`cmp` contra la copia original).
 - Desvío del plan: ninguno de fondo; el parche es delta (nota en el punto 7).
