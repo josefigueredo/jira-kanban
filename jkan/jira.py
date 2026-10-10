@@ -6,12 +6,12 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 ISSUE_FIELDS = "summary,description,issuetype,status,parent"
 CATEGORY = {"new": "todo", "indeterminate": "in_progress", "done": "done"}  # Jira's fixed status categories
 STANDUP_FIELDS = ["summary", "issuetype", "status", "parent", "assignee", "priority", "duedate", "created",
-                  "resolutiondate", "statuscategorychangedate", "issuelinks"]
+                  "resolutiondate", "statuscategorychangedate", "issuelinks", "updated"]
 BLOCKED_LINK = "is blocked by"
 
 
@@ -182,12 +182,19 @@ class Jira:
                 "assignee": {"id": owner["accountId"], "name": owner.get("displayName") or ""} if owner else None,
                 "priority": (f.get("priority") or {}).get("name", ""), "duedate": f.get("duedate"),
                 "created": _day(f.get("created")), "resolved": _day(f.get("resolutiondate")),
-                "changed": _day(f.get("statuscategorychangedate")),
+                "changed": _day(f.get("statuscategorychangedate")), "updated": _day(f.get("updated")),
                 "flagged": bool(f.get(flag)) if flag else False,
                 "blocked_by": [b for b in (self._blocker(link, wanted) for link in f.get("issuelinks") or []) if b]}
 
     def search(self, jql: str, blocked_link: str = BLOCKED_LINK) -> List[dict]:
         """Every issue the JQL finds, in the shape the reports use. Read only; follows the result pages."""
+        return self._search(jql, blocked_link, None)[0]
+
+    def search_capped(self, jql: str, cap: int, blocked_link: str = BLOCKED_LINK) -> Tuple[List[dict], bool]:
+        """At most `cap` issues and whether Jira had more. Read only; stops asking for pages once it has enough."""
+        return self._search(jql, blocked_link, cap)
+
+    def _search(self, jql: str, blocked_link: str, cap: Optional[int]) -> Tuple[List[dict], bool]:
         flag = self._flag_field()
         fields = STANDUP_FIELDS + ([flag] if flag else [])
         found: List[dict] = []
@@ -199,8 +206,15 @@ class Jira:
             page = self._send("POST", "/rest/api/3/search/jql", body)
             found += [self._report_issue(raw, flag, blocked_link) for raw in page.get("issues", [])]
             token = page.get("nextPageToken")
+            if cap is not None and len(found) >= cap:
+                return found[:cap], bool(token) or len(found) > cap
             if not token:
-                return found
+                return found, False
+
+    def group_total(self, name: str) -> int:
+        """How many people a Jira group has; an unknown group is an HTTP 404 JiraError. Read only."""
+        query = urllib.parse.urlencode({"groupname": name, "maxResults": 1})
+        return int(self._send("GET", f"/rest/api/3/group/member?{query}").get("total", 0))
 
     def update(self, key: str, fields: dict) -> None:
         self._send("PUT", f"/rest/api/2/issue/{key}", {"fields": fields})

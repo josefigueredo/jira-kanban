@@ -30,7 +30,7 @@ class SearchTest(unittest.TestCase):
             "key": "PLATE-9", "summary": "[BE] Algo", "issuetype": "Tarea", "status": "PROCESANDO", "status_id": "",
             "category": "in_progress", "parent": {"key": "PLATE-1", "summary": "Épica", "issuetype": "Epic"},
             "assignee": {"id": "acc-me", "name": "Yo"}, "priority": "High", "duedate": "2026-10-10",
-            "created": "2026-10-01", "resolved": None, "changed": "2026-10-07", "flagged": True,
+            "created": "2026-10-01", "resolved": None, "changed": "2026-10-07", "updated": None, "flagged": True,
             "blocked_by": [{"key": "PLATE-5", "summary": "Esperar a Okta", "status": "Blocked",
                             "category": "in_progress", "assignee": "Ana Gómez"}]})
         posts = [c for c in rec.calls if c[0] == "POST"]

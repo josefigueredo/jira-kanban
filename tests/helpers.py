@@ -73,6 +73,7 @@ class FakeJira:
         self.jqls: List[str] = []
         self.status_groups: Dict[str, List[dict]] = {}  # project key -> what Jira.project_statuses returns
         self.project_list: List[dict] = []  # what Jira.projects returns
+        self.groups: Dict[str, int] = {"team": 7}  # Jira group -> members
 
     def browse_url(self, key: str) -> str:
         return f"https://example.atlassian.net/browse/{key}"
@@ -133,6 +134,16 @@ class FakeJira:
     def projects(self) -> List[dict]:
         return [dict(p) for p in self.project_list]
 
+    def search_capped(self, jql: str, cap: int, blocked_link: str = "is blocked by"):
+        found = self.search(jql, blocked_link)
+        return found[:cap], len(found) > cap
+
+    def group_total(self, name: str) -> int:
+        from jkan.jira import JiraError
+        if name not in self.groups:
+            raise JiraError(f"GET /rest/api/3/group/member: HTTP 404 no group {name}")
+        return self.groups[name]
+
     def update(self, key: str, fields: dict) -> None:
         for name in ("summary", "description"):
             if name in fields:
@@ -190,7 +201,8 @@ def issue(key: str, **over) -> dict:
     """A normalized issue as Jira.search returns it, for the report tests."""
     base = {"key": key, "summary": f"Summary of {key}", "issuetype": "Tarea", "status": "Backlog", "category": "todo",
             "parent": None, "assignee": {"id": "acc-me", "name": "Yo"}, "priority": "Medium", "duedate": None,
-            "created": "2026-09-01", "resolved": None, "changed": "2026-09-01", "flagged": False, "blocked_by": []}
+            "created": "2026-09-01", "resolved": None, "changed": "2026-09-01", "updated": "2026-09-01",
+            "flagged": False, "blocked_by": []}
     base.update(over)
     return base
 
