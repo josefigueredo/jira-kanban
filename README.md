@@ -16,7 +16,7 @@ cd jira-kanban && ./install.sh
 ```
 
 Por defecto instala `jira-standup` (reportes de solo lectura) y deja `jk` en `~/.local/bin/jk`; con
-`./install.sh --with-write` suma `jira-kanban` (crear y sincronizar épicas). Volver a correrlo nunca quita una skill
+`./install.sh --with-write` suma `jira-kanban` (crear y sincronizar épicas) y `jira-em-ops` (planes de cambios del equipo). Volver a correrlo nunca quita una skill
 ya instalada. Sigue el
 mismo layout que WayOfWork: `~/.agents/skills/jira-kanban` apunta a este repo, `~/.agents/skills/jira-standup` a su
 carpeta `standup/`, y `~/.claude/skills/<skill>`, `~/.codex/skills/<skill>` y `~/.cursor/skills/<skill>` apuntan a
@@ -155,6 +155,26 @@ Todos aceptan `--json` y `--all`. Cada reporte abre con el view, los boards, el 
 perfiles; muestra el `n` de cada número; corta las tablas en 20 filas con un `… y N más`; avisa si la búsqueda llegó a su
 tope de 1000 issues; y cierra con **Límites**. Para un 1:1, `jk done|next|blocked --person "X" --view VIEW` mira a una
 persona dentro de los boards del view.
+
+### Cambiar varios issues a la vez (con guarda)
+
+Sirve para pasar de «7 sin asignar» a «asignados». Es en dos pasos, y el segundo **solo lo hace una persona**:
+
+| Comando | Qué hace |
+|---|---|
+| `jk plan move VIEW [KEY …] --to ROL` | Arma un plan para mover issues al estado que cumple ese rol. Solo lee Jira y guarda un archivo con las claves, el estado de origen, el de destino y la transición |
+| `jk plan assign VIEW [KEY …] --person "Ana"` | Plan para reasignar. La persona nunca se adivina: si hay dos, lista las dos |
+| `jk plan comment VIEW [KEY …] --text "…"` | Plan para dejar el mismo comentario |
+| `jk plan revert ID` | Plan inverso de uno aplicado; no garantiza deshacer y lo dice |
+| `jk apply ID` | Aplica **exactamente** ese plan. Muestra qué va a hacer y pide escribir `APRUEBO <n>` |
+
+Las claves pueden ir solas o combinadas con `--unassigned`, `--older-than DÍAS` y `--role ROL` (los mismos filtros que `--list`). Un plan lleva hasta 25 issues (`--max`, hasta 200); mover a `delivered` o `dropped` exige `--allow-close`.
+
+**`apply` necesita una terminal de verdad**: no funciona desde el chat, ni desde `!` de Claude Code, ni con un `echo APRUEBO 3 | …`. Corrélo en una ventana de terminal aparte. Lo mismo vale ahora para `jk create`, `jk push` y `jk assign` con `--apply`. Si no hay terminal, el comando no escribe nada, imprime la línea para copiar y sale con código 3.
+
+Antes de cada escritura, `apply` vuelve a leer el issue: si alguien lo movió o reasignó después de planificar, lo saltea y lo informa. Reaplicar un plan es seguro (saltea lo ya hecho). Cada escritura queda en `~/.local/state/jk/writes.jsonl`.
+
+La skill `jira-em-ops` (solo con `./install.sh --with-write`) prepara los planes; **nunca** corre `apply`.
 
 ## Perfiles de board
 

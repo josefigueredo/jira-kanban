@@ -184,3 +184,22 @@ TDD, en `python3` y `/usr/bin/python3` (3.9), con Jira falso. Casos obligatorios
 - **Comentarios no idempotentes en Jira:** la idempotencia depende de la bitácora local; si se borra, reaplicar duplica.
 - **Concurrencia:** dos `apply` simultáneos del mismo plan no están protegidos; es una herramienta de una sola persona.
 - **Bitácoras separadas** (global y por proyecto) hasta la fase 4.
+
+## Resultados de la fase 3
+
+- **Qué se entregó:** los módulos `guard` y `state` (núcleo), `plan`, `applier` y `plan_cli` (escritura); en `Jira`,
+  `transitions`, `transition_by_id`, `add_comment` y `snapshot`; `cli.main(confirm=)` (único punto por donde los tests
+  reemplazan la guarda; nada en la línea de comandos llega a ese parámetro); la guarda en `create|push|assign --apply`;
+  la skill `jira-em-ops` (solo con `--with-write`).
+- **Tests:** 597 en `python3` y en `/usr/bin/python3` (3.9), con Jira falso; ninguna aserción vieja se tocó: los tests de
+  `--apply` pasan una aprobación inyectada (`helpers.approve`).
+- **Textos de salida en inglés** (AGENTS.md pide los mensajes del CLI en inglés): `applied`, `already there`,
+  `already applied`, `changed`, `ambiguous`, `no path`, `required fields`, `error: …`. Reemplazan a los `aplicado`,
+  `ya estaba`, `cambió` y `ambiguo` de este spec.
+- **Sin bitácora por proyecto:** `plan` y `apply` solo escriben la bitácora global (`writes.jsonl`); unificarlas es de la
+  fase 4.
+- **`n` de la aprobación es un máximo:** `apply` pide `APRUEBO n` con `n` = issues pendientes según la bitácora; si al
+  releer uno resulta `changed` o `already there`, se escriben menos de `n`.
+- **Límite conocido:** `jk create --apply` pide la aprobación antes de poder fallar por una decisión `--assign-open`
+  pendiente; la persona aprueba y después el comando se niega sin escribir.
+- **Prueba real en el proyecto sandbox:** pendiente.

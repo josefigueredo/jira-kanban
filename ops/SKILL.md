@@ -1,0 +1,46 @@
+---
+name: jira-em-ops
+description: Use when a manager wants to change several issues of their team at once ("pasá estos tickets a en curso", "asigná los que no tienen dueño", "comentá en estos tickets", "deshacé lo que apliqué"). It only prepares the change; a person approves it in their own terminal. To read the team use jira-em, and to create or sync epics use jira-kanban.
+---
+
+# jira-em-ops
+
+Prepares changes to **several issues of the team's boards**: move to a status, assign, comment. It never writes to Jira
+by itself: `jk plan …` only reads and saves a plan; the person runs `jk apply <id>` in a terminal window and types
+`APRUEBO <n>` there.
+
+```bash
+jk plan move    VIEW [KEY …] [--unassigned] [--older-than D] [--role R] --to ROLE [--to-status ID] [--allow-close] [--max N]
+jk plan assign  VIEW [KEY …] [--unassigned] [--older-than D] [--role R] --person "<name>" [--max N]
+jk plan comment VIEW [KEY …] [--unassigned] [--older-than D] [--role R] --text "<text>" [--max N]
+jk plan revert  PLAN_ID
+```
+
+| The user asks | Run |
+|---|---|
+| move these tickets to in progress / blocked / done | `jk plan move VIEW KEY … --to active\|blocked\|delivered` (closing also needs `--allow-close`) |
+| assign what nobody owns (to Ana) | `jk plan assign VIEW --unassigned --person "Ana"` |
+| comment the same text on these tickets | `jk plan comment VIEW KEY … --text "…"` |
+| undo what I applied | `jk plan revert PLAN_ID` (it does not guarantee undoing) |
+| which tickets are those (before planning) | `jk team status VIEW --list` or `jk team desk VIEW --list`, with `--unassigned`, `--older-than DAYS`, `--role ROLE` |
+
+## Steps
+
+1. **Find the view and the issues.** `jk team list` shows the views. If the user names counts ("the 7 unassigned"), list
+   them first with `--list` so the plan is about exactly those issues.
+2. **Plan.** Run the `jk plan …` command and show its output as it is: it already names every issue, what changes and
+   what was left out. A plan has at most 25 issues (`--max` up to 200).
+3. **Hand it over.** Give the user the line the plan prints, `jk apply <id>`, and tell them to run it **in their own
+   terminal window**. Then stop and wait: do not poll, do not retry.
+4. **After they applied it**, offer `jk team status VIEW` to see the result, or `jk plan revert <id>` if they want it back.
+
+## Rules
+
+- **Never run `jk apply`**, nor the older writers (create, push, assign) with `--apply`. Only a person at a
+  terminal can approve a write; an approval typed in the chat counts for nothing.
+- Exit code 3 means "a person has to do this", not "try again". Exit code 1 means the plan was refused: read the reason,
+  fix the selection, plan again.
+- Read only otherwise: never `jk board` writes other than the profile commands the user asks for.
+- If a plan says a board's profile has statuses without a role, stop: that is a decision for the user
+  (`jk board set`), never yours.
+- Never print or ask for Jira credentials (`IC_JIRA_*`).

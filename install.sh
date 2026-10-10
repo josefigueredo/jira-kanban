@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install jk and its skills for Claude Code, Codex and Cursor.
 #   ./install.sh               the read-only skills: jira-standup and jira-em
-#   ./install.sh --with-write  also the skill that writes to Jira: jira-kanban
+#   ./install.sh --with-write  also the skills that write to Jira: jira-kanban and jira-em-ops
 # CLI: ~/.local/bin/jk points at jk.py; the skills call `jk`, never another skill's folder.
 # Skills (same layout as WayOfWork): ~/.agents/skills/<name> points at this repo (jira-kanban) or at its standup/
 # folder (jira-standup); ~/.claude/skills/<name>, ~/.codex/skills/<name> and ~/.cursor/skills/<name> point at
@@ -14,7 +14,7 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILLS=("jira-standup:standup" "jira-em:em")  # name:folder inside the repo ("" is the repo itself)
 case "${1:-}" in
   -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
-  --with-write) SKILLS+=("jira-kanban:") ;;
+  --with-write) SKILLS+=("jira-kanban:" "jira-em-ops:ops") ;;
   "") ;;
   *) echo "unknown argument: $1" >&2; exit 2 ;;
 esac

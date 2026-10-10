@@ -33,14 +33,16 @@ class InstallTest(unittest.TestCase):
         for host in (".claude", ".codex", ".cursor"):
             self.assertEqual(os.readlink(home / host / "skills/jira-standup"), "../../.agents/skills/jira-standup")
         self.assertFalse(os.path.lexists(home / ".agents/skills/jira-kanban"))
+        self.assertFalse(os.path.lexists(home / ".agents/skills/jira-em-ops"))
         self.assertEqual(install(home).returncode, 0)  # re-running is safe
 
     def test_with_write_adds_the_skill_that_writes_to_jira(self):
         home = fresh_home()
         self.assertEqual(install(home, "--with-write").returncode, 0)
         self.assertEqual(os.readlink(home / ".agents/skills/jira-kanban"), str(ROOT))
+        self.assertEqual(os.readlink(home / ".agents/skills/jira-em-ops"), str(ROOT / "ops"))
         for host in (".claude", ".codex", ".cursor"):
-            for name in ("jira-kanban", "jira-standup"):
+            for name in ("jira-kanban", "jira-standup", "jira-em-ops"):
                 self.assertEqual(os.readlink(home / host / "skills" / name), f"../../.agents/skills/{name}")
 
     def test_running_it_again_without_the_flag_does_not_remove_a_skill_installed_before(self):

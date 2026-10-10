@@ -6,9 +6,9 @@ import re
 import unittest
 
 from helpers import ROOT
-from jkan import board_cli, team_cli
+from jkan import board_cli, plan_cli, team_cli
 
-SKILLS = ((".", "jira-kanban"), ("standup", "jira-standup"), ("em", "jira-em"))
+SKILLS = ((".", "jira-kanban"), ("standup", "jira-standup"), ("em", "jira-em"), ("ops", "jira-em-ops"))
 
 
 def frontmatter(folder: str) -> dict:
@@ -49,6 +49,30 @@ class SkillsTest(unittest.TestCase):
             self.assertIn(verb, team_cli.VERBS, verb)
         for verb in re.findall(r"jk board (\w+)", text):
             self.assertIn(verb, board_cli.VERBS, verb)
+
+    def test_the_ops_skill_is_about_changing_the_team_and_points_to_the_read_only_ones(self):
+        description = frontmatter("ops")["description"]
+        self.assertIn("team", description)
+        self.assertIn("jira-em", description)
+        self.assertIn("jira-kanban", description)
+
+    def test_the_ops_skill_only_plans_and_never_runs_apply_or_the_legacy_writers(self):
+        text = (ROOT / "ops" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertNotIn("jk.py", text)
+        for forbidden in ("jk create", "jk push", "jk assign"):
+            self.assertNotIn(forbidden, text)
+        self.assertIn("Never run `jk apply`", text)
+
+    def test_every_plan_command_the_ops_skill_mentions_exists(self):
+        text = (ROOT / "ops" / "SKILL.md").read_text(encoding="utf-8")
+        for verb in re.findall(r"jk plan (\w+)", text):
+            self.assertIn(verb, plan_cli.VERBS, verb)
+        for verb in re.findall(r"jk team (\w+)", text):
+            self.assertIn(verb, team_cli.VERBS, verb)
+
+    def test_the_descriptions_do_not_overlap_on_the_phrases_that_pick_a_skill(self):
+        self.assertNotIn("Read only", frontmatter("ops")["description"])
+        self.assertNotIn("assign", frontmatter("em")["description"].lower())
 
     def test_the_personal_skill_mentions_only_commands_that_exist(self):
         text = (ROOT / "standup" / "SKILL.md").read_text(encoding="utf-8")
