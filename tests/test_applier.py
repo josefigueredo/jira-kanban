@@ -187,6 +187,14 @@ class LogTest(Base):
         self.assertIn("not recorded", outcomes[0]["result"])
         self.assertEqual(self.jira.writes, [("transition_id", "TEAM-1", "1>2")])
 
+    def test_a_log_that_cannot_be_opened_is_found_out_before_the_person_is_asked_and_before_any_write(self):
+        saved = self.saved_move(["TEAM-1"], role="todo")
+        asked = Approver()
+        with mock.patch.object(state, "can_log", return_value=False):
+            outcomes, code = self.apply(saved, asked)
+        self.assertEqual((code, asked.calls, self.jira.writes), (2, [], []))
+        self.assertIn("log", outcomes[0]["result"])
+
     def test_render_aligns_the_keys(self):
         text = applier.render([{"key": "TEAM-1", "result": "applied"}, {"key": "TEAM-10", "result": "changed"}])
         self.assertEqual(text.splitlines(), ["TEAM-1   applied", "TEAM-10  changed"])

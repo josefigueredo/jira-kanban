@@ -167,10 +167,11 @@ def revert(jira, original: dict, profiles: Dict[str, dict], now: Optional[Callab
             continue
         snap = jira.snapshot(key)
         if original["kind"] == "assign":
-            if (snap["assignee"] or {}).get("id") != entry["a"]["id"]:
+            if (snap["assignee"] or {}).get("id") != (entry["a"] or {}).get("id"):
                 skipped.append({"key": key, "why": "changed"})
             else:
-                items.append({"key": key, "from": dict(entry["a"]), "to": dict(entry["de"]) if entry["de"] else None})
+                items.append({"key": key, "from": dict(entry["a"]) if entry["a"] else None,
+                              "to": dict(entry["de"]) if entry["de"] else None})
             continue
         if snap["status_id"] != entry["a"]["id"]:
             skipped.append({"key": key, "why": "changed"})

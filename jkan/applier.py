@@ -58,6 +58,9 @@ def run(jira, plan: dict, confirm: Callable, command: str,
     pending = [i for i in plan["items"] if i["key"] not in done]
     results = {i["key"]: "already applied" for i in plan["items"] if i["key"] in done}
     unlogged = False
+    if pending and not state.can_log():
+        message = "error: the log cannot be written, so nothing was done (check the state folder)"
+        return [{"key": i["key"], "result": results.get(i["key"], message)} for i in plan["items"]], 2
     if pending:
         confirm(len(pending), plan_mod.describe(plan, [i["key"] for i in pending]), command)
         for item in pending:

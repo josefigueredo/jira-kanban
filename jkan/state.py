@@ -82,6 +82,18 @@ def log_path() -> Path:
     return state_dir() / "writes.jsonl"
 
 
+def can_log() -> bool:
+    """True when the log can be appended to: apply asks this before the person approves, not after the first write."""
+    try:
+        path = log_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8"):
+            pass
+        return True
+    except OSError:
+        return False
+
+
 def log_write(entry: dict, now: Optional[Callable[[], str]] = None) -> bool:
     """Append one line; False when it could not be written (the caller decides how loud to be: the write already happened)."""
     stamp = (now or utc_now)()

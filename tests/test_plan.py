@@ -316,5 +316,18 @@ class RevertTest(Base):
             plan.revert(self.jira, saved, self.profiles, now=NOW)
 
 
+class RevertOfRevertTest(Base):
+    def test_reverting_the_revert_of_an_assign_that_started_unassigned_does_not_crash(self):
+        from jkan import applier
+        selection = [self.put("TEAM-1", "todo")]
+        first = state.save_plan(plan.assign(self.view, selection, ANA, now=NOW))
+        applier.run(self.jira, first, lambda n, s, c: None, "jk apply x", now=NOW)
+        second = state.save_plan(plan.revert(self.jira, first, self.profiles, now=NOW))
+        applier.run(self.jira, second, lambda n, s, c: None, "jk apply y", now=NOW)
+        body = plan.revert(self.jira, second, self.profiles, now=NOW)
+        self.assertEqual(body["items"], [{"key": "TEAM-1", "from": None,
+                                          "to": {"id": "acc-ana", "name": "Ana Gómez"}}])
+
+
 if __name__ == "__main__":
     unittest.main()
