@@ -152,7 +152,8 @@ def _status_role(profiles: Dict[str, dict], key: str, status_id: str) -> Optiona
     return next((s["role"] for s in profile["statuses"] if s["id"] == status_id), None)
 
 
-def revert(jira, original: dict, profiles: Dict[str, dict], now: Optional[Callable[[], str]] = None) -> dict:
+def revert(jira, original: dict, profiles: Dict[str, dict], now: Optional[Callable[[], str]] = None,
+           allow_close: bool = False) -> dict:
     """The inverse of what the log says `original` wrote. It does not guarantee undoing: an issue that changed since, or a
     workflow with no way back, is left out and said; comments are never reverted."""
     view = {"name": original["view"]}
@@ -186,6 +187,8 @@ def revert(jira, original: dict, profiles: Dict[str, dict], now: Optional[Callab
                       "transition": chosen["id"]})
     if not items:
         raise Refused("nothing to revert: " + _why(skipped))
+    if not allow_close and any(i.get("to") and i["to"].get("role") in CLOSING for i in items):
+        raise Refused("reverting closes issues: add --allow-close")
     options = {"revert_of": original["id"]}
     return _envelope(original["kind"], view, options, items, skipped, now)
 

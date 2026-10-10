@@ -41,6 +41,7 @@ def _parser() -> argparse.ArgumentParser:
     note.add_argument("--text", required=True)
     undo = sub.add_parser("revert", help="plan the inverse of an applied plan (it does not guarantee undoing)")
     undo.add_argument("id")
+    undo.add_argument("--allow-close", action="store_true", help="needed when the inverse closes issues")
     return parser
 
 
@@ -55,7 +56,7 @@ def _plan(args, jira, conv: dict, today) -> int:
     if args.verb == "revert":
         original = state.load_plan(args.id)
         _, profiles = team_cli.context(original["view"])
-        return _announce(state.save_plan(plan.revert(jira(), original, profiles)))
+        return _announce(state.save_plan(plan.revert(jira(), original, profiles, allow_close=args.allow_close)))
     view, profiles = team_cli.context(args.view)
     limit = plan.check_max(args.max)
     client = jira()

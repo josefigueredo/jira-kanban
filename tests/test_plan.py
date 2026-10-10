@@ -315,6 +315,23 @@ class RevertTest(Base):
         with self.assertRaisesRegex(plan.Refused, "wrote nothing"):
             plan.revert(self.jira, saved, self.profiles, now=NOW)
 
+    def test_reverting_a_reopen_closes_again_and_needs_allow_close(self):
+        from jkan import applier
+        selection = [self.put("TEAM-1", "delivered")]
+        saved = state.save_plan(plan.move(self.jira, self.view, selection, self.profiles, "active", now=NOW))
+        applier.run(self.jira, saved, lambda n, s, c: None, "jk apply x", now=NOW)
+        with self.assertRaisesRegex(plan.Refused, "reverting closes issues: add --allow-close"):
+            plan.revert(self.jira, saved, self.profiles, now=NOW)
+        body = plan.revert(self.jira, saved, self.profiles, now=NOW, allow_close=True)
+        self.assertEqual(body["items"][0]["to"]["role"], "delivered")
+        self.assertEqual(body["options"], {"revert_of": saved["id"]})
+        self.assertIn("closes 1", plan.describe(dict(body, id="abcdef123456")))
+
+    def test_reverting_something_that_does_not_close_never_asks_for_the_flag(self):
+        saved = self.applied_move(("TEAM-1",))
+        body = plan.revert(self.jira, saved, self.profiles, now=NOW)
+        self.assertEqual(body["items"][0]["to"]["role"], "todo")
+
 
 class RevertOfRevertTest(Base):
     def test_reverting_the_revert_of_an_assign_that_started_unassigned_does_not_crash(self):

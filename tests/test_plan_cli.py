@@ -269,5 +269,21 @@ class RevertCliTest(Base):
         self.assertIn("wrote nothing", err)
 
 
+class RevertClosingCliTest(Base):
+    def test_a_revert_that_closes_needs_the_flag_on_the_command_line(self):
+        self.put("TEAM-1", "delivered")
+        self.serve()
+        _, out, _ = run(["plan", "move", "plataforma", "TEAM-1", "--to", "active"], self.jira)
+        first = plan_id(out)
+        run(["apply", first], self.jira)
+        code, _, err = run(["plan", "revert", first], self.jira)
+        self.assertEqual(code, 1)
+        self.assertIn("add --allow-close", err)
+        code, out, _ = run(["plan", "revert", first, "--allow-close"], self.jira)
+        self.assertEqual(code, 0)
+        self.assertIn("TEAM-1: En curso -> Done", out)
+        self.assertEqual(self.jira.writes, [("transition_id", "TEAM-1", "5>2")])  # only the first apply wrote; planning the revert did not
+
+
 if __name__ == "__main__":
     unittest.main()
