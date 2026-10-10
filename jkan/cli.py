@@ -5,6 +5,7 @@ import argparse
 import datetime as _dt
 import json
 import re
+import shlex
 import sys
 from pathlib import Path
 from typing import Callable, List, Optional
@@ -14,6 +15,7 @@ from . import (board_cli, board_profile, config, guard, journal, kanban, people,
 from .jira import Jira, JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
+NEEDS_PERSON = guard.EXIT_NEEDS_PERSON
 
 
 def excerpt(before: str, after: str, width: int = 60) -> tuple:
@@ -64,7 +66,19 @@ def _who(jira, name: str, project: Optional[str], as_json: bool) -> int:
     return OK if result["status"] == "unique" else FINDINGS
 
 
-def _assign(jira, key: str, who: str, tree: bool, apply: bool) -> int:
+def _approve(confirm: Callable, n: int, summary: str, argv: List[str]) -> Optional[int]:
+    """None when the write may go ahead (nothing to write, or a person approved); otherwise the exit code to return."""
+    if n == 0:
+        return None
+    try:
+        confirm(n, summary, "jk " + shlex.join(argv))
+    except guard.NotApproved as exc:
+        sys.stderr.write(f"jk: {exc}\n")
+        return NEEDS_PERSON
+    return None
+
+
+def _assign(jira, key: str, who: str, tree: bool, apply: bool, confirm: Callable, argv: List[str]) -> int:
     try:
         person = people.resolve(jira, who, key.split("-")[0])
     except people.NotResolved as exc:
@@ -73,6 +87,11 @@ def _assign(jira, key: str, who: str, tree: bool, apply: bool) -> int:
     if not person.get("exact", True):
         print(f"approximate match: {who!r} -> {person['name']} <{person['email'] or 'email hidden'}>; "
               f"check it is who you mean")
+    if apply:
+        planned = sync.assign(jira, key, person, tree=tree, apply=False)["issues"]
+        code = _approve(confirm, len(planned), f"assign {len(planned)} issue(s) to {person['name']}", argv)
+        if code is not None:
+            return code
     result = sync.assign(jira, key, person, tree=tree, apply=apply)
     for issue in result["issues"]:
         print(f"{issue['key']} [{issue['issuetype']}] {issue['summary']} -> {person['name']}")
@@ -242,12 +261,17 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
         if args.cmd == "who":
             return _who(jira, args.name, conv.get("project"), args.json)
         if args.cmd == "assign":
-            return _assign(jira, args.key, args.who, args.tree, args.apply)
+            return _assign(jira, args.key, args.who, args.tree, args.apply, confirm, argv)
         if args.cmd in REPORTS:
             return _report(jira, args, conv, (today or (lambda: window.today_in(conv.get("timezone"))))())
         if args.cmd == "create":
             epic_spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
             try:
+                if args.apply:  # a silent dry run says how many issues the person is about to approve
+                    planned = sync.create(jira, project, epic_spec, conv, apply=False, assign_open=args.assign_open)["ops"]
+                    code = _approve(confirm, len(planned), f"create {len(planned)} issue(s) in {conv['project']}", argv)
+                    if code is not None:
+                        return code
                 result = sync.create(jira, project, epic_spec, conv, apply=args.apply, assign_open=args.assign_open)
             except (ValueError, sync.NeedsDecision, sync.PartialCreate) as exc:
                 sys.stderr.write(f"{exc}\n")
@@ -279,6 +303,12 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
             print(f"{result['epic']}: {result['issues']} issues -> {result['dir']}")
             return OK
         try:
+            if args.apply:
+                planned = sync.push(jira, project, args.epic, apply=False, conv=conv, assign_open=args.assign_open)
+                n = len(planned["changes"]) + len(planned["new"])
+                code = _approve(confirm, n, f"push {n} write(s) to {args.epic}", argv)
+                if code is not None:
+                    return code
             result = sync.push(jira, project, args.epic, apply=args.apply, conv=conv, assign_open=args.assign_open)
         except sync.NeedsDecision as exc:
             sys.stderr.write(f"{exc}\n")

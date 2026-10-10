@@ -5,7 +5,7 @@ import io
 import json
 import unittest
 
-from helpers import FakeJira, epic_with_children, make_project
+from helpers import FakeJira, approve, epic_with_children, make_project
 from jkan import cli
 from test_spec import GOOD
 
@@ -13,7 +13,7 @@ from test_spec import GOOD
 def run(args, jira):
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        code = cli.main(args, client=lambda project: jira)
+        code = cli.main(args, client=lambda project: jira, confirm=approve)
     return code, out.getvalue(), err.getvalue()
 
 

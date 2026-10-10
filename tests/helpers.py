@@ -61,6 +61,11 @@ def make_project() -> Path:
     return Path(tempfile.mkdtemp(prefix="jk-test-"))
 
 
+def approve(n, summary, command):
+    """A confirm() for tests of the legacy --apply: the person approved. Real runs go through guard.confirm."""
+    return None
+
+
 class FailingJira(Exception):
     pass
 
