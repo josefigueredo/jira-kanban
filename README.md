@@ -149,6 +149,8 @@ sin confirmar corre y lo avisa en la primera línea.
 | `jk team desk VIEW [--weeks N]` | Boards `helpdesk`: antigüedad de lo abierto, sin asignar, esperando y tiempo de resolución. Sin SLA |
 | `jk team rollup VIEW VIEW …` | Una fila por view: abiertos, bloqueados, estancados, entregados y lead time p85 |
 
+`status` y `desk` aceptan además `--list`: lista los issues que el reporte contó, del más viejo al más nuevo, para pasar de «7 sin asignar» a cuáles son. Se acota con `--unassigned`, `--older-than DÍAS` y `--role todo|active|blocked|waiting|none` (solo junto a `--list`). En `desk`, `--older-than` no cuenta lo que espera a un tercero, igual que los tramos de antigüedad.
+
 Todos aceptan `--json` y `--all`. Cada reporte abre con el view, los boards, el equipo, la ventana y el estado de los
 perfiles; muestra el `n` de cada número; corta las tablas en 20 filas con un `… y N más`; avisa si la búsqueda llegó a su
 tope de 1000 issues; y cierra con **Límites**. Para un 1:1, `jk done|next|blocked --person "X" --view VIEW` mira a una

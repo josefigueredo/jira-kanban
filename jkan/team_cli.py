@@ -115,7 +115,11 @@ def _link(jira) -> Callable[[str], str]:
 def _status(args, jira, view, profiles, conv, today) -> Result:
     issues, cut = team.gather_open(jira, view, profiles, conv)
     report = team.status_report(issues, view, profiles)
-    return Result("Estado del equipo", None, report, team_render.render_status(report, args.all), issues, cut)
+    body = team_render.render_status(report, args.all)
+    if args.list:
+        report["issues"] = team.list_issues(issues, view["boards"], today, args.unassigned, args.older_than, args.role)
+        body += "\n\n" + team_render.render_issues(report["issues"], args.all, _link(jira))
+    return Result("Estado del equipo", None, report, body, issues, cut)
 
 
 def _stalled(args, jira, view, profiles, conv, today) -> Result:
@@ -164,8 +168,12 @@ def _desk(args, jira, view, profiles, conv, today) -> Result:
     issues, cut1 = team.gather_open(jira, view, profiles, conv)
     delivered, cut2 = team.gather_closed(jira, view, profiles, conv, ("delivered",), first)
     report = team.desk_report(issues, delivered, view, profiles, today, weeks)
-    return Result("Mesa de ayuda", (first, today), report, team_render.render_desk(report, args.all),
-                  issues + delivered, cut1 or cut2)
+    body = team_render.render_desk(report, args.all)
+    if args.list:
+        report["issues"] = team.list_issues(issues, team.desk_boards(view, profiles), today, args.unassigned,
+                                            args.older_than, args.role, ("todo", "active", "blocked"))
+        body += "\n\n" + team_render.render_issues(report["issues"], args.all, _link(jira))
+    return Result("Mesa de ayuda", (first, today), report, body, issues + delivered, cut1 or cut2)
 
 
 BUILDERS = {"status": _status, "stalled": _stalled, "blocked": _blocked, "flow": _flow, "digest": _digest, "desk": _desk}
@@ -249,6 +257,11 @@ def run(argv: List[str], jira: Callable[[], object], conv: dict, today: Callable
         p.add_argument("--json", action="store_true", help="machine-readable output")
         if verb == "stalled":
             p.add_argument("--days", type=int, help="default: the view's stalled days")
+        if verb in ("status", "desk"):
+            p.add_argument("--list", action="store_true", help="also list the issues behind the counts, oldest first")
+            p.add_argument("--unassigned", action="store_true", help="with --list: only issues with no owner")
+            p.add_argument("--older-than", type=int, metavar="DAYS", help="with --list: only issues created DAYS ago or before")
+            p.add_argument("--role", choices=team.COUNTED + ("none",), help="with --list: only issues in this role")
         if verb in ("flow", "desk"):
             p.add_argument("--weeks", type=int, default=4, help="how many weeks, 1 to 52 (default 4)")
         if verb == "digest":
@@ -259,6 +272,8 @@ def run(argv: List[str], jira: Callable[[], object], conv: dict, today: Callable
     roll.add_argument("--all", action="store_true")
     roll.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
+    if not getattr(args, "list", True) and (args.unassigned or args.older_than is not None or args.role):
+        parser.error("--unassigned, --older-than and --role narrow the list: add --list")
     try:
         if args.verb == "setup":
             return _setup(args, jira)

@@ -318,5 +318,90 @@ class ReportsTest(unittest.TestCase):
         self.assertEqual(self.jira.writes, [])
 
 
+class ListFlagTest(unittest.TestCase):
+    def setUp(self):
+        config_dir()
+        for prof in fx.profiles().values():
+            board_profile.save(prof)
+        views.save(fx.view())
+        self.jira = FakeJira()
+        self.jira.search_answer = fx.answers(open_=[
+            fx.at("TEAM-1", "active", assignee=fx.ANA, created="2026-09-01"),
+            fx.at("TEAM-2", "todo", assignee=None, created="2026-10-06"),
+            fx.at("DESK-1", "todo", assignee=None, created="2026-08-01"),
+            fx.at("DESK-2", "waiting", assignee=fx.BETO, created="2026-07-01"),
+            fx.at("DESK-3", "todo", assignee=fx.BETO, created="2026-10-07")])
+
+    def test_without_the_flag_no_issue_section_appears(self):
+        for verb in ("status", "desk"):
+            self.assertNotIn("### Issues", run([verb, "plataforma"], self.jira)[1], verb)
+
+    def test_status_list_shows_every_counted_issue_before_the_limits_section(self):
+        code, out, _ = run(["status", "plataforma", "--list"], self.jira)
+        self.assertEqual(code, 0)
+        self.assertIn("### Issues\n", out)
+        self.assertIn("| [TEAM-1](https://example.atlassian.net/browse/TEAM-1) | Summary of TEAM-1 | Ana Gómez | En curso | active | 37 |", out)
+        self.assertIn("| [TEAM-2](https://example.atlassian.net/browse/TEAM-2) | Summary of TEAM-2 | sin asignar | Backlog | todo | 2 |", out)
+        self.assertEqual(out.count("/browse/"), 5)
+        self.assertLess(out.index("### Issues"), out.index("### Límites"))
+
+    def test_status_list_json_has_the_same_rows_under_the_report(self):
+        code, out, _ = run(["status", "plataforma", "--list", "--json"], self.jira)
+        report = json.loads(out)["report"]
+        self.assertEqual((code, len(report["issues"]), report["n"]), (0, 5, 5))
+        self.assertEqual(report["issues"][0]["key"], "DESK-2")  # the oldest first
+
+    def test_desk_list_only_has_the_help_desk_boards_and_the_filters_narrow_it(self):
+        _, out, _ = run(["desk", "plataforma", "--list"], self.jira)
+        self.assertEqual(out.count("/browse/"), 3)
+        self.assertNotIn("TEAM-1", out)
+        _, out, _ = run(["desk", "plataforma", "--list", "--unassigned"], self.jira)
+        self.assertEqual(out.count("/browse/"), 1)
+        self.assertIn("DESK-1", out)
+
+    def test_desk_older_than_matches_the_bucket_the_report_shows(self):
+        _, as_json, _ = run(["desk", "plataforma", "--list", "--older-than", "15", "--json"], self.jira)
+        report = json.loads(as_json)["report"]
+        self.assertEqual([r["key"] for r in report["issues"]], ["DESK-1"])
+        self.assertEqual(len(report["issues"]), report["boards"][0]["age"]["15+ d"])
+
+    def test_status_role_filter(self):
+        _, out, _ = run(["status", "plataforma", "--list", "--role", "waiting"], self.jira)
+        self.assertEqual(out.count("/browse/"), 1)
+        self.assertIn("DESK-2", out)
+
+    def test_no_match_says_so(self):
+        _, out, _ = run(["status", "plataforma", "--list", "--role", "blocked"], self.jira)
+        self.assertIn("_Ningún issue con esos filtros._", out)
+
+    def test_the_table_is_cut_at_20_rows_and_all_lifts_it_but_json_is_never_cut(self):
+        self.jira.search_answer = fx.answers(open_=[fx.at(f"TEAM-{n}", "todo") for n in range(1, 26)])
+        _, out, _ = run(["status", "plataforma", "--list"], self.jira)
+        self.assertEqual(out.count("/browse/"), 20)
+        self.assertIn("_… y 5 más (usá --all)._", out)
+        self.assertEqual(run(["status", "plataforma", "--list", "--all"], self.jira)[1].count("/browse/"), 25)
+        self.assertEqual(len(json.loads(run(["status", "plataforma", "--list", "--json"], self.jira)[1])["report"]["issues"]), 25)
+
+    def test_a_filter_without_list_is_refused_instead_of_ignored(self):
+        for flag in (["--unassigned"], ["--older-than", "3"], ["--role", "todo"]):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                run(["status", "plataforma"] + flag, self.jira)
+
+    def test_other_reports_do_not_take_the_flag_and_a_bad_role_is_refused_by_the_parser(self):
+        for args in (["blocked", "plataforma", "--list"], ["status", "plataforma", "--list", "--role", "delivered"]):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                run(args, self.jira)
+
+    def test_a_negative_age_is_refused_with_a_message(self):
+        code, _, err = run(["status", "plataforma", "--list", "--older-than", "-1"], self.jira)
+        self.assertEqual(code, 1)
+        self.assertIn("older-than", err)
+
+    def test_it_only_reads(self):
+        run(["status", "plataforma", "--list"], self.jira)
+        run(["desk", "plataforma", "--list"], self.jira)
+        self.assertEqual(self.jira.writes, [])
+
+
 if __name__ == "__main__":
     unittest.main()

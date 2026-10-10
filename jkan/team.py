@@ -187,6 +187,30 @@ def desk_report(open_issues: List[dict], delivered: List[dict], view: dict, prof
     return {"weeks": weeks, "since": first, "boards": rows}
 
 
+def list_issues(open_issues: List[dict], boards: List[str], today: _dt.date, unassigned: bool = False,
+                older_than: Optional[int] = None, role: Optional[str] = None,
+                age_roles: Optional[tuple] = None) -> List[dict]:
+    """The issues behind a count: what status and desk counted on `boards`, oldest first, narrowed by the filters. With
+    `age_roles`, older_than only looks at those roles (the desk does not age what waits for a third party)."""
+    if role is not None and role not in COUNTED + ("none",):
+        raise ValueError(f"role must be one of {', '.join(COUNTED + ('none',))}, not {role!r}")
+    if older_than is not None and older_than < 0:
+        raise ValueError("older-than must be 0 or more days")
+    rows = []
+    for issue in open_issues:
+        if roles.project_of(issue["key"]) not in boards:
+            continue
+        bucket, age = _bucket(issue), _days_since(issue.get("created"), today)
+        owner = issue["assignee"]["name"] if issue["assignee"] else None
+        if (unassigned and owner) or (role is not None and bucket != role):
+            continue
+        if older_than is not None and (age is None or age < older_than or (age_roles and bucket not in age_roles)):
+            continue
+        rows.append({"key": issue["key"], "title": issue["summary"], "owner": owner, "status": issue["status"],
+                     "role": bucket, "age_days": age})
+    return sorted(rows, key=lambda r: (r["age_days"] is None, -(r["age_days"] or 0), r["key"]))
+
+
 def rollup_row(view: dict, open_issues: List[dict], delivered: List[dict], conv: dict, today: _dt.date,
                weeks: int = 4) -> dict:
     blocked = blocked_report(open_issues, conv, today)

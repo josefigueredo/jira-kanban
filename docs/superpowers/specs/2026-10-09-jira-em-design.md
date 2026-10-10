@@ -297,3 +297,18 @@ Medido con `jk team` sobre el Jira real el 2026-10-09 (solo lectura). Views de p
 | `desk ayuda` (4 semanas) | PEHD: 12 abiertos, 7 sin asignar, 34 resueltos; CDSP: 8 abiertos, 136 resueltos |
 | `rollup plataforma ayuda` (abiertos / bloqueados / estancados / entregados) | 159 / 3 / 10 / 60 y 20 / 0 / 3 / 170 |
 | Búsquedas que llegaron al tope de 1000 issues | ninguna |
+
+## Resultados de la fase 2.1
+
+`jk team status` y `jk team desk` aceptan `--list`: debajo de las tablas agregan una sección «Issues» con lo que el reporte contó, del más viejo al más nuevo (key con link, título, dueño, estado, rol y días desde la creación). Se acota con `--unassigned`, `--older-than DÍAS` y `--role todo|active|blocked|waiting|none`, que solo valen junto a `--list` (sin él, el parser los rechaza). En `--json` la lista completa va en `report.issues`. `status` lista todos los boards del view; `desk`, solo los `helpdesk`, y su `--older-than` no cuenta lo que espera a un tercero ni lo que no tiene rol, igual que los tramos de antigüedad. Quedó afuera a propósito: `--person` (los nombres de pantalla son ambiguos), un verbo `jk team issues` y JQL libre (reabre la superficie de inyección). Solo lee; el código está en `team.list_issues`.
+
+Medido contra el Jira real el 2026-10-10 (view `plataforma`, PLATE y PEHD):
+
+| Medida | Resultado |
+|---|---|
+| `status --list`: filas / abiertos del reporte | 90 / 90 |
+| `status --list --unassigned`: filas / sin asignar del reporte | 63 / 63 |
+| `desk --list --unassigned`: filas / sin asignar del reporte | 7 / 7 |
+| `desk --list --older-than 15`: filas / tramo «15+ d» del reporte | 5 / 5 |
+
+Tests: 477 en verde con `python3` y con `/usr/bin/python3` (3.9); 26 nuevos: 23 se vieron en rojo antes de la implementación y 3 (sin el flag no hay sección; otros reportes no lo aceptan; un filtro sin `--list` se rechaza) ya pasaban y protegen contra regresiones.

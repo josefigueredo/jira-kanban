@@ -178,6 +178,14 @@ def render_desk(report: dict, show_all: bool) -> str:
                         f"### Tiempo de resolución (últimas {report['weeks']} semanas)\n" + times])
 
 
+def render_issues(rows: List[dict], show_all: bool, link: Link) -> str:
+    """The issues behind a count; the role «none» is the bucket without role."""
+    body = table(["Key", "Título", "Dueño", "Estado", "Rol", "Días"],
+                 [[link(r["key"]), r["title"], r["owner"] or "sin asignar", r["status"], r["role"], _days(r["age_days"])]
+                  for r in rows], show_all, "_Ningún issue con esos filtros._")
+    return "### Issues\n" + body
+
+
 def render_rollup(rows: List[dict], show_all: bool) -> str:
     def lead(row: dict) -> str:
         spread = row.get("lead")
