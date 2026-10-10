@@ -254,3 +254,30 @@ class Jira:
         self._send("POST", f"/rest/api/3/issue/{key}/transitions", {"transition": {"id": match["id"]}})
         self._journal({"action": "transition", "key": key, "to": match["to"].get("name")})
         return True
+
+    def transitions(self, key: str) -> List[dict]:
+        """What the issue can do now: id, name, destination and the fields each transition requires. Read only."""
+        raw = self._send("GET", f"/rest/api/3/issue/{key}/transitions?expand=transitions.fields").get("transitions", [])
+        found = []
+        for t in raw:
+            to = t.get("to") or {}
+            required = sorted(fid for fid, meta in (t.get("fields") or {}).items()
+                              if meta.get("required") and not meta.get("hasDefaultValue"))
+            found.append({"id": str(t["id"]), "name": t.get("name") or "",
+                          "to": {"id": str(to.get("id", "")), "name": to.get("name", "")}, "required": required})
+        return found
+
+    def transition_by_id(self, key: str, transition_id: str) -> None:
+        self._send("POST", f"/rest/api/3/issue/{key}/transitions", {"transition": {"id": transition_id}})
+        self._journal({"action": "transition", "key": key, "transition": transition_id})
+
+    def add_comment(self, key: str, text: str) -> None:
+        self._send("POST", f"/rest/api/2/issue/{key}/comment", {"body": text})
+        self._journal({"action": "comment", "key": key})
+
+    def snapshot(self, key: str) -> dict:
+        """The status id and the owner now, which is all apply rereads before a write. Read only."""
+        fields = self._send("GET", f"/rest/api/3/issue/{key}?fields=status,assignee")["fields"]
+        status, owner = fields.get("status") or {}, fields.get("assignee")
+        return {"status_id": str(status.get("id", "")), "status": status.get("name", ""),
+                "assignee": {"id": owner["accountId"], "name": owner.get("displayName") or ""} if owner else None}

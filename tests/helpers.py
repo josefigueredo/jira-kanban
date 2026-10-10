@@ -84,6 +84,9 @@ class FakeJira:
         self.status_groups: Dict[str, List[dict]] = {}  # project key -> what Jira.project_statuses returns
         self.project_list: List[dict] = []  # what Jira.projects returns
         self.groups: Dict[str, int] = {"team": 7}  # Jira group -> members
+        self.board: Dict[str, dict] = {}  # key -> {"status_id", "status", "assignee"}: what snapshot() sees
+        self.workflow: Dict[str, List[dict]] = {}  # status id -> the transitions that leave it
+        self.fail_writes: set = set()  # keys whose writes raise, like a Jira that rejects them
 
     def browse_url(self, key: str) -> str:
         return f"https://example.atlassian.net/browse/{key}"
@@ -121,8 +124,13 @@ class FakeJira:
     def user(self, account_id: str) -> Optional[dict]:
         return next((dict(u) for u in self.users if u["id"] == account_id), None)
 
-    def assign(self, key: str, account_id: str) -> None:
+    def assign(self, key: str, account_id: Optional[str]) -> None:
+        if key in self.fail_writes:
+            raise FailingJira(f"HTTP 400 on assign of {key}")
         self.issues[key]["assignee"] = account_id
+        if key in self.board:
+            owner = None if account_id is None else {"id": account_id, "name": (self.user(account_id) or {}).get("name", account_id)}
+            self.board[key]["assignee"] = owner
         self.writes.append(("assign", key, account_id))
 
     def get(self, key: str) -> dict:
@@ -192,6 +200,36 @@ class FakeJira:
         self.issues[key]["category"] = STATUS_CATEGORY.get(status, "in_progress")
         self.writes.append(("transition", key, status))
         return True
+
+    # ---- plan / apply -------------------------------------------------------------------------------------------
+    def put(self, key: str, status_id: str, status: str, assignee: Optional[dict] = None) -> str:
+        """An issue as snapshot() sees it; `assignee` is {"id", "name"} or None."""
+        self.board[key] = {"status_id": status_id, "status": status, "assignee": dict(assignee) if assignee else None}
+        self.issues.setdefault(key, {"key": key, "assignee": None})
+        return key
+
+    def snapshot(self, key: str) -> dict:
+        shot = self.board[key]
+        return {"status_id": shot["status_id"], "status": shot["status"],
+                "assignee": dict(shot["assignee"]) if shot["assignee"] else None}
+
+    def transitions(self, key: str) -> List[dict]:
+        return [dict(t, to=dict(t["to"]), required=list(t.get("required", [])))
+                for t in self.workflow.get(self.board[key]["status_id"], [])]
+
+    def transition_by_id(self, key: str, transition_id: str) -> None:
+        if key in self.fail_writes:
+            raise FailingJira(f"HTTP 400 on transition of {key}")
+        chosen = next((t for t in self.workflow.get(self.board[key]["status_id"], []) if t["id"] == transition_id), None)
+        if chosen is None:
+            raise FailingJira(f"HTTP 400: transition {transition_id} is not available for {key}")
+        self.board[key].update(status_id=chosen["to"]["id"], status=chosen["to"]["name"])
+        self.writes.append(("transition_id", key, transition_id))
+
+    def add_comment(self, key: str, text: str) -> None:
+        if key in self.fail_writes:
+            raise FailingJira(f"HTTP 400 on comment of {key}")
+        self.writes.append(("comment", key, text))
 
 
 def epic_with_children(jira: FakeJira) -> str:
