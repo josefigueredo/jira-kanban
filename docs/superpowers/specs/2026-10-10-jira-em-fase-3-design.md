@@ -178,7 +178,7 @@ TDD, en `python3` y `/usr/bin/python3` (3.9), con Jira falso. Casos obligatorios
 
 ## Riesgos y pendientes
 
-- **Proyecto sandbox:** pendiente; sin él no se cierra la fase. Lo que necesita: proyecto propio y borrable, unos 5 a 10
+- **Proyecto sandbox:** se usó PLATE con una épica descartable (ver «Prueba real» en los resultados). Lo que necesita: proyecto propio y borrable, unos 5 a 10
   issues descartables, workflow tipo PLATE y permiso para editar, transicionar, asignar y comentar.
 - **Agente con pseudo-terminal:** ver el límite de la guarda. Mitigación en la fase 4 (hook y `AGENTS.md`).
 - **Comentarios no idempotentes en Jira:** la idempotencia depende de la bitácora local; si se borra, reaplicar duplica.
@@ -202,4 +202,29 @@ TDD, en `python3` y `/usr/bin/python3` (3.9), con Jira falso. Casos obligatorios
   releer uno resulta `changed` o `already there`, se escriben menos de `n`.
 - **Límite conocido:** `jk create --apply` pide la aprobación antes de poder fallar por una decisión `--assign-open`
   pendiente; la persona aprueba y después el comando se niega sin escribir.
-- **Prueba real en el proyecto sandbox:** pendiente.
+- **Prueba real, hecha el 2026-10-10 en PLATE** (no en un proyecto aparte: una épica `PLATE-663` con 6 tareas
+  `PLATE-664` a `PLATE-669`, todas con prefijo `[SANDBOX fase 3]`, siempre seleccionadas por clave; guía en
+  `docs/superpowers/acceptance/`). Resultados medidos leyendo Jira y `writes.jsonl`:
+  - **Bug encontrado y corregido:** la guarda nunca podía aprobar en una terminal real. `open("/dev/tty", "r+")` en modo
+    texto lanza «File or stream is not seekable», un `OSError` que la guarda traducía a «no hay terminal». Los tests con
+    terminales falsas no lo veían. Arreglo: dos manejadores, uno para leer y otro para escribir; tests nuevos que corren
+    la guarda en un hijo con un pty (commit `42ec743`, rama `fix/guard-real-tty`). Ninguna escritura se aprobó mal: solo
+    falló hacia «no escribe».
+  - **`create --apply`:** 7 issues (`APRUEBO 7`); sin asignar con `--no-assign-open`.
+  - **move:** `PLATE-664` y `PLATE-665` a PROCESANDO (`--to-status 10115`); Jira y el registro coinciden.
+  - **assign:** `PLATE-666` y `PLATE-667` a Jose Ramon Figueredo («Jose Figueredo» resolvió a un único candidato).
+  - **comment:** un comentario exacto en `PLATE-668` y `PLATE-669`; no se duplicó.
+  - **move a delivered con `--allow-close`:** `PLATE-669` a Done sin campos obligatorios en PLATE.
+  - **`changed`:** estado cambiado a mano entre plan y apply (`PLATE-666` pasó a Selected for Development); el apply dijo
+    `changed` y no lo movió. No deja línea en el registro (solo se anotan escrituras).
+  - **Idempotencia:** reaplicar el plan `783db0517098` dijo `already applied` y no escribió; replanificar da `already there`.
+  - **revert:** `PLATE-664` volvió de PROCESANDO a Backlog (plan `42429248d7e2`).
+  - **La guarda se niega:** correr el apply de un plan (`0feaad403790`) o `assign … --apply` bajo `!` sale con el mensaje de
+    terminal interactiva y no escribe; con `echo "APRUEBO 1"` por stdin se niega (tres planes); un `ARUEBO 1` mal
+    escrito no aprueba. La vía vieja `assign … --apply` en la terminal pide `APRUEBO 1` y asigna.
+  - **No probado a propósito:** que la herramienta Bash del agente se niegue a correr un apply (paso 2.4); lo cubre
+    `tools/check-guardrails.sh` (44/44) y nadie pidió forzarlo.
+  - **Hallazgos menores (diferidos):** `plan move --to active` con un rol de dos estados dice solo
+    `nothing to move: …: ambiguous`, sin sugerir `--to-status`; no hay forma de desasignar con un plan (`plan assign`
+    exige `--person`; `Jira.assign(key, None)` no llega a ningún comando); el comando viejo `assign … --apply` dice
+    `assigned 1 issue(s)` aunque el issue ya fuera de esa persona.
