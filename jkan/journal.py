@@ -15,8 +15,12 @@ def _utc_now() -> str:
     return _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def journal(project: Path, command: str, now: Optional[Callable[[], str]] = None) -> Callable[[dict], None]:
-    """A writer for Jira(journal=...). It never raises: a log that cannot be written must not undo the write."""
+def journal(project: Path, command: str, now: Optional[Callable[[], str]] = None,
+            also: Optional[Callable[[dict], None]] = None) -> Callable[[dict], None]:
+    """A writer for Jira(journal=...). It never raises: a log that cannot be written must not undo the write.
+
+    `also` gets the same write as `{"command", **entry, "result": "ok"}`: jk passes state.log_write so the common log
+    (~/.local/state/jk/writes.jsonl) holds everything jk wrote. That line carries no `plan`, so it is never an applied plan."""
     clock = now or _utc_now
 
     def write(entry: dict) -> None:
@@ -28,5 +32,10 @@ def journal(project: Path, command: str, now: Optional[Callable[[], str]] = None
                                         ensure_ascii=False) + "\n")
         except OSError:
             pass
+        if also is not None:
+            try:
+                also({"command": command, **entry, "result": "ok"})
+            except Exception:  # noqa: BLE001 — the write to Jira already happened; a second log never undoes it
+                pass
 
     return write

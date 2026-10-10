@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Callable, List, Optional
 
 from . import (board_cli, board_profile, config, guard, journal, kanban, people, plan_cli, preview, render, roles, standup,
-               stats, sync, team_cli, views, window)
+               state, stats, sync, team_cli, views, window)
 from .jira import Jira, JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
@@ -38,7 +38,7 @@ def _client(project: Path, command: Optional[str] = None):
     if creds is None:
         raise SystemExit("jk: Jira credentials not found (IC_JIRA_* or JIRA_* in the environment, ./.env.local, "
                          "./.spec-kit/.env)")
-    return Jira(*creds, journal=journal.journal(project, command) if command else None)
+    return Jira(*creds, journal=journal.journal(project, command, also=state.log_write) if command else None)
 
 
 def _show(project: Path, key: str) -> None:
