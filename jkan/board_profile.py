@@ -1,5 +1,5 @@
-"""Per-board profiles: which role each status plays. One JSON per Jira project under ~/.config/jk/profiles/
-(or $JK_CONFIG_DIR/profiles/). Written only by `jk board setup` and `jk board set`; nobody edits them by hand."""
+"""Per-board profiles: which role each status plays. One JSON per Jira project under ~/.config/jtk/profiles/
+(or $JTK_CONFIG_DIR/profiles/). Written only by `jtk board setup` and `jtk board set`; nobody edits them by hand."""
 from __future__ import annotations
 
 import hashlib
@@ -26,11 +26,11 @@ class BadProfile(ValueError):
 
 
 class NewerProfile(ValueError):
-    """A profile written by a newer jk: it must be neither misread nor overwritten."""
+    """A profile written by a newer jtk: it must be neither misread nor overwritten."""
 
 
 def config_dir() -> Path:
-    return Path(os.environ.get("JK_CONFIG_DIR") or Path.home() / ".config" / "jk")
+    return Path(os.environ.get("JTK_CONFIG_DIR") or Path.home() / ".config" / "jtk")
 
 
 def path_of(project: str, base: Optional[Path] = None) -> Path:
@@ -142,7 +142,7 @@ def _read(path: Path) -> dict:
     if isinstance(version, bool) or not isinstance(version, int):
         raise BadProfile(f"{path.name} is not a profile (no valid version)")
     if version > VERSION:
-        raise NewerProfile(f"{path.name} was written by a newer jk (profile version {version}); update jk")
+        raise NewerProfile(f"{path.name} was written by a newer jtk (profile version {version}); update jtk")
     statuses = data.get("statuses")
     if not (data.get("project") == path.stem and isinstance(statuses, list) and _wip_ok(data.get("wip_limit"))
             and all(isinstance(s, dict) and isinstance(s.get("id"), str) and isinstance(s.get("name"), str)

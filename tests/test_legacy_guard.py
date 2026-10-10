@@ -49,7 +49,7 @@ class AssignTest(unittest.TestCase):
         n, summary, command = asked.calls[0]
         self.assertEqual(n, 4)
         self.assertIn("assign 4 issue(s) to Matías Andrés Fernandez", summary)
-        self.assertTrue(command.startswith("jk assign PLATE-600 "))
+        self.assertTrue(command.startswith("jtk assign PLATE-600 "))
         self.assertIn("--tree --apply", command)
         self.assertIn("assigned 4 issue", out)
 
@@ -67,7 +67,7 @@ class AssignTest(unittest.TestCase):
         code, _, err = run(self.args("PLATE-601", "--apply"), self.jira, real)
         self.assertEqual((code, self.jira.writes), (3, []))
         self.assertIn("Run it yourself", err)
-        self.assertIn("jk assign PLATE-601", err)
+        self.assertIn("jtk assign PLATE-601", err)
 
 
 class CreateTest(unittest.TestCase):

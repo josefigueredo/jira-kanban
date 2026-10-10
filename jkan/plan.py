@@ -1,4 +1,4 @@
-"""Plans: what `jk plan move|assign|comment|revert` decides about a selection of issues, written as a file `jk apply` runs
+"""Plans: what `jtk plan move|assign|comment|revert` decides about a selection of issues, written as a file `jtk apply` runs
 exactly. Planning only reads Jira. Everything a write needs (the status it leaves and reaches, the transition id, the person)
 is resolved here, once; apply never evaluates the query again."""
 from __future__ import annotations
@@ -64,7 +64,7 @@ def check_profiles(selection: List[dict], profiles: Dict[str, dict]) -> None:
         pending = board_profile.open_statuses(profiles[board])
         if pending:
             raise Refused(f"the profile of {board} has {len(pending)} status(es) without a role: decide them with "
-                          f"jk board set before planning a write")
+                          f"jtk board set before planning a write")
 
 
 def _envelope(kind: str, view: dict, options: dict, items: List[dict], skipped: List[dict],

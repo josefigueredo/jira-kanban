@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Install jk and its skills for Claude Code, Codex and Cursor.
+# Install jtk and its skills for Claude Code, Codex and Cursor.
 #   ./install.sh               the read-only skills: jira-standup and jira-em
 #   ./install.sh --with-write  also the skills that write to Jira: jira-kanban and jira-em-ops
-# CLI: ~/.local/bin/jk points at jk.py; the skills call `jk`, never another skill's folder.
+# CLI: ~/.local/bin/jtk points at jtk.py; the skills call `jtk`, never another skill's folder.
 # Skills (same layout as WayOfWork): ~/.agents/skills/<name> points at this repo (jira-kanban) or at its standup/
 # folder (jira-standup); ~/.claude/skills/<name>, ~/.codex/skills/<name> and ~/.cursor/skills/<name> point at
 # ../../.agents/skills/<name> (measured: ~/.cursor/skills held only explicit links, so Cursor needs its own).
@@ -39,9 +39,9 @@ for entry in "${SKILLS[@]}"; do
   done
   echo "skill: $NAME (Claude Code, Codex, Cursor) -> $TARGET"
 done
-chmod +x "$REPO/jk.py"
-link "$REPO/jk.py" "$HOME/.local/bin/jk" || status=1
-echo "cli: jk -> $REPO/jk.py"
-case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) echo "note: add ~/.local/bin to PATH to use jk" >&2 ;; esac
-command -v python3 >/dev/null || { echo "note: python3 is not on PATH; jk needs it" >&2; status=1; }
+chmod +x "$REPO/jtk.py"
+link "$REPO/jtk.py" "$HOME/.local/bin/jtk" || status=1
+echo "cli: jtk -> $REPO/jtk.py"
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) echo "note: add ~/.local/bin to PATH to use jtk" >&2 ;; esac
+command -v python3 >/dev/null || { echo "note: python3 is not on PATH; jtk needs it" >&2; status=1; }
 exit "$status"

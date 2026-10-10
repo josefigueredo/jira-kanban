@@ -25,7 +25,7 @@ class TeeTest(unittest.TestCase):
                            "key": "PLATE-1", "fields": {"summary": "x"}}])
         [common] = lines(self.base / "writes.jsonl")
         self.assertEqual((common["tool"], common["command"], common["action"], common["key"], common["result"]),
-                         ("jk", "create", "update", "PLATE-1", "ok"))
+                         ("jtk", "create", "update", "PLATE-1", "ok"))
         self.assertIn("ts", common)
 
     def test_the_common_line_has_no_plan_so_it_never_counts_as_an_applied_plan(self):

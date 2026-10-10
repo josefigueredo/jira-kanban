@@ -38,7 +38,7 @@ class TransitionFailureTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("created PLATE-600", out)
         self.assertIn("PLATE-604: not moved to Done (HTTP 400 on transition of PLATE-604)", err)
-        self.assertIn("jk push PLATE-600", err)
+        self.assertIn("jtk push PLATE-600", err)
         self.assertIn("do not run create again", err)
 
 

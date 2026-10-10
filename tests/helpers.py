@@ -12,9 +12,9 @@ sys.path.insert(0, str(ROOT))
 
 
 def config_dir() -> Path:
-    """Point jk at an empty config directory, so no test reads or writes the real ~/.config/jk."""
-    path = Path(tempfile.mkdtemp(prefix="jk-config-"))
-    os.environ["JK_CONFIG_DIR"] = str(path)
+    """Point jtk at an empty config directory, so no test reads or writes the real ~/.config/jtk."""
+    path = Path(tempfile.mkdtemp(prefix="jtk-config-"))
+    os.environ["JTK_CONFIG_DIR"] = str(path)
     return path
 
 
@@ -22,9 +22,9 @@ config_dir()  # every test run starts isolated, even the tests that never ask fo
 
 
 def state_dir() -> Path:
-    """Point jk at an empty state directory, so no test reads or writes the real ~/.local/state/jk."""
-    path = Path(tempfile.mkdtemp(prefix="jk-state-"))
-    os.environ["JK_STATE_DIR"] = str(path)
+    """Point jtk at an empty state directory, so no test reads or writes the real ~/.local/state/jtk."""
+    path = Path(tempfile.mkdtemp(prefix="jtk-state-"))
+    os.environ["JTK_STATE_DIR"] = str(path)
     return path
 
 
@@ -44,7 +44,7 @@ def _fold(text: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFKD", text or "") if not unicodedata.combining(c)).lower()
 
 
-# What Jira's assignable-user search returns for PLATE, reduced to what jk uses.
+# What Jira's assignable-user search returns for PLATE, reduced to what jtk uses.
 PEOPLE = [
     {"id": "acc-matias", "name": "Matías Andrés Fernandez", "email": "matias.fernandez@example.com"},
     {"id": "acc-martin-d", "name": "Martin Daniel Fernandez", "email": "martin.fernandez@example.com"},
@@ -58,7 +58,7 @@ STATUS_CATEGORY = {"Backlog": "todo", "Selected for Development": "todo", "PROCE
 
 
 def make_project() -> Path:
-    return Path(tempfile.mkdtemp(prefix="jk-test-"))
+    return Path(tempfile.mkdtemp(prefix="jtk-test-"))
 
 
 def approve(n, summary, command):
@@ -261,7 +261,7 @@ def issue(key: str, **over) -> dict:
 
 
 def described(spec: dict) -> dict:
-    """Give every issue of a spec its why / what / done_when, for tests about something else: jk refuses issues without."""
+    """Give every issue of a spec its why / what / done_when, for tests about something else: jtk refuses issues without."""
     entries = [spec["epic"]] + spec["items"] + [sub for item in spec["items"] for sub in item.get("subtasks") or []]
     for entry in entries:
         entry.setdefault("why", f"Hace falta «{entry.get('summary', '')}».")

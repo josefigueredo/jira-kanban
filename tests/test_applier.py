@@ -45,7 +45,7 @@ class Base(unittest.TestCase):
         return state.save_plan(plan.move(self.jira, self.view, selection, self.profiles, to, now=NOW))
 
     def apply(self, saved, confirm=None):
-        return applier.run(self.jira, saved, confirm or self.approve, f"jk apply {saved['id']}", now=NOW)
+        return applier.run(self.jira, saved, confirm or self.approve, f"jtk apply {saved['id']}", now=NOW)
 
 
 class MoveTest(Base):
@@ -63,7 +63,7 @@ class MoveTest(Base):
         saved = self.saved_move(["TEAM-1", "TEAM-2"], role="todo")
         self.apply(saved)
         n, summary, command = self.approve.calls[0]
-        self.assertEqual((len(self.approve.calls), n, command), (1, 2, f"jk apply {saved['id']}"))
+        self.assertEqual((len(self.approve.calls), n, command), (1, 2, f"jtk apply {saved['id']}"))
         self.assertIn("TEAM-1: Backlog -> En curso", summary)
 
     def test_without_approval_nothing_is_written_and_nothing_is_logged(self):

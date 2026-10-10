@@ -1,4 +1,4 @@
-"""What `jk push` prints is what the user approves before --apply: it has to show the change itself.
+"""What `jtk push` prints is what the user approves before --apply: it has to show the change itself.
 
 In the PLATE-539 run, a description edited at its end printed the same first 60 characters on both sides of the
 arrow, a description that started with a line break was cut at it, and --apply ended without saying what happened.

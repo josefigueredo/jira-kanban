@@ -6,13 +6,13 @@ description: Use when the user asks to create a Jira epic for the work being dis
 # jira-kanban
 
 Create a Jira epic from the conversation and mirror it, both ways, as a local kanban in `./.jira-kanban/`. All Jira
-access goes through `jk`; never hand-roll Jira calls or another folder layout.
+access goes through `jtk`; never hand-roll Jira calls or another folder layout.
 
 To read what was done, what is next, what is blocked, a teammate's load or delivery metrics, use the sibling skill
 `jira-standup`; this skill writes.
 
 ```bash
-jk <create|pull|push|show|board> ... --project .
+jtk <create|pull|push|show|board> ... --project .
 ```
 
 ## Steps
@@ -22,18 +22,18 @@ jk <create|pull|push|show|board> ... --project .
 2. **Jira project:** there is no default. Use `"project"` from `./.jira-kanban/conventions.json` if it exists;
    otherwise ask the user which project and pass `--jira-project KEY`.
 3. **Existing epic first:** a `**Jira Epic:** KEY` in `specs/*/spec.md`, a key in the conversation or the branch. If one
-   covers the work, ask before creating anything; to mirror it, run `jk pull KEY`.
+   covers the work, ask before creating anything; to mirror it, run `jtk pull KEY`.
 4. **Draft the spec** (JSON, in the scratchpad) from the conversation. Read `references/spec.md` first: it has the
-   format, the `why` / `what` / `done_when` every issue needs (prose a person can follow and correct; jk renders them through `templates/description.md`), the optional `how` / `out_of_scope` / `assumptions` / `edge_cases` / `references` only when the conversation already has them, and when an item is a story or a task, finished (`done`, with its `evidence`: the commits, branch or URL), in progress (`started`) or open.
-5. **Preview:** `jk create --spec <file> --jira-project KEY --html <scratchpad>/vista.html` (dry run). Show the tree and
+   format, the `why` / `what` / `done_when` every issue needs (prose a person can follow and correct; jtk renders them through `templates/description.md`), the optional `how` / `out_of_scope` / `assumptions` / `edge_cases` / `references` only when the conversation already has them, and when an item is a story or a task, finished (`done`, with its `evidence`: the commits, branch or URL), in progress (`started`) or open.
+5. **Preview:** `jtk create --spec <file> --jira-project KEY --html <scratchpad>/vista.html` (dry run). Show the tree and
    `open` the HTML, a Jira-like view of what this pass does. If any issue shows "a decidir", ask the user whether to
    assign the open ones to them. Wait for an explicit yes.
-6. **Create:** hand the user the exact command to run with `!`: `jk create --spec <file> --jira-project KEY --apply`,
+6. **Create:** hand the user the exact command to run with `!`: `jtk create --spec <file> --jira-project KEY --apply`,
    plus `--assign-open` or `--no-assign-open` with their answer. Never run `--apply` yourself: a guardrail hook
-   blocks it. If Jira rejects an issue halfway, jk keeps what was created and names the keys: fix the cause and hand
+   blocks it. If Jira rejects an issue halfway, jtk keeps what was created and names the keys: fix the cause and hand
    the user the same command again; it resumes without duplicating. If only a move to
    Done or in progress fails, every issue exists: never rerun create; finish it with a status edit and push.
-7. **Sync:** `jk pull KEY` refreshes from Jira. Local edits go back with `jk push KEY` (dry run), then hand the user
+7. **Sync:** `jtk pull KEY` refreshes from Jira. Local edits go back with `jtk push KEY` (dry run), then hand the user
    the same command with `--apply`. `references/layout.md` has the folders, how to edit and add a subtask, and what a
    conflict means.
 
@@ -41,16 +41,16 @@ jk <create|pull|push|show|board> ... --project .
 
 - To give an issue to someone other than the user, put `"assignee"` (a name, email or accountId) on the epic, an item or
   a subtask in the spec; subtasks inherit their item's. See `references/spec.md`.
-- Not sure who the person is? `jk who "<name>" --jira-project KEY` (read only, `--json` for scripts). `unique`: use the
+- Not sure who the person is? `jtk who "<name>" --jira-project KEY` (read only, `--json` for scripts). `unique`: use the
   accountId or email it prints. `ambiguous`: show the user the candidates (name and email) and ask which one; never pick.
   Accents and a one-letter slip are fine ("Matiaz" finds "Matías").
-- Reassigning what exists: `jk assign KEY "<person>" [--tree]` is a dry run; hand the user the same command with
+- Reassigning what exists: `jtk assign KEY "<person>" [--tree]` is a dry run; hand the user the same command with
   `--apply`.
 
 ## Rules
 
 - Every Jira write needs `--apply`, run by the user, and is logged in `./.jira-kanban/jira-writes.jsonl`.
-- Progress: `jk board KEY` (after a pull) groups by Jira status category, never by status names; blocked means a
+- Progress: `jtk board KEY` (after a pull) groups by Jira status category, never by status names; blocked means a
   status in `blocked_statuses` or the Flagged field.
 - Project defaults live in `conventions.json`; a project overrides them in `./.jira-kanban/conventions.json`.
 - The shape of every card lives in `templates/` (`description.md`, `issue.md`, `card.html`); edit a template, never the

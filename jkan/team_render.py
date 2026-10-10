@@ -15,7 +15,7 @@ LIMITS = {
     "status": [
         "«Sin rol» son issues en estados que el perfil todavía no decidió o no conoce.",
         "«Sin asignar» cuenta lo abierto sin dueño en esos boards, sea o no del equipo; lo asignado a otras personas no se cuenta.",
-        "El veredicto de carga sale del límite de WIP de cada perfil (`jk board limit KEY N`); sin límite, solo números."],
+        "El veredicto de carga sale del límite de WIP de cada perfil (`jtk board limit KEY N`); sin límite, solo números."],
     "stalled": [
         "«Estancado» no es «sin progreso»: la categoría de Jira solo cambia al pasar de una categoría a otra, así que moverse "
         "entre dos estados «en curso» no reinicia los días en la categoría.",

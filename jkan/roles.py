@@ -109,13 +109,13 @@ def notes(issues: List[dict], profiles: Dict[str, dict], problems: Optional[Dict
             undecided.setdefault(project, set()).add(entry["name"])
     lines = []
     if missing:
-        lines.append("Sin perfil: " + ", ".join(sorted(missing)) + ". Se usa la categoría de Jira; corré `jk board setup KEY`.")
+        lines.append("Sin perfil: " + ", ".join(sorted(missing)) + ". Se usa la categoría de Jira; corré `jtk board setup KEY`.")
     for project in sorted(broken):
         kind, why = broken[project]
-        fix = "actualizá jk" if kind == "newer" else f"corré `jk board setup {project}` para rehacerlo"
+        fix = "actualizá jtk" if kind == "newer" else f"corré `jtk board setup {project}` para rehacerlo"
         lines.append(f"Perfil de {project} ilegible ({why}): se usa la categoría de Jira; {fix}.")
     for project in sorted(undecided):
         lines.append(f"Perfil sin confirmar en {project}: faltan decidir {', '.join(sorted(undecided[project]))}.")
     for project, status in sorted(unknown):
-        lines.append(f"Estado desconocido: {status} ({project}). El workflow cambió; corré `jk board check {project}`.")
+        lines.append(f"Estado desconocido: {status} ({project}). El workflow cambió; corré `jtk board check {project}`.")
     return lines

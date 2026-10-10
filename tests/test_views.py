@@ -56,7 +56,7 @@ class PersistenceTest(unittest.TestCase):
         self.assertEqual([p.name for p in path.parent.iterdir()], ["plataforma.json"])
 
     def test_a_view_that_does_not_exist_says_how_to_make_it(self):
-        with self.assertRaisesRegex(views.BadView, "jk team setup nada --boards"):
+        with self.assertRaisesRegex(views.BadView, "jtk team setup nada --boards"):
             views.load("nada")
 
     def test_a_file_that_is_not_a_view_is_refused_with_its_name(self):
@@ -71,7 +71,7 @@ class PersistenceTest(unittest.TestCase):
 
     def test_a_view_from_a_newer_jk_is_refused(self):
         self.write("v", '{"version": 2, "name": "v"}')
-        with self.assertRaisesRegex(views.BadView, "newer jk"):
+        with self.assertRaisesRegex(views.BadView, "newer jtk"):
             views.load("v")
 
     def test_names_lists_the_saved_views_in_order_and_ignores_anything_else(self):

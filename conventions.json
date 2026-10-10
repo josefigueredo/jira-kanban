@@ -35,6 +35,6 @@
     "PLATE has no story points field on its edit screen: estimates are not sent.",
     "Jira levels: Epic (1) > Story (migrated) | Tarea | Error (0, siblings) > Subtarea (-1).",
     "Grouping uses Jira status categories (To Do / In Progress / Done), never status names; blocked = a status in blocked_statuses or the Flagged field set.",
-    "Reports (jk done|next|blocked|load|stats) read Jira live. wip_limit (optional, a number) turns jk load into a verdict; without it the command shows only measured numbers."
+    "Reports (jtk done|next|blocked|load|stats) read Jira live. wip_limit (optional, a number) turns jtk load into a verdict; without it the command shows only measured numbers."
   ]
 }

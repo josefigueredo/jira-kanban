@@ -1,4 +1,4 @@
-"""jk board limit, the WIP limit in a profile, and the atomic JSON write views and profiles share."""
+"""jtk board limit, the WIP limit in a profile, and the atomic JSON write views and profiles share."""
 from __future__ import annotations
 
 import contextlib
@@ -42,7 +42,7 @@ class LimitCommandTest(unittest.TestCase):
     def test_a_limit_needs_a_profile(self):
         code, _, err = run(["limit", "UA", "3"])
         self.assertEqual(code, 1)
-        self.assertIn("run jk board setup UA", err)
+        self.assertIn("run jtk board setup UA", err)
 
     def test_setup_again_keeps_the_limit(self):
         run(["limit", "PEHD", "4"])

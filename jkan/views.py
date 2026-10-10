@@ -1,5 +1,5 @@
-"""Views: the boards and the team a manager follows. One JSON per view under ~/.config/jk/views/ (or
-$JK_CONFIG_DIR/views/). Written only by `jk team setup`; the team reports read them."""
+"""Views: the boards and the team a manager follows. One JSON per view under ~/.config/jtk/views/ (or
+$JTK_CONFIG_DIR/views/). Written only by `jtk team setup`; the team reports read them."""
 from __future__ import annotations
 
 import json
@@ -63,7 +63,7 @@ def save(view: dict, base: Optional[Path] = None) -> Path:
 def load(name: str, base: Optional[Path] = None) -> dict:
     path = path_of(name, base)
     if not path.is_file():
-        raise BadView(f"no view {name!r}: run jk team setup {name} --boards KEY[,KEY...]")
+        raise BadView(f"no view {name!r}: run jtk team setup {name} --boards KEY[,KEY...]")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -72,7 +72,7 @@ def load(name: str, base: Optional[Path] = None) -> dict:
     if isinstance(version, bool) or not isinstance(version, int):
         raise BadView(f"{path.name} is not a view")
     if version > VERSION:
-        raise BadView(f"{path.name} was written by a newer jk (view version {version}); update jk")
+        raise BadView(f"{path.name} was written by a newer jtk (view version {version}); update jtk")
     if data.get("name") != name:
         raise BadView(f"{path.name} is not a view (wrong name)")
     try:

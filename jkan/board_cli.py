@@ -1,4 +1,4 @@
-"""jk board setup | set | show | check | survey: what each status of a Jira board means to its team.
+"""jtk board setup | set | show | check | survey: what each status of a Jira board means to its team.
 
 Reads Jira; the only thing it writes is the local profile (see board_profile.py). Exit codes: 0 done, 1 findings or
 a refused input, 2 could not do it (Jira, disk), 3 the profile still has statuses without a role."""
@@ -28,7 +28,7 @@ def _render(profile: dict) -> str:
             f"**Sin decidir:** {len(pending)} · **Grupos de tipos:** {len(profile['workflows'])}")
     groups = "\n".join(f"- {', '.join(w['types'])}: {len(w['status_ids'])} estados" for w in profile["workflows"])
     table = render.table(["Estado", "Id", "Categoría de Jira", "Rol", "Confianza", "Por qué"], rows)
-    tail = (f"**Faltan {len(pending)} decisiones.** Para cada una: `jk board set {profile['project']} <rol> \"<estado>\"` "
+    tail = (f"**Faltan {len(pending)} decisiones.** Para cada una: `jtk board set {profile['project']} <rol> \"<estado>\"` "
             f"(roles: {', '.join(roles.ROLES)}; si dos estados se llaman igual, `id:<id>`).") if pending \
         else "**Perfil completo.**"
     return "\n\n".join([head, groups, table, tail])
@@ -37,7 +37,7 @@ def _render(profile: dict) -> str:
 def _needs_profile(key: str) -> Optional[dict]:
     profile = board_profile.load(key)
     if profile is None:
-        sys.stderr.write(f"no profile for {key}: run jk board setup {key}\n")
+        sys.stderr.write(f"no profile for {key}: run jtk board setup {key}\n")
     return profile
 
 
@@ -48,7 +48,7 @@ def _verdict(profile: dict) -> int:
 def _setup(jira, args) -> int:
     try:
         existing = board_profile.load(args.key)
-    except board_profile.BadProfile as exc:  # a broken file is rebuilt; a newer jk's file is refused (NewerProfile)
+    except board_profile.BadProfile as exc:  # a broken file is rebuilt; a newer jtk's file is refused (NewerProfile)
         print(f"El perfil anterior no se podía leer ({exc}); se rehace.\n")
         existing = None
     groups = jira.project_statuses(args.key)
@@ -119,7 +119,7 @@ def _check(jira, args) -> int:
     added = sorted(s["name"] for i, s in fresh.items() if i not in known)
     removed = sorted(s["name"] for i, s in known.items() if i not in fresh)
     print(f"{args.key}: el workflow cambió. Nuevos: {', '.join(added) or '–'}. Ya no están: {', '.join(removed) or '–'}.")
-    print(f"Corré `jk board setup {args.key}` para actualizar; las decisiones que tomaste se conservan.")
+    print(f"Corré `jtk board setup {args.key}` para actualizar; las decisiones que tomaste se conservan.")
     return FINDINGS
 
 
@@ -162,7 +162,7 @@ def _survey(jira, args) -> int:
 
 def run(argv: List[str], jira: Callable[[], object]) -> int:
     """argv starts at the verb. `jira` builds the client only for the verbs that read Jira."""
-    parser = argparse.ArgumentParser(prog="jk board", description=__doc__)
+    parser = argparse.ArgumentParser(prog="jtk board", description=__doc__)
     sub = parser.add_subparsers(dest="verb", required=True)
     setup = sub.add_parser("setup", help="read a project's statuses from Jira, propose a role for each, save the profile")
     setup.add_argument("key", help="Jira project key, e.g. UA")
@@ -194,8 +194,8 @@ def run(argv: List[str], jira: Callable[[], object]) -> int:
             return _check(jira(), args)
         return _survey(jira(), args)
     except ValueError as exc:
-        sys.stderr.write(f"jk: {exc}\n")
+        sys.stderr.write(f"jtk: {exc}\n")
         return FINDINGS
     except (JiraError, OSError) as exc:
-        sys.stderr.write(f"jk: {exc}\n")
+        sys.stderr.write(f"jtk: {exc}\n")
         return CANNOT

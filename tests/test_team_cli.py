@@ -33,7 +33,7 @@ class SetupTest(unittest.TestCase):
     def test_it_says_which_boards_still_have_no_profile(self):
         board_profile.save(fx.profile("TEAM"))
         _, out, _ = run(["setup", "nuevo", "--boards", "TEAM,DESK"], self.jira)
-        self.assertIn("Falta el perfil de: DESK. Corré `jk board setup KEY`", out)
+        self.assertIn("Falta el perfil de: DESK. Corré `jtk board setup KEY`", out)
 
     def test_a_group_that_does_not_exist_is_refused_and_nothing_is_saved(self):
         code, _, err = run(["setup", "nuevo", "--boards", "TEAM", "--group", "no-such-group"], self.jira)
@@ -89,12 +89,12 @@ class ShowAndListTest(unittest.TestCase):
         _, out, _ = run(["list"], FakeJira())
         self.assertIn("| plataforma | TEAM, DESK | grupo team |", out)
         config_dir()
-        self.assertIn("Creá uno con `jk team setup`", run(["list"], FakeJira())[1])
+        self.assertIn("Creá uno con `jtk team setup`", run(["list"], FakeJira())[1])
 
     def test_an_unknown_view_says_how_to_create_it(self):
         code, _, err = run(["show", "nada"], FakeJira())
         self.assertEqual(code, 1)
-        self.assertIn("jk team setup nada --boards", err)
+        self.assertIn("jtk team setup nada --boards", err)
 
 
 class ReportsTest(unittest.TestCase):
@@ -113,7 +113,7 @@ class ReportsTest(unittest.TestCase):
         (self.base / "profiles" / "DESK.json").unlink()
         code, _, err = run(["status", "plataforma"], self.jira)
         self.assertEqual(code, 1)
-        self.assertIn("no profile for DESK: run jk board setup DESK", err)
+        self.assertIn("no profile for DESK: run jtk board setup DESK", err)
         self.assertEqual(self.jira.jqls, [])
 
     def test_a_profile_file_nobody_can_read_is_named_in_the_refusal(self):
@@ -285,8 +285,8 @@ class ReportsTest(unittest.TestCase):
         data["version"] = 99
         path.write_text(json.dumps(data), encoding="utf-8")
         _, _, err = run(["status", "plataforma"], self.jira)
-        self.assertIn("update jk", err)
-        self.assertNotIn("run jk board setup", err)
+        self.assertIn("update jtk", err)
+        self.assertNotIn("run jtk board setup", err)
 
     def test_flow_marks_as_stalled_with_the_days_of_the_view_like_stalled_does(self):
         views.save(fx.view(name="lento", stalled_days=14))

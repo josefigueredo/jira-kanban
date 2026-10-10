@@ -1,5 +1,5 @@
-"""jk team setup | show | list | status | stalled | blocked | flow | digest | desk | rollup: reports about the boards and the
-team a manager follows. They only read Jira; the one thing written is the local view (jk team setup).
+"""jtk team setup | show | list | status | stalled | blocked | flow | digest | desk | rollup: reports about the boards and the
+team a manager follows. They only read Jira; the one thing written is the local view (jtk team setup).
 
 Exit codes: 0 done, 1 findings or a refused input (a board without profile, a bad view), 2 could not do it (Jira, disk)."""
 from __future__ import annotations
@@ -73,7 +73,7 @@ def _setup(args, jira) -> int:
     profiles, problems = board_profile.scan()
     lacking = team.missing_profiles(view, profiles)
     if lacking:
-        print(f"\nFalta el perfil de: {_lacking(lacking, problems)}. Corré `jk board setup KEY` para cada uno antes de pedir reportes.")
+        print(f"\nFalta el perfil de: {_lacking(lacking, problems)}. Corré `jtk board setup KEY` para cada uno antes de pedir reportes.")
     print(f"\nView guardado en {path}")
     return OK
 
@@ -93,7 +93,7 @@ def _list() -> int:
             rows.append([name, ", ".join(view["boards"]), team_render.team_label(view["team"])])
         except views.BadView as exc:
             rows.append([name, f"ilegible: {exc}", ""])
-    print(team_render.table(["View", "Boards", "Equipo"], rows, True, "_Ningún view. Creá uno con `jk team setup`._"))
+    print(team_render.table(["View", "Boards", "Equipo"], rows, True, "_Ningún view. Creá uno con `jtk team setup`._"))
     return OK
 
 
@@ -103,7 +103,7 @@ def context(name: str):
     lacking = team.missing_profiles(view, profiles)
     if lacking:
         newer = any(problems.get(b, ("",))[0] == "newer" for b in lacking)
-        todo = "update jk" if newer else f"run jk board setup {lacking[0]}"
+        todo = "update jtk" if newer else f"run jtk board setup {lacking[0]}"
         raise Refusal(f"no profile for {_lacking(lacking, problems)}: {todo}")
     return view, profiles
 
@@ -163,7 +163,7 @@ def _digest(args, jira, view, profiles, conv, today) -> Result:
 def _desk(args, jira, view, profiles, conv, today) -> Result:
     weeks = window.weeks(args.weeks)
     if not team.desk_boards(view, profiles):
-        raise team.NoDesk(f"view {view['name']!r} has no help desk board: set one with jk board setup KEY --kind helpdesk")
+        raise team.NoDesk(f"view {view['name']!r} has no help desk board: set one with jtk board setup KEY --kind helpdesk")
     first = team.first_week(today, weeks)
     issues, cut1 = team.gather_open(jira, view, profiles, conv)
     delivered, cut2 = team.gather_closed(jira, view, profiles, conv, ("delivered",), first)
@@ -234,7 +234,7 @@ def _rollup(args, jira, conv: dict, today: _dt.date) -> int:
 
 def run(argv: List[str], jira: Callable[[], object], conv: dict, today: Callable[[], _dt.date]) -> int:
     """argv starts at the verb. `jira` builds the client only for the verbs that read Jira."""
-    parser = argparse.ArgumentParser(prog="jk team", description=__doc__)
+    parser = argparse.ArgumentParser(prog="jtk team", description=__doc__)
     sub = parser.add_subparsers(dest="verb", required=True)
     setup = sub.add_parser("setup", help="save the boards and the team you follow under a name")
     setup.add_argument("name", help="a short name: lower case letters, digits, - and _")
@@ -285,8 +285,8 @@ def run(argv: List[str], jira: Callable[[], object], conv: dict, today: Callable
             return _rollup(args, jira, conv, today())
         return _report(args, jira, conv, today())
     except ValueError as exc:
-        sys.stderr.write(f"jk: {exc}\n")
+        sys.stderr.write(f"jtk: {exc}\n")
         return FINDINGS
     except (JiraError, OSError) as exc:
-        sys.stderr.write(f"jk: {exc}\n")
+        sys.stderr.write(f"jtk: {exc}\n")
         return CANNOT

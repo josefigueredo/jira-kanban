@@ -103,7 +103,7 @@ class RoleReportsTest(unittest.TestCase):
         code, out, _ = run(["next"], jira)
         self.assertEqual(code, 0)
         self.assertIn("> ⚠ Perfil de UA ilegible", out)
-        self.assertIn("actualizá jk", out)
+        self.assertIn("actualizá jtk", out)
         self.assertNotIn("Sin perfil: PEHD", out)
 
     def test_json_carries_the_notes_instead_of_a_banner(self):

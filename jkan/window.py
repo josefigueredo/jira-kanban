@@ -30,7 +30,7 @@ def span(since: str, until: Optional[str], today: _dt.date) -> Tuple[_dt.date, _
 def horizon(until: Optional[str], today: _dt.date) -> _dt.date:
     end = parse_day(until) if until else today
     if end < today:
-        raise BadWindow(f"--until {end} is before today ({today}): use jk done for the past")
+        raise BadWindow(f"--until {end} is before today ({today}): use jtk done for the past")
     return end
 
 

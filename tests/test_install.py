@@ -15,7 +15,7 @@ def install(home: Path, *args: str) -> subprocess.CompletedProcess:
 
 
 def fresh_home() -> Path:
-    return Path(tempfile.mkdtemp(prefix="jk-home-"))
+    return Path(tempfile.mkdtemp(prefix="jtk-home-"))
 
 
 class InstallTest(unittest.TestCase):
@@ -54,17 +54,17 @@ class InstallTest(unittest.TestCase):
     def test_jk_is_put_on_the_path_and_is_executable(self):
         home = fresh_home()
         self.assertEqual(install(home).returncode, 0)
-        self.assertEqual(os.readlink(home / ".local/bin/jk"), str(ROOT / "jk.py"))
-        self.assertTrue(os.access(ROOT / "jk.py", os.X_OK))
+        self.assertEqual(os.readlink(home / ".local/bin/jtk"), str(ROOT / "jtk.py"))
+        self.assertTrue(os.access(ROOT / "jtk.py", os.X_OK))
 
     def test_a_real_file_named_jk_is_never_replaced(self):
         home = fresh_home()
         (home / ".local/bin").mkdir(parents=True)
-        (home / ".local/bin/jk").write_text("mine", encoding="utf-8")
+        (home / ".local/bin/jtk").write_text("mine", encoding="utf-8")
         result = install(home)
         self.assertEqual(result.returncode, 1)
         self.assertIn("refusing to replace", result.stderr)
-        self.assertEqual((home / ".local/bin/jk").read_text(encoding="utf-8"), "mine")
+        self.assertEqual((home / ".local/bin/jtk").read_text(encoding="utf-8"), "mine")
 
     def test_a_real_directory_is_never_replaced(self):
         home = fresh_home()
