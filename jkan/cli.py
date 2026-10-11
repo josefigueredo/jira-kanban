@@ -304,7 +304,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
                     planned = sync.create(jira, project, epic_spec, conv, apply=False, assign_open=args.assign_open)["ops"]
                     text = f"create {len(planned)} issue(s) in {conv['project']}"
                     rows = [(conv["issue_types"][op["kind"]], op["summary"], "crear · " + _assignee_label(op)) for op in planned]
-                    code = _approve(confirm, len(planned), approval.Summary(text, f"Crear en {conv['project']}", rows), argv)
+                    code = _approve(confirm, len(planned), approval.Summary(text, f"Crear en {conv['project']}", rows, kinds=[op["kind"] for op in planned]), argv)
                     if code is not None:
                         return code
                 result = sync.create(jira, project, epic_spec, conv, apply=args.apply, assign_open=args.assign_open)

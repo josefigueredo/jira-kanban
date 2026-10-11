@@ -32,6 +32,11 @@ h1{font-size:19px;line-height:1.25;font-weight:650;margin:4px 0 16px}
 .card{background:var(--card);border-radius:10px;padding:10px 12px;display:grid;gap:6px}
 .top{display:flex;gap:8px;align-items:baseline}
 .key{flex:none;font:600 11.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--chip-bg);border-radius:5px;padding:1px 6px}
+.key[class*=" k-"]{display:inline-flex;align-items:center;gap:5px}
+.key[class*=" k-"]::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--k)}
+.k-epic{--k:#904EE2;background:rgba(144,78,226,.18)}
+.k-story{--k:#63BA3C;background:rgba(99,186,60,.2)}
+.k-task,.k-subtask{--k:#4BADE8;background:rgba(75,173,232,.2)}
 .name{font-weight:500;overflow-wrap:anywhere}
 .chg{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px}
 .from{color:var(--muted)}
@@ -52,12 +57,14 @@ class Unavailable(Exception):
 
 class Summary(str):
     """The text the terminal shows, plus the heading and rows the window shows. A plain string works everywhere a
-    Summary does. (`heading`, not `title`: str already has a title() method.)"""
+    Summary does. (`heading`, not `title`: str already has a title() method.) `kinds` optionally says the issue type
+    (epic, story, task, subtask) of each row, so its chip takes Jira's color for it; anything else stays neutral.)"""
 
     def __new__(cls, text: str, heading: str = "", rows: Sequence[Tuple[str, str, str]] = (),
-                left_out: Sequence[Tuple[str, str]] = ()):
+                left_out: Sequence[Tuple[str, str]] = (), kinds: Sequence[str] = ()):
         obj = super().__new__(cls, text)
         obj.heading, obj.rows, obj.left_out = heading, [tuple(r) for r in rows], [tuple(r) for r in left_out]
+        obj.kinds = list(kinds)
         return obj
 
 
@@ -65,6 +72,7 @@ def rows_of(summary) -> List[Tuple[str, str, str]]:
     return list(getattr(summary, "rows", []))
 
 
+KINDS = ("epic", "story", "task", "subtask")
 _CAP = 560   # tallest the page area gets; past it the page scrolls
 _LINE = 44   # characters of a title that fit on a line, on the low side so the estimate errs tall
 _HEAD_LINE = 38  # the same for the 19 px heading
@@ -95,9 +103,11 @@ def render_html(summary, n: int) -> str:
     if not rows:  # a writer with no rows: show the text it has
         out += [f'<li class="card"><div class="top"><span class="name">{escape(line)}</span></div></li>'
                 for line in str(summary).splitlines()]
-    for key, name, change in rows:
+    kinds = list(getattr(summary, "kinds", []))
+    for i, (key, name, change) in enumerate(rows):
         title = f'<span class="name">{escape(name)}</span>' if name else ""
-        out.append(f'<li class="card"><div class="top"><span class="key">{escape(key)}</span>{title}</div>'
+        kind = kinds[i] if i < len(kinds) and kinds[i] in KINDS else ""  # only a known type becomes a class
+        out.append(f'<li class="card"><div class="top"><span class="key{" k-" + kind if kind else ""}">{escape(key)}</span>{title}</div>'
                    f'<div class="chg">{_change(change)}</div></li>')
     out.append("</ul>")
     left_out = list(getattr(summary, "left_out", []))

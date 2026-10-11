@@ -61,6 +61,22 @@ class HtmlTest(unittest.TestCase):
         self.assertIn('<span class="from">Backlog</span><span class="arrow">→</span><span class="to">En curso</span>', html)
         self.assertNotIn("-&gt;", html)
 
+    def test_a_chip_takes_the_color_jira_gives_its_issue_type(self):
+        rows = [("Epic", "a", "crear · vos"), ("Story", "b", "crear · vos"), ("Tarea", "c", "crear · vos"),
+                ("Subtarea", "d", "crear · vos")]
+        html = approval.render_html(approval.Summary("T", "Crear", rows, kinds=["epic", "story", "task", "subtask"]), 4)
+        for kind in ("epic", "story", "task", "subtask"):
+            self.assertIn(f'class="key k-{kind}"', html)
+        for jira_color in ("#904EE2", "#63BA3C", "#4BADE8"):  # the same ones preview.py draws in its type icons
+            self.assertIn(jira_color, html)
+
+    def test_without_a_type_the_chip_stays_neutral_and_a_hostile_one_never_becomes_a_class(self):
+        self.assertNotIn(" k-", approval.render_html(SUMMARY, 2).split("</style>")[1])
+        odd = approval.Summary("T", "Crear", [("x", "a", "b"), ("y", "c", "d")], kinds=['epic" onload="x', "bug"])
+        body = approval.render_html(odd, 2).split("</style>")[1]
+        self.assertNotIn(" k-", body)
+        self.assertNotIn("onload", body)
+
     def test_a_change_with_no_origin_shows_only_the_destination(self):
         summary = approval.Summary("T", "Asignar", [("A-1", "x", "-> Ana Gómez")])
         html = approval.render_html(summary, 1)
