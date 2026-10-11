@@ -46,22 +46,48 @@ class SummaryTest(unittest.TestCase):
 class HtmlTest(unittest.TestCase):
     def test_it_shows_every_change_and_what_was_left_out(self):
         html = approval.render_html(SUMMARY, 2)
-        for part in ("TEAM-1", "TEAM-2", "Backlog → En curso", "TEAM-3", "already there"):
+        for part in ("TEAM-1", "TEAM-2", "Backlog", "En curso", "TEAM-3", "already there"):
             self.assertIn(part, html)
 
-    def test_the_heading_is_not_repeated_inside_the_body_because_the_window_title_carries_it(self):
-        self.assertNotIn("Plan abc", approval.render_html(SUMMARY, 2))
-
-    def test_the_change_goes_on_its_own_line_with_an_arrow_not_in_a_far_column(self):
+    def test_the_page_carries_its_own_header_so_the_window_is_just_this_page_and_two_buttons(self):
         html = approval.render_html(SUMMARY, 2)
-        self.assertEqual(html.count('class="chg"'), 3)  # two rows and one left out
+        self.assertIn("jtk quiere escribir en Jira", html)
+        self.assertIn("<h1>Plan abc · move · 2 issue(s)</h1>", html)
+
+    def test_each_task_is_a_card_with_its_key_chip_and_the_change_as_from_arrow_to(self):
+        html = approval.render_html(SUMMARY, 2)
+        self.assertEqual(html.count('class="card"'), 2)
+        self.assertEqual(html.count('class="key"'), 3)  # two cards and the left-out one
+        self.assertIn('<span class="from">Backlog</span><span class="arrow">→</span><span class="to">En curso</span>', html)
         self.assertNotIn("-&gt;", html)
-        self.assertNotIn("<table", html)
+
+    def test_a_change_with_no_origin_shows_only_the_destination(self):
+        summary = approval.Summary("T", "Asignar", [("A-1", "x", "-> Ana Gómez")])
+        html = approval.render_html(summary, 1)
+        self.assertIn('<span class="to">Ana Gómez</span>', html)
+        self.assertNotIn('class="from"', html)
+
+    def test_the_footer_says_which_button_and_how_long_the_window_waits(self):
+        html = approval.render_html(SUMMARY, 2)
+        self.assertIn("Apruebo 2", html)
+        self.assertIn(f"{approval.TIMEOUT} s", html)
+
+    def test_the_page_has_no_script_and_no_external_resource(self):
+        html = approval.render_html(SUMMARY, 2).lower()
+        for part in ("<script", "http://", "https://", "<link", "<img", "<iframe"):
+            self.assertNotIn(part, html)
 
     def test_jira_text_is_escaped_so_a_hostile_title_cannot_become_markup(self):
         html = approval.render_html(SUMMARY, 2)
         self.assertNotIn("<b>el</b>", html)
         self.assertIn("&lt;b&gt;el&lt;/b&gt; login &amp; más", html)
+
+    def test_the_height_grows_with_the_plan_and_stays_between_a_floor_and_a_cap(self):
+        one = approval.Summary("T", "h", [("A-1", "x", "a -> b")])
+        many = approval.Summary("T", "h", [(f"A-{i}", "x" * 120, "a -> b") for i in range(30)], [("A-9", "r")])
+        self.assertEqual(approval.window_height(one), 240)
+        self.assertEqual(approval.window_height(many), 560)
+        self.assertGreater(approval.window_height(SUMMARY), approval.window_height(one))
 
     def test_a_plain_summary_without_rows_shows_its_text(self):
         html = approval.render_html("create 3 issue(s) in PLATE", 3)
@@ -90,15 +116,15 @@ class ApproveTest(unittest.TestCase):
         argv = seen[0]
         self.assertEqual(argv[:3], ["/usr/bin/osascript", "-l", "JavaScript"])
         self.assertEqual(Path(argv[3]).name, "alert.js")
-        self.assertEqual(argv[7], "Apruebo 3")
-        self.assertIn(f"{approval.TIMEOUT} s", argv[6])  # the text says what the code does
+        self.assertEqual(argv[6], "Apruebo 3")
+        self.assertEqual(argv[7], str(approval.window_height(SUMMARY)))
         self.assertLess(approval.TIMEOUT, 120)
 
     def test_the_temporary_html_exists_while_the_window_runs_is_private_and_is_removed_after(self):
         folder = Path(tempfile.mkdtemp(prefix="jtk-approval-test-"))
         during = []
 
-        def runner(argv):  # argv: osascript -l JavaScript alert.js <html> <title> <info> <label>
+        def runner(argv):  # argv: osascript -l JavaScript alert.js <html> <title> <label> <height>
             html = Path(argv[4])
             during.append((html.exists(), oct(html.stat().st_mode & 0o777)))
             return Done()
@@ -125,28 +151,32 @@ class AlertScriptTest(unittest.TestCase):
     def setUp(self):
         self.js = (ROOT / "jkan" / "alert.js").read_text(encoding="utf-8")
 
-    def test_cancel_is_first_and_default_and_escape_is_bound_to_it(self):
-        self.assertLess(self.js.index("addButtonWithTitle('Cancelar')"), self.js.index("addButtonWithTitle(argv[3])"))
+    def test_the_window_is_our_own_panel_around_a_web_view_not_an_nsalert(self):
+        self.assertIn("NSPanel", self.js)
+        self.assertIn("WKWebView", self.js)
+        self.assertNotIn("NSAlert", self.js)
+
+    def test_the_page_runs_no_javascript(self):
+        self.assertIn("allowsContentJavaScript = false", self.js)
+
+    def test_cancel_is_first_and_escape_is_bound_to_it(self):
+        self.assertLess(self.js.index("'Cancelar'"), self.js.index("argv[2]"))
         self.assertIn("cancel.keyEquivalent = '\\u001b'", self.js)
 
-    def test_nothing_resets_the_key_equivalents_after_they_are_set(self):
-        # NSWindow.defaultButtonCell would give Cancelar the Return key and take Escape away from it
+    def test_nothing_gives_return_to_a_button(self):
         self.assertNotIn("defaultButtonCell", self.js)
+        self.assertNotIn("\\r", self.js)
 
     def test_the_approve_button_has_no_key_equivalent_so_it_takes_a_click(self):
         self.assertIn("ok.keyEquivalent = ''", self.js)
 
-    def test_the_icon_is_a_small_symbol_on_a_padded_canvas_not_the_raw_symbol_stretched_to_the_alert(self):
-        self.assertIn("function paddedIcon", self.js)
-        self.assertIn("const icon = paddedIcon()", self.js)
+    def test_the_result_is_cancelled_unless_the_approve_button_sets_it(self):
+        self.assertIn("let result = 'cancelled'", self.js)
+        self.assertEqual(self.js.count("result = 'approved'"), 1)
+        self.assertIn("windowWillClose", self.js)  # the red close button is a cancel too
 
-    def test_the_box_height_follows_the_content_between_a_minimum_and_the_old_340(self):
-        self.assertIn("usedRectForTextContainer", self.js)
-        self.assertIn("Math.min(340", self.js)
-        self.assertIn("Math.max(100", self.js)
-
-    def test_only_the_second_button_prints_approved(self):
-        self.assertIn("NSAlertSecondButtonReturn ? 'approved' : 'cancelled'", self.js)
+    def test_the_height_comes_from_python_and_the_page_scrolls_past_it(self):
+        self.assertIn("Number(argv[3])", self.js)
 
 
 if __name__ == "__main__":

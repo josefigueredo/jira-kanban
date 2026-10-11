@@ -1,54 +1,80 @@
-// jtk's approval alert: a native NSAlert with a scrollable, read-only render of the plan's HTML.
-// argv: <html file> <title> <informative text> <approve button label>. Prints "approved" only when the second button is clicked.
-// Cancelar is the first button (NSAlert's default look) and is bound to Escape; the approve button has no key
-// equivalent, so approving always takes a click (Return does nothing). Do not mark Cancelar as the window default cell: that gives it
-// the Return key and takes Escape away. Pattern: product-brain-mcp/src/pbmcp/alert.js.
+// jtk's approval window: our own panel holding one web view (the page approval.py renders, no script, nothing loaded)
+// and two native buttons. argv: <html file> <window title> <approve button label> <page height>.
+// Prints "approved" only when the approve button is clicked; anything else (Cancelar, Escape, the close button, a
+// failure) prints "cancelled". Cancelar has Escape; the approve button has no key equivalent and nothing is the
+// window's default button, so approving always takes a click and no key can approve.
 ObjC.import('Cocoa');
+ObjC.import('WebKit');
 
-// NSAlert stretches its icon to 64 pt, so a bare symbol is huge. Draw it small and soft on a transparent 64x64 canvas.
-function paddedIcon() {
-  const symbol = $.NSImage.imageWithSystemSymbolNameAccessibilityDescription('checkmark.shield', 'jtk');
-  if (!symbol || symbol.isNil()) return null;
-  const canvas = $.NSImage.alloc.initWithSize($.NSMakeSize(64, 64));
-  canvas.lockFocus;
-  symbol.drawInRectFromRectOperationFraction($.NSMakeRect(18, 18, 28, 28), $.NSZeroRect, $.NSCompositingOperationSourceOver, 0.55);
-  canvas.unlockFocus;
-  return canvas;
-}
+let result = 'cancelled';
+
+ObjC.registerSubclass({
+  name: 'JtkApprovalHandler',
+  superclass: 'NSObject',
+  protocols: ['NSWindowDelegate'],
+  methods: {
+    'approve:': {
+      types: ['void', ['id']],
+      implementation: function (sender) { result = 'approved'; $.NSApplication.sharedApplication.stopModal; },
+    },
+    'cancel:': {
+      types: ['void', ['id']],
+      implementation: function (sender) { $.NSApplication.sharedApplication.stopModal; },
+    },
+    'windowWillClose:': {
+      types: ['void', ['id']],
+      implementation: function (note) { $.NSApplication.sharedApplication.stopModal; },
+    },
+  },
+});
 
 function run(argv) {
   const html = $.NSString.stringWithContentsOfFileEncodingError(argv[0], $.NSUTF8StringEncoding, null);
-  const attr = $.NSAttributedString.alloc.initWithHTMLDocumentAttributes(html.dataUsingEncoding($.NSUTF8StringEncoding), null);
+  const width = 520;
+  const bar = 58;  // the button bar under the page
+  const height = Number(argv[3]);
 
   const app = $.NSApplication.sharedApplication;
   app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);
   app.activateIgnoringOtherApps(true);
 
-  const text = $.NSTextView.alloc.initWithFrame($.NSMakeRect(0, 0, 545, 340));
-  text.editable = false;
-  text.textStorage.setAttributedString(attr);
-  text.backgroundColor = $.NSColor.whiteColor;
-  text.textContainerInset = $.NSMakeSize(8, 8);
-  // The box follows its content: a short plan is not a tall white void; a long one scrolls at 340.
-  text.layoutManager.ensureLayoutForTextContainer(text.textContainer);
-  const used = text.layoutManager.usedRectForTextContainer(text.textContainer).size.height;
-  const height = Math.min(340, Math.max(100, Math.ceil(used) + 24));
-  const scroll = $.NSScrollView.alloc.initWithFrame($.NSMakeRect(0, 0, 560, height));
-  scroll.hasVerticalScroller = true;
-  scroll.backgroundColor = text.backgroundColor;
-  scroll.documentView = text;
+  const handler = $.JtkApprovalHandler.alloc.init;
+  const panel = $.NSPanel.alloc.initWithContentRectStyleMaskBackingDefer(
+    $.NSMakeRect(0, 0, width, height + bar),
+    $.NSWindowStyleMaskTitled | $.NSWindowStyleMaskClosable,
+    $.NSBackingStoreBuffered,
+    false);
+  panel.title = argv[1];
+  panel.level = $.NSFloatingWindowLevel;
+  panel.delegate = handler;
 
-  const alert = $.NSAlert.alloc.init;
-  const icon = paddedIcon();
-  if (icon) alert.icon = icon;
-  alert.messageText = argv[1];
-  alert.informativeText = argv[2];
-  const cancel = alert.addButtonWithTitle('Cancelar');
+  const config = $.WKWebViewConfiguration.alloc.init;
+  config.defaultWebpagePreferences.allowsContentJavaScript = false;
+  const web = $.WKWebView.alloc.initWithFrameConfiguration($.NSMakeRect(0, bar, width, height), config);
+  web.setValueForKey($.NSNumber.numberWithBool(false), 'drawsBackground');  // the window's own background shows through
+  web.loadHTMLStringBaseURL(html, $.NSURL.URLWithString('about:blank'));
+
+  const cancel = $.NSButton.alloc.initWithFrame($.NSMakeRect(width - 24 - 130 - 10 - 90, 15, 90, 28));
+  cancel.title = 'Cancelar';
+  cancel.bezelStyle = $.NSBezelStyleRounded;
+  cancel.target = handler;
+  cancel.action = 'cancel:';
   cancel.keyEquivalent = '\u001b';
-  const ok = alert.addButtonWithTitle(argv[3]);
+
+  const ok = $.NSButton.alloc.initWithFrame($.NSMakeRect(width - 24 - 130, 15, 130, 28));
+  ok.title = argv[2];
+  ok.bezelStyle = $.NSBezelStyleRounded;
+  ok.target = handler;
+  ok.action = 'approve:';
   ok.keyEquivalent = '';
-  alert.accessoryView = scroll;
-  alert.window.appearance = $.NSAppearance.appearanceNamed($.NSAppearanceNameAqua);
-  alert.window.level = $.NSFloatingWindowLevel;
-  return alert.runModal == $.NSAlertSecondButtonReturn ? 'approved' : 'cancelled';
+
+  panel.contentView.addSubview(web);
+  panel.contentView.addSubview(cancel);
+  panel.contentView.addSubview(ok);
+  panel.center;
+  panel.makeKeyAndOrderFront(null);
+  app.runModalForWindow(panel);
+  panel.delegate = null;  // closing it below must not stop a modal session that is already over
+  panel.orderOut(null);
+  return result;
 }
