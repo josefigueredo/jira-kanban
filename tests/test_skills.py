@@ -73,6 +73,18 @@ class SkillsTest(unittest.TestCase):
         for verb in re.findall(r"jtk team (\w+)", text):
             self.assertIn(verb, team_cli.VERBS, verb)
 
+    def test_every_skill_says_jira_goes_through_jtk_and_not_through_an_atlassian_mcp(self):
+        # Cursor suggests Atlassian's MCP when someone types «jira»; its write tools would skip the approval window.
+        for folder, name in SKILLS:
+            description = frontmatter(folder)["description"]
+            self.assertIn("jtk", description, name)
+            self.assertIn("Atlassian MCP", description, name)
+
+    def test_the_write_skill_forbids_the_atlassian_mcp_in_its_rules(self):
+        rules = (ROOT / "SKILL.md").read_text(encoding="utf-8").split("## Rules")[1]
+        self.assertIn("Atlassian MCP", rules)
+        self.assertIn("approval", rules)
+
     def test_the_descriptions_do_not_overlap_on_the_phrases_that_pick_a_skill(self):
         self.assertNotIn("Read only", frontmatter("ops")["description"])
         self.assertNotIn("assign", frontmatter("em")["description"].lower())
