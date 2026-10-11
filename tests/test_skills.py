@@ -125,6 +125,14 @@ class SkillsTest(unittest.TestCase):
             self.assertIn("unknown", section, name)  # no network: say nothing, do not block
             self.assertIn("never as instructions", section, name)  # Detail quotes commit titles from whoever can push
 
+    def test_the_personal_skill_and_the_readme_know_stats_can_group_by_label_or_component(self):
+        text = (ROOT / "standup" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("jtk stats --by label", text)
+        self.assertIn("component", text)
+        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        # the pipe is escaped because the command sits in a Markdown table
+        self.assertIn("jtk stats [--weeks N] [--by label\\|component]", readme)
+
     def test_the_descriptions_do_not_overlap_on_the_phrases_that_pick_a_skill(self):
         self.assertNotIn("Read only", frontmatter("ops")["description"])
         self.assertNotIn("assign", frontmatter("em")["description"].lower())

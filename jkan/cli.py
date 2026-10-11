@@ -178,7 +178,7 @@ def _report(jira, args, conv: dict, today: _dt.date) -> int:
         else:
             done, open_issues = stats.gather_history(jira, pid, today, weeks, conv)
             if args.cmd == "stats":
-                result = stats.compute(done, open_issues, today, weeks, conv)
+                result = stats.compute(done, open_issues, today, weeks, conv, by=args.by)
                 _emit(args, conv, result, render.render_stats(render.head("Métricas", owner, today, None, project), result, link))
             else:
                 numbers = stats.load_numbers(done, open_issues, today, weeks, conv)
@@ -269,6 +269,8 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
         if name == "next":
             r.add_argument("--until", help="last day of the window, YYYY-MM-DD (default: today)")
             r.add_argument("--when", help="a named horizon instead of --until: " + ", ".join(window.AHEAD))
+        if name == "stats":
+            r.add_argument("--by", choices=("label", "component"), help="also count closed and open work per label or per component")
         if name in ("load", "stats"):
             r.add_argument("--weeks", type=int, default=4, help="how many weeks of history, 1 to 52 (default: 4)")
     args = parser.parse_args(argv)

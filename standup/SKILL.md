@@ -18,6 +18,7 @@ jtk <done|next|blocked|load|stats> ... --project .
 | what am I blocked on | `jtk blocked` |
 | does <person> have room to take work | `jtk load --person "<name>"` |
 | my velocity / metrics | `jtk stats [--weeks N]` |
+| closed and open work per label or per component | `jtk stats --by label` or `--by component` (an issue with several counts under each; the table says so) |
 
 ## Steps
 

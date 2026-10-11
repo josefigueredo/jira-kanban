@@ -116,6 +116,40 @@ class ReportCliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("Sin cierres en el período", out)
 
+    def test_stats_by_label_adds_one_table_and_says_how_a_multi_label_issue_counts(self):
+        jira = FakeJira()
+        jira.search_answer = lambda jql: ([issue("PLATE-1", category="todo", labels=["ai"])] if "!= Done" in jql
+                                          else [issue("PLATE-2", category="done", status="Done", changed="2026-10-07", labels=["ai", "be"])])
+        code, out, _ = run(["stats", "--by", "label"], jira)
+        self.assertEqual(code, 0)
+        self.assertIn("### Por etiqueta", out)
+        self.assertRegex(out, r"\| ai\s+\| 1\s+\| 1\s+\|")
+        self.assertRegex(out, r"\| be\s+\| 1\s+\| 0\s+\|")
+        self.assertIn("cuenta en cada una", out)
+
+    def test_done_json_does_not_carry_the_label_and_component_fields_only_stats_asks_for(self):
+        jira = FakeJira()
+        jira.search_answer = lambda jql: [issue("PLATE-5", category="done", status="Done", changed="2026-10-07", labels=["x"], components=["C"])]
+        out = run(["done", "--since", "2026-10-01", "--until", "2026-10-07", "--json"], jira)[1]
+        self.assertNotIn('"labels"', out)
+        self.assertNotIn('"components"', out)
+
+    def test_stats_by_component_has_its_own_heading(self):
+        code, out, _ = run(["stats", "--by", "component"], FakeJira())
+        self.assertEqual(code, 0)
+        self.assertIn("### Por componente", out)
+
+    def test_stats_without_by_prints_no_grouping_and_json_carries_it_only_when_asked(self):
+        _, out, _ = run(["stats"], FakeJira())
+        self.assertNotIn("Por etiqueta", out)
+        self.assertNotIn("tags", json.loads(run(["stats", "--json"], FakeJira())[1]))
+        self.assertEqual(json.loads(run(["stats", "--by", "label", "--json"], FakeJira())[1])["tags"], {"by": "label", "rows": []})
+
+    def test_by_is_only_for_stats_and_only_label_or_component(self):
+        for args in (["stats", "--by", "priority"], ["load", "--by", "label"], ["done", "--by", "label"]):
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit, msg=args):
+                run(args, FakeJira())
+
 
 if __name__ == "__main__":
     unittest.main()

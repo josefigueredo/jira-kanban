@@ -276,7 +276,7 @@ def issue(key: str, **over) -> dict:
     base = {"key": key, "summary": f"Summary of {key}", "issuetype": "Tarea", "status": "Backlog", "category": "todo",
             "parent": None, "assignee": {"id": "acc-me", "name": "Yo"}, "priority": "Medium", "duedate": None,
             "created": "2026-09-01", "resolved": None, "changed": "2026-09-01", "updated": "2026-09-01",
-            "flagged": False, "blocked_by": []}
+            "flagged": False, "blocked_by": [], "labels": [], "components": []}
     base.update(over)
     return base
 

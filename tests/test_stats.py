@@ -48,6 +48,26 @@ class MathTest(unittest.TestCase):
         self.assertEqual(stats.mix(done, CONVENTIONS["areas"]),
                          {"by_area": {"BE": 1, "AI": 1, "(sin área)": 2}, "by_type": {"Tarea": 3, "Historia": 1}})
 
+    def test_by_label_counts_an_issue_in_each_of_its_labels_and_names_the_unlabelled_last(self):
+        done = [issue("A", labels=["be", "ai"]), issue("B", labels=["be"]), issue("C")]
+        open_now = [issue("D", labels=["ai"]), issue("E"), issue("F")]
+        self.assertEqual(stats.by_tag(done, open_now, "label"), {"by": "label", "rows": [
+            {"name": "ai", "closed": 1, "open": 1}, {"name": "be", "closed": 2, "open": 0},
+            {"name": "(sin etiqueta)", "closed": 1, "open": 2}]})
+
+    def test_by_component_uses_the_component_names_and_its_own_word_for_none(self):
+        done = [issue("A", components=["Plataforma"]), issue("B")]
+        self.assertEqual(stats.by_tag(done, [], "component"), {"by": "component", "rows": [
+            {"name": "Plataforma", "closed": 1, "open": 0}, {"name": "(sin componente)", "closed": 1, "open": 0}]})
+
+    def test_by_tag_orders_by_total_then_name_so_the_output_is_stable(self):
+        done = [issue("A", labels=["zeta"]), issue("B", labels=["alfa"]), issue("C", labels=["mu"]), issue("D", labels=["mu"])]
+        self.assertEqual([r["name"] for r in stats.by_tag(done, [], "label")["rows"]], ["mu", "alfa", "zeta"])
+
+    def test_compute_only_carries_the_grouping_when_asked(self):
+        self.assertNotIn("tags", stats.compute([], [], TODAY, 4, CONVENTIONS))
+        self.assertEqual(stats.compute([], [], TODAY, 4, CONVENTIONS, by="label")["tags"], {"by": "label", "rows": []})
+
     def test_oldest_open(self):
         rows = stats.oldest([issue("A", created="2026-09-01"), issue("B", created="2026-08-01"), issue("C", created=None)], TODAY, 1)
         self.assertEqual([(r["issue"]["key"], r["days"]) for r in rows], [("B", 68)])

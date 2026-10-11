@@ -14,6 +14,7 @@ RAW = {"key": "PLATE-9", "fields": {
     "assignee": {"accountId": "acc-me", "displayName": "Yo"}, "priority": {"name": "High"},
     "duedate": "2026-10-10", "created": "2026-10-01T09:00:00.000-0300", "resolutiondate": None,
     "statuscategorychangedate": "2026-10-07T14:03:00.000-0300", "customfield_10023": [{"value": "Impediment"}],
+    "labels": ["backend", "ai"], "components": [{"name": "Plataforma"}, {"name": "Datos"}],
     "issuelinks": [{"type": {"inward": "is blocked by"}, "inwardIssue": BLOCKER},
                    {"type": {"inward": "relates to"}, "inwardIssue": {"key": "PLATE-6", "fields": {}}},
                    {"type": {"inward": "is blocked by"}, "outwardIssue": {"key": "PLATE-7", "fields": {}}}]}}
@@ -32,11 +33,14 @@ class SearchTest(unittest.TestCase):
             "assignee": {"id": "acc-me", "name": "Yo"}, "priority": "High", "duedate": "2026-10-10",
             "created": "2026-10-01", "resolved": None, "changed": "2026-10-07", "updated": None, "flagged": True,
             "blocked_by": [{"key": "PLATE-5", "summary": "Esperar a Okta", "status": "Blocked",
-                            "category": "in_progress", "assignee": "Ana Gómez"}]})
+                            "category": "in_progress", "assignee": "Ana Gómez"}],
+            "labels": ["backend", "ai"], "components": ["Plataforma", "Datos"]})
         posts = [c for c in rec.calls if c[0] == "POST"]
         self.assertEqual(posts[0][2]["jql"], "assignee = currentUser()")
         self.assertIn("statuscategorychangedate", posts[0][2]["fields"])
         self.assertIn("customfield_10023", posts[0][2]["fields"])
+        self.assertIn("labels", posts[0][2]["fields"])
+        self.assertIn("components", posts[0][2]["fields"])
         self.assertEqual(posts[1][2]["nextPageToken"], "n1")
 
     def test_search_survives_an_issue_with_nothing_optional(self):
@@ -49,6 +53,7 @@ class SearchTest(unittest.TestCase):
         self.assertIsNone(issue["assignee"])
         self.assertEqual(issue["priority"], "")
         self.assertFalse(issue["flagged"])
+        self.assertEqual((issue["labels"], issue["components"]), ([], []))
         self.assertEqual(issue["blocked_by"], [{"key": "PLATE-3", "summary": "", "status": "", "category": "",
                                                 "assignee": ""}])
 

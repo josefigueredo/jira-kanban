@@ -176,8 +176,15 @@ def render_stats(head_text: str, s: dict, link: Link) -> str:
     by_type = table(["Tipo", "Cerrados"], [[k, v] for k, v in sorted(s["mix"]["by_type"].items())], "_Sin cierres._")
     oldest = table(["Key", "Título", "Días abierto"],
                    [[link(r["issue"]["key"]), r["issue"]["summary"], r["days"]] for r in s["oldest"]], "_Nada abierto._")
+    tags = s.get("tags")
+    grouped = []
+    if tags:
+        word, plural = {"label": ("Etiqueta", "etiquetas"), "component": ("Componente", "componentes")}[tags["by"]]
+        grouped = [f"### Por {word.lower()}\n" + table([word, "Cerrados", "Abiertos"], [[r["name"], r["closed"], r["open"]] for r in tags["rows"]],
+                                                       "_Nada que contar._")
+                   + f"\n\nUn issue con varias {plural} cuenta en cada una; la suma puede pasar el total."]
     return "\n\n".join([head_text, f"### Velocidad: issues cerrados por semana (últimas {s['weeks']})\n" + weekly,
                         "### Lead time (creación → cierre)\n" + lead_text,
                         f"### Edad del WIP (estancado ≥ {stats.STALLED_DAYS} días)\n" + wip,
                         "### Cumplimiento de fechas\n" + on_time_text,
-                        "### Mezcla de trabajo\n" + by_area + "\n\n" + by_type, "### Backlog más viejo\n" + oldest])
+                        "### Mezcla de trabajo\n" + by_area + "\n\n" + by_type, *grouped, "### Backlog más viejo\n" + oldest])

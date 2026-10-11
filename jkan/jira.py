@@ -11,7 +11,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 ISSUE_FIELDS = "summary,description,issuetype,status,parent"
 CATEGORY = {"new": "todo", "indeterminate": "in_progress", "done": "done"}  # Jira's fixed status categories
 STANDUP_FIELDS = ["summary", "issuetype", "status", "parent", "assignee", "priority", "duedate", "created",
-                  "resolutiondate", "statuscategorychangedate", "issuelinks", "updated"]
+                  "resolutiondate", "statuscategorychangedate", "issuelinks", "updated", "labels", "components"]
 BLOCKED_LINK = "is blocked by"
 
 
@@ -198,6 +198,7 @@ class Jira:
                 "priority": (f.get("priority") or {}).get("name", ""), "duedate": f.get("duedate"),
                 "created": _day(f.get("created")), "resolved": _day(f.get("resolutiondate")),
                 "changed": _day(f.get("statuscategorychangedate")), "updated": _day(f.get("updated")),
+                "labels": list(f.get("labels") or []), "components": [c["name"] for c in f.get("components") or [] if c.get("name")],
                 "flagged": bool(f.get(flag)) if flag else False,
                 "blocked_by": [b for b in (self._blocker(link, wanted) for link in f.get("issuelinks") or []) if b]}
 

@@ -118,6 +118,7 @@ def done_tree(issues: List[dict], parents: dict, epic_type: str) -> List[dict]:
     nodes: dict = {}
     linked: set = set()
     order: List[str] = []
+    stats_only = ("labels", "components")
     for issue in issues:
         chain = [issue]
         while chain[-1]["parent"] and len(chain) < 4:
@@ -126,7 +127,8 @@ def done_tree(issues: List[dict], parents: dict, epic_type: str) -> List[dict]:
         below = None
         for item in chain:  # the issue first, its epic last
             if item["key"] not in nodes:
-                nodes[item["key"]] = {"issue": item, "context": item["key"] not in in_window, "children": []}
+                shown = {k: v for k, v in item.items() if k not in stats_only}  # labels and components are for `stats --by`
+                nodes[item["key"]] = {"issue": shown, "context": item["key"] not in in_window, "children": []}
                 order.append(item["key"])
             current = nodes[item["key"]]
             if below is not None and below["issue"]["key"] not in linked:

@@ -82,7 +82,29 @@ def oldest(open_issues: List[dict], today: _dt.date, n: int = OLDEST) -> List[di
     return rows[:n]
 
 
-def compute(done: List[dict], open_issues: List[dict], today: _dt.date, weeks: int, conv: dict) -> dict:
+TAGS = {"label": ("labels", "(sin etiqueta)"), "component": ("components", "(sin componente)")}
+
+
+def by_tag(done: List[dict], open_issues: List[dict], by: str) -> dict:
+    """Closed and open counts per label or component. An issue with two labels counts under both; one with none is named."""
+    field, none = TAGS[by]
+    counts: Dict[str, Dict[str, int]] = {}
+    for column, issues in (("closed", done), ("open", open_issues)):
+        for issue in issues:
+            for name in dict.fromkeys(issue.get(field) or [none]):
+                counts.setdefault(name, {"closed": 0, "open": 0})[column] += 1
+    ordered = sorted(counts, key=lambda n: (n == none, -sum(counts[n].values()), n))
+    return {"by": by, "rows": [{"name": n, **counts[n]} for n in ordered]}
+
+
+def compute(done: List[dict], open_issues: List[dict], today: _dt.date, weeks: int, conv: dict, by: Optional[str] = None) -> dict:
+    result = _compute(done, open_issues, today, weeks, conv)
+    if by:
+        result["tags"] = by_tag(done, open_issues, by)
+    return result
+
+
+def _compute(done: List[dict], open_issues: List[dict], today: _dt.date, weeks: int, conv: dict) -> dict:
     return {"weeks": weeks, "weekly": throughput(done, today, weeks), "lead": spread(lead_days(done)),
             "wip": wip(open_issues, today), "on_time": on_time(done), "mix": mix(done, conv.get("areas") or []),
             "oldest": oldest(open_issues, today)}

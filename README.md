@@ -181,7 +181,7 @@ zona del equipo. Para otro rango, `--since` y `--until` en `YYYY-MM-DD`.
 | `jtk next [--when W \| --until D]` | Qué puedo hacer: para hacer ya (por prioridad y vencimiento), lo que vence, lo que está sin dueño en mis épicas |
 | `jtk blocked` | Dónde estoy bloqueado: por link "is blocked by", por Flagged o por estado bloqueado |
 | `jtk load --person "X" [--weeks N]` | Carga de otra persona, en números medidos, al lado de la mía |
-| `jtk stats [--weeks N]` | Velocidad (issues cerrados por semana), lead time, edad del WIP, cumplimiento de fechas, mezcla |
+| `jtk stats [--weeks N] [--by label\|component]` | Velocidad (issues cerrados por semana), lead time, edad del WIP, cumplimiento de fechas, mezcla. Con `--by`, una tabla más: cerrados y abiertos por etiqueta o por componente (un issue con varias cuenta en cada una; los que no tienen ninguna salen al final) |
 
 Todos aceptan `--person "NOMBRE"` (si el nombre es ambiguo lista a los candidatos y no elige), `--jira-project KEY` y
 `--json`. PLATE no tiene story points, así que la velocidad se mide en issues; `jtk load` solo da un veredicto si
