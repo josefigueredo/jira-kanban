@@ -45,6 +45,12 @@ class TableTest(unittest.TestCase):
                                "**Consultado:** 2026-10-08")
 
 
+class DumpTest(unittest.TestCase):
+    def test_json_for_the_agent_is_one_compact_line_that_keeps_accents_and_dates(self):
+        text = render.dump({"quién": "Ana Gómez", "día": date(2026, 10, 8), "rows": [{"k": 1}, {"k": 2}]})
+        self.assertEqual(text, '{"quién":"Ana Gómez","día":"2026-10-08","rows":[{"k":1},{"k":2}]}')
+
+
 class DoneTest(unittest.TestCase):
     def test_tree_uses_box_characters_and_marks_context(self):
         epic = {"key": "PLATE-100", "summary": "Épica", "issuetype": "Epic"}

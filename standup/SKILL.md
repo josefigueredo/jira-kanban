@@ -13,17 +13,19 @@ jtk <done|next|blocked|load|stats> ... --project .
 
 | The user asks | Run |
 |---|---|
-| what did I do / yesterday / last week | `jtk done --since D [--until D]` |
-| what can I do today / next week | `jtk next [--until D]` |
+| what did I do / yesterday / last week | `jtk done --when yesterday` · `--when last-week` (or `--since D [--until D]`) |
+| what can I do today / next week | `jtk next` · `--when next-week` (or `--until D`) |
 | what am I blocked on | `jtk blocked` |
 | does <person> have room to take work | `jtk load --person "<name>"` |
 | my velocity / metrics | `jtk stats [--weeks N]` |
 
 ## Steps
 
-1. **Dates.** The CLI only takes `YYYY-MM-DD`. Turn the user's words into dates in `America/Argentina/Buenos_Aires`
-   and say which window you used: "ayer" is `--since` = `--until` = yesterday; "la semana pasada" is Monday to Sunday
-   of the previous week; "hoy" for `next` is no `--until`; "la semana que viene" is `--until` = the next Sunday.
+1. **Window.** Name it, never count days: `--when` takes `today`, `yesterday`, `this-week`, `last-week`, `this-month`,
+   `last-month` for `done`, and `today`, `this-week`, `next-week` for `next` ("ayer" is `yesterday`, "la semana pasada"
+   is `last-week`, "la semana que viene" is `next-week`). The CLI does the calendar in `America/Argentina/Buenos_Aires`,
+   weeks Monday to Sunday, and prints the window it used: do not add your own. For any other range use
+   `--since D --until D` with `YYYY-MM-DD`.
 2. **Run it** with `--jira-project KEY` if the user names a project (otherwise the project in
    `./.jira-kanban/conventions.json`, if any, applies). Show the output as it is: it is already Markdown. Do not
    retell it unless asked.

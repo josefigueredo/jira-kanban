@@ -38,6 +38,30 @@ class ReportCliTest(unittest.TestCase):
         run(["done", "--since", "2026-10-06"], jira)
         self.assertIn('statusCategoryChangedDate < "2026-10-09"', jira.jqls[0])
 
+    def test_when_names_the_window_so_the_agent_computes_no_dates(self):
+        jira = FakeJira()
+        code, out, _ = run(["done", "--when", "last-week"], jira)  # TODAY is Thursday 2026-10-08
+        self.assertEqual(code, 0)
+        self.assertIn("**Ventana:** 2026-09-28 → 2026-10-04", out)
+        self.assertIn('statusCategoryChangedDate < "2026-10-05"', jira.jqls[0])
+        code, out, _ = run(["next", "--when", "next-week"], FakeJira())
+        self.assertEqual(code, 0)
+        self.assertIn("**Ventana:** 2026-10-08 → 2026-10-18", out)
+
+    def test_when_mixed_with_dates_or_missing_is_refused_before_asking_jira(self):
+        for args in (["done", "--when", "yesterday", "--since", "2026-10-01"], ["done"], ["done", "--when", "ayer"],
+                     ["next", "--when", "next-week", "--until", "2026-10-12"], ["next", "--when", "last-week"]):
+            jira = FakeJira()
+            code, _, err = run(args, jira)
+            self.assertEqual(code, 1, args)
+            self.assertTrue(err.strip(), args)
+            self.assertEqual(jira.jqls, [], args)
+
+    def test_every_json_output_is_one_line(self):
+        code, out, _ = run(["done", "--when", "last-week", "--json"], FakeJira())
+        self.assertEqual((code, out.count("\n")), (0, 1))
+        self.assertIn("tree", json.loads(out))
+
     def test_a_bad_window_is_refused_before_asking_jira(self):
         for args in (["done", "--since", "ayer"], ["done", "--since", "2026-10-09"], ["next", "--until", "2026-10-01"],
                      ["stats", "--weeks", "0"], ["load", "--weeks", "99"]):

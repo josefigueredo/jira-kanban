@@ -57,7 +57,7 @@ def _show(project: Path, key: str) -> None:
 def _who(jira, name: str, project: Optional[str], as_json: bool) -> int:
     result = people.find(jira, name, project)
     if as_json:
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        print(render.dump(result))
     else:
         found = result["candidates"]
         print(f"{result['status']}: {len(found)} candidate(s) for {name!r}" if found
@@ -127,7 +127,7 @@ def _emit(args, conv: dict, payload, text: str) -> None:
     """Print a report, led by what the reader must know about the profiles it was computed with."""
     notes = roles.notes(conv.get("_seen", []), conv.get("profiles") or {}, conv.get("profile_problems"))
     if args.json:
-        print(json.dumps({**payload, "profile_notes": notes}, ensure_ascii=False, indent=2, default=str))
+        print(render.dump({**payload, "profile_notes": notes}))
     else:
         print("\n".join(f"> ⚠ {n}" for n in notes) + "\n\n" + text if notes else text)
 
@@ -138,9 +138,9 @@ def _report(jira, args, conv: dict, today: _dt.date) -> int:
     conv["_seen"] = []
     try:
         if args.cmd == "done":  # the window is checked before Jira is asked anything, even who the person is
-            since, until = window.span(args.since, args.until, today)
+            since, until = window.resolve(args.since, args.until, args.when, today)
         elif args.cmd == "next":
-            until = window.horizon(args.until, today)
+            until = window.horizon_for(args.until, args.when, today)
         elif args.cmd in ("load", "stats"):
             weeks = window.weeks(args.weeks)
         scope = conv.get("project")  # one project key, or the boards of a view
@@ -241,10 +241,12 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
         if name in ("done", "next", "blocked"):
             r.add_argument("--view", help="only the boards of this saved view (see jtk team setup)")
         if name == "done":
-            r.add_argument("--since", required=True, help="first day, YYYY-MM-DD")
+            r.add_argument("--since", help="first day, YYYY-MM-DD (or use --when)")
             r.add_argument("--until", help="last day, YYYY-MM-DD (default: today)")
+            r.add_argument("--when", help="a named window instead of dates: " + ", ".join(window.PAST))
         if name == "next":
             r.add_argument("--until", help="last day of the window, YYYY-MM-DD (default: today)")
+            r.add_argument("--when", help="a named horizon instead of --until: " + ", ".join(window.AHEAD))
         if name in ("load", "stats"):
             r.add_argument("--weeks", type=int, default=4, help="how many weeks of history, 1 to 52 (default: 4)")
     args = parser.parse_args(argv)

@@ -4,6 +4,7 @@ Labels are Spanish, like `jtk board`; error messages elsewhere stay English."""
 from __future__ import annotations
 
 import datetime as _dt
+import json
 import re
 from typing import Callable, List, Optional
 
@@ -14,6 +15,11 @@ KEYLIKE = re.compile(r"^[A-Z][A-Z0-9_]*-\d+$")
 NOTE_DONE = ("_Nota: Jira guarda solo el último cambio de estado, así que un issue que pasó por «en curso» y luego a "
              "Done figura con la fecha de Done. «Hecho» significa asignado a la persona (inferencia: si otra persona "
              "cerró un issue suyo, igual aparece)._")
+
+
+def dump(payload) -> str:
+    """JSON for a script or an agent: one compact line (indenting costs about a third more and nobody reads it)."""
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str)
 
 
 def _cell(value) -> str:

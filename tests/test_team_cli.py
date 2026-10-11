@@ -136,6 +136,7 @@ class ReportsTest(unittest.TestCase):
     def test_json_carries_the_same_facts_without_the_markdown(self):
         self.jira.search_answer = fx.answers(open_=self.open_work())
         code, out, _ = run(["status", "plataforma", "--json"], self.jira)
+        self.assertEqual(out.count("\n"), 1)
         data = json.loads(out)
         self.assertEqual((code, data["view"], data["boards"], data["truncated"], data["notes"]),
                          (0, "plataforma", ["TEAM", "DESK"], False, []))
@@ -207,8 +208,12 @@ class ReportsTest(unittest.TestCase):
         self.assertEqual(len(self.jira.jqls), 4)
         self.assertIn("**Ventana:** 2026-10-01 → 2026-10-08", out)
         self.assertIn("**0 entregados · 0 descartados · 1 nuevos**", out)
-        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
-            run(["digest", "plataforma"], self.jira)
+        code, out, err = run(["digest", "plataforma"], self.jira)
+        self.assertEqual(code, 1)
+        self.assertIn("--when", err)
+        code, out, _ = run(["digest", "plataforma", "--when", "last-week"], self.jira)
+        self.assertEqual(code, 0)
+        self.assertIn("**Ventana:** 2026-09-28 → 2026-10-04", out)
         self.assertEqual(run(["digest", "plataforma", "--since", "ayer"], self.jira)[0], 1)
         self.assertEqual(run(["digest", "plataforma", "--since", "2026-10-09"], self.jira)[0], 1)
 

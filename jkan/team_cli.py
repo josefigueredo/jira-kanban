@@ -6,12 +6,11 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
-import json
 import sys
 from collections import namedtuple
 from typing import Callable, List
 
-from . import board_profile, people, roles, team, team_render, views, window
+from . import board_profile, people, render, roles, team, team_render, views, window
 from .jira import JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
@@ -149,7 +148,7 @@ def _flow(args, jira, view, profiles, conv, today) -> Result:
 
 
 def _digest(args, jira, view, profiles, conv, today) -> Result:
-    since, until = window.span(args.since, args.until, today)
+    since, until = window.resolve(args.since, args.until, args.when, today)
     issues, cut1 = team.gather_open(jira, view, profiles, conv)
     delivered, cut2 = team.gather_closed(jira, view, profiles, conv, ("delivered",), since)
     dropped, cut3 = team.gather_closed(jira, view, profiles, conv, ("dropped",), since)
@@ -182,9 +181,9 @@ BUILDERS = {"status": _status, "stalled": _stalled, "blocked": _blocked, "flow":
 def _emit(args, verb: str, view: dict, profiles: dict, today: _dt.date, result: Result) -> None:
     notes = roles.notes(result.seen, profiles)
     if args.json:
-        print(json.dumps({"view": view["name"], "boards": view["boards"], "consulted": today.isoformat(),
+        print(render.dump({"view": view["name"], "boards": view["boards"], "consulted": today.isoformat(),
                           "profiles": team_render.profile_state(view, profiles), "truncated": result.truncated,
-                          "notes": notes, "report": result.payload}, ensure_ascii=False, indent=2, default=str))
+                          "notes": notes, "report": result.payload}))
         return
     parts = [team_render.head(result.title, view, profiles, today, result.window)]
     alerts = ([f"La búsqueda llegó al tope de {team.CAP} issues: faltan resultados."] if result.truncated else []) + notes
@@ -223,7 +222,7 @@ def _rollup(args, jira, conv: dict, today: _dt.date) -> int:
             rows.append({"view": name, "error": str(exc)})
             failed = True
     if args.json:
-        print(json.dumps({"consulted": today.isoformat(), "rows": rows}, ensure_ascii=False, indent=2, default=str))
+        print(render.dump({"consulted": today.isoformat(), "rows": rows}))
     else:
         cut = [r["view"] for r in rows if r.get("truncated")]
         alert = (f"\n\n> ⚠ La búsqueda llegó al tope de {team.CAP} issues en: {', '.join(cut)}." if cut else "")
@@ -265,8 +264,9 @@ def run(argv: List[str], jira: Callable[[], object], conv: dict, today: Callable
         if verb in ("flow", "desk"):
             p.add_argument("--weeks", type=int, default=4, help="how many weeks, 1 to 52 (default 4)")
         if verb == "digest":
-            p.add_argument("--since", required=True, help="first day, YYYY-MM-DD")
+            p.add_argument("--since", help="first day, YYYY-MM-DD (or use --when)")
             p.add_argument("--until", help="last day, YYYY-MM-DD (default: today)")
+            p.add_argument("--when", help="a named window instead of dates: " + ", ".join(window.PAST))
     roll = sub.add_parser("rollup", help="one row per view: open, blocked, stalled, delivered, lead time (read only)")
     roll.add_argument("views", nargs="+")
     roll.add_argument("--all", action="store_true")

@@ -5,7 +5,6 @@ a refused input, 2 could not do it (Jira, disk), 3 the profile still has statuse
 from __future__ import annotations
 
 import argparse
-import json
 import sys
 from typing import Callable, List, Optional
 
@@ -147,7 +146,7 @@ def _survey(jira, args) -> int:
                "mismatch_statuses": sum(r["mismatch"] for r in rows),
                "mismatch_projects": sum(1 for r in rows if r["mismatch"])}
     if args.json:
-        print(json.dumps({"summary": summary, "projects": rows}, ensure_ascii=False, indent=2))
+        print(render.dump({"summary": summary, "projects": rows}))
         return OK
     print(render.table(["Proyecto", "Tipo", "Estados", "Alta", "Decidir", "Categoría mal puesta"],
                        [[r["project"], r["type"], r["statuses"], r["alta"], r["decidir"], r["mismatch"]] for r in rows],

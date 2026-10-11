@@ -85,6 +85,15 @@ class SkillsTest(unittest.TestCase):
         self.assertIn("Atlassian MCP", rules)
         self.assertIn("approval", rules)
 
+    def test_the_report_skills_name_the_window_instead_of_asking_the_agent_to_count_days(self):
+        for folder in ("standup", "em"):
+            text = (ROOT / folder / "SKILL.md").read_text(encoding="utf-8")
+            self.assertIn("--when", text, folder)
+            self.assertNotIn("Turn the user's words into dates", text, folder)
+        standup = (ROOT / "standup" / "SKILL.md").read_text(encoding="utf-8")
+        for name in ("yesterday", "last-week", "next-week"):
+            self.assertIn(name, standup)
+
     def test_the_descriptions_do_not_overlap_on_the_phrases_that_pick_a_skill(self):
         self.assertNotIn("Read only", frontmatter("ops")["description"])
         self.assertNotIn("assign", frontmatter("em")["description"].lower())

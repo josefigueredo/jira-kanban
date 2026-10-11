@@ -36,8 +36,9 @@ jtk team rollup VIEW [VIEW ...]
    ask which role it plays (`todo`, `active`, `blocked`, `waiting`, `delivered`, `dropped`), apply the answer with
    `jtk board set KEY <role> "<status>"`, and never choose a role yourself. A help desk board needs
    `jtk board setup KEY --kind helpdesk`. A report on a profile with undecided statuses still runs and says so.
-3. **Dates.** The CLI only takes `YYYY-MM-DD`. Turn the user's words into dates in `America/Argentina/Buenos_Aires` and
-   say which window you used ("la semana pasada" is Monday to Sunday of the previous week).
+3. **Window.** For `digest`, name it: `--when last-week` (also `today`, `yesterday`, `this-week`, `this-month`,
+   `last-month`) and the CLI does the calendar, weeks Monday to Sunday, and prints the window it used. For any other
+   range use `--since D --until D` with `YYYY-MM-DD`.
 4. **Run it and show the output as it is.** It is already Markdown and ends with a «Límites» section: do not retell it
    unless asked, and repeat those limits if the user draws a conclusion from the numbers. A line starting with `> ⚠`
    at the top says what to distrust (a search that hit its cap, a status the profile has never seen): keep it.

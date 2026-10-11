@@ -169,12 +169,14 @@ estado y panel de detalles con el responsable. Las claves son `NUEVO-1…n` en e
 ## Reportes (solo lectura)
 
 Responden en tablas y árboles, leyendo Jira en vivo (el kanban local no guarda fechas ni asignados). La skill hermana
-`jira-standup` (carpeta `standup/`) los usa; el agente traduce "ayer" o "la semana pasada" a fechas `YYYY-MM-DD`.
+`jira-standup` (carpeta `standup/`) los usa; el agente traduce "ayer" o "la semana pasada" a un nombre de ventana (`--when yesterday`, `--when last-week`; también `today`,
+`this-week`, `this-month`, `last-month` y, para `next`, `next-week`) y la CLI hace el calendario: semanas de lunes a domingo, en la
+zona del equipo. Para otro rango, `--since` y `--until` en `YYYY-MM-DD`.
 
 | Comando | Responde |
 |---|---|
-| `jtk done --since D [--until D]` | Qué hice: árbol Épica → Historia/Tarea → Subtarea, con totales |
-| `jtk next [--until D]` | Qué puedo hacer: para hacer ya (por prioridad y vencimiento), lo que vence, lo que está sin dueño en mis épicas |
+| `jtk done --when W` o `--since D [--until D]` | Qué hice: árbol Épica → Historia/Tarea → Subtarea, con totales |
+| `jtk next [--when W \| --until D]` | Qué puedo hacer: para hacer ya (por prioridad y vencimiento), lo que vence, lo que está sin dueño en mis épicas |
 | `jtk blocked` | Dónde estoy bloqueado: por link "is blocked by", por Flagged o por estado bloqueado |
 | `jtk load --person "X" [--weeks N]` | Carga de otra persona, en números medidos, al lado de la mía |
 | `jtk stats [--weeks N]` | Velocidad (issues cerrados por semana), lead time, edad del WIP, cumplimiento de fechas, mezcla |
@@ -198,7 +200,7 @@ sin confirmar corre y lo avisa en la primera línea.
 | `jtk team stalled VIEW [--days N]` | Lo `active` que lleva N días o más sin cambiar de categoría, con los días desde la última edición |
 | `jtk team blocked VIEW` | Bloqueado (rol, flag o link) y, aparte, lo que espera a un tercero |
 | `jtk team flow VIEW [--weeks N]` | Entregas por semana, lead time (mediana y p85, con su n) y edad de lo que está en curso |
-| `jtk team digest VIEW --since D [--until D]` | Entregado, descartado y nuevo del período, más lo bloqueado y estancado de hoy |
+| `jtk team digest VIEW --when W` o `--since D [--until D]` | Entregado, descartado y nuevo del período, más lo bloqueado y estancado de hoy |
 | `jtk team desk VIEW [--weeks N]` | Boards `helpdesk`: antigüedad de lo abierto, sin asignar, esperando y tiempo de resolución. Sin SLA |
 | `jtk team rollup VIEW VIEW …` | Una fila por view: abiertos, bloqueados, estancados, entregados y lead time p85 |
 

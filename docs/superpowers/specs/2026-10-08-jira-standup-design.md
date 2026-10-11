@@ -55,6 +55,10 @@ Todos leen Jira en vivo con JQL (`POST /rest/api/3/search/jql`, ya usado en `jir
 Las fechas llegan siempre como ISO (`YYYY-MM-DD`). El **agente** traduce "ayer" o "la semana pasada" a fechas en la
 zona `America/Argentina/Buenos_Aires` y muestra la ventana que usó. El CLI no entiende lenguaje natural.
 
+> **Enmienda (2026-10-11).** El CLI sí entiende un vocabulario fijo, `--when` (`yesterday`, `last-week`, `next-week`…): el agente
+> elige un nombre y el CLI hace el calendario (semanas de lunes a domingo). Así no se equivoca contando días y gasta menos
+> tokens. Sigue sin interpretar lenguaje natural libre.
+
 ### `jk next --until D`
 
 Tres tablas, una por pregunta:

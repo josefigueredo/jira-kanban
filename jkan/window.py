@@ -1,6 +1,8 @@
 """Dates for the reports: strict ISO days, the windows they make, and today in the team's time zone.
 
-The CLI never reads natural language: the agent turns "ayer" or "la semana pasada" into dates (see standup/SKILL.md).
+The CLI never reads natural language. It does read a short fixed vocabulary (`--when yesterday`, `--when last-week`): the
+agent maps «ayer» to a name and the CLI does the calendar, so a wrong date can't come from the agent counting days.
+Weeks run Monday to Sunday.
 """
 from __future__ import annotations
 
@@ -47,3 +49,52 @@ def today_in(zone: Optional[str]) -> _dt.date:
         return _dt.datetime.now(ZoneInfo(zone)).date()  # type: ignore[arg-type]
     except (ImportError, KeyError, TypeError, ValueError):
         return _dt.date.today()
+
+
+PAST = ("today", "yesterday", "this-week", "last-week", "this-month", "last-month")
+AHEAD = ("today", "this-week", "next-week")
+ONE_OF = "use --since D (and --until D) or --when " + "|".join(PAST)
+
+
+def past(name: str, today: _dt.date) -> Tuple[_dt.date, _dt.date]:
+    """The first and last day of a named window that ends today or before."""
+    monday = today - _dt.timedelta(days=today.weekday())
+    first_of_month = today.replace(day=1)
+    windows = {
+        "today": (today, today),
+        "yesterday": (today - _dt.timedelta(days=1),) * 2,
+        "this-week": (monday, today),
+        "last-week": (monday - _dt.timedelta(days=7), monday - _dt.timedelta(days=1)),
+        "this-month": (first_of_month, today),
+        "last-month": ((first_of_month - _dt.timedelta(days=1)).replace(day=1), first_of_month - _dt.timedelta(days=1)),
+    }
+    if name not in windows:
+        raise BadWindow(f"--when {name!r} is not a window: {', '.join(PAST)}")
+    return windows[name]
+
+
+def ahead(name: str, today: _dt.date) -> _dt.date:
+    """The last day of a named window that starts today (the Sunday that closes the week)."""
+    sunday = today + _dt.timedelta(days=6 - today.weekday())
+    horizons = {"today": today, "this-week": sunday, "next-week": sunday + _dt.timedelta(days=7)}
+    if name not in horizons:
+        raise BadWindow(f"--when {name!r} does not look ahead: {', '.join(AHEAD)}")
+    return horizons[name]
+
+
+def resolve(since: Optional[str], until: Optional[str], when: Optional[str], today: _dt.date) -> Tuple[_dt.date, _dt.date]:
+    """The window of a report that looks back: --when alone, or --since (and --until) alone."""
+    if when and (since or until):
+        raise BadWindow(f"--when replaces --since and --until: {ONE_OF}")
+    if when:
+        return past(when, today)
+    if not since:
+        raise BadWindow(f"no window: {ONE_OF}")
+    return span(since, until, today)
+
+
+def horizon_for(until: Optional[str], when: Optional[str], today: _dt.date) -> _dt.date:
+    """The last day of a report that looks ahead: --when, or --until, or today."""
+    if when and until:
+        raise BadWindow("--when replaces --until: use one of them")
+    return ahead(when, today) if when else horizon(until, today)
