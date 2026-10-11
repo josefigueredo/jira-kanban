@@ -82,11 +82,10 @@ class HtmlTest(unittest.TestCase):
         self.assertNotIn("<b>el</b>", html)
         self.assertIn("&lt;b&gt;el&lt;/b&gt; login &amp; más", html)
 
-    def test_the_scrollbar_is_hidden_when_the_plan_fits_but_shown_when_it_hits_the_cap(self):
-        fits = approval.render_html(SUMMARY, 2)
-        self.assertIn("::-webkit-scrollbar{display:none}", fits)
+    def test_the_scrollbar_is_never_hidden_so_a_height_estimate_that_falls_short_cannot_hide_what_a_person_approves(self):
         many = approval.Summary("T", "h", [(f"A-{i}", "x", "a -> b") for i in range(30)])
-        self.assertNotIn("::-webkit-scrollbar", approval.render_html(many, 30))  # never hide what a person approves
+        for summary in (SUMMARY, many):
+            self.assertNotIn("scrollbar", approval.render_html(summary, 2))
 
     def test_a_heading_that_wraps_to_two_lines_gets_more_height(self):
         row = [("A-1", "x", "a -> b")]

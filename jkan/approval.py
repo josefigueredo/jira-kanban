@@ -87,9 +87,9 @@ def render_html(summary, n: int) -> str:
     """The window's whole page (the window is this page plus two native buttons). Every Jira string is escaped; the
     page has no script and loads nothing."""
     heading = _heading(summary)
-    # A plan that fits has no scrollbar. One that hits the cap keeps it: never hide what a person is about to approve.
-    css = _CSS + ("" if window_height(summary) >= _CAP else "::-webkit-scrollbar{display:none}")
-    out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{css}</style></head><body>',
+    # No rule hides the scrollbar: macOS shows it only when the page overflows its window, which is exactly when a
+    # person must be able to scroll (a height estimate can fall short; it must never hide what is being approved).
+    out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{_CSS}</style></head><body>',
            '<div class="eyebrow">jtk quiere escribir en Jira</div>', f"<h1>{escape(heading)}</h1>", '<ul class="cards">']
     rows = rows_of(summary)
     if not rows:  # a writer with no rows: show the text it has
