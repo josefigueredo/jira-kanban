@@ -124,6 +124,35 @@ class CheckTest(Repos):
         self.assertEqual(result.state, "unknown")
         self.assertIn("could not reach", result.detail)
 
+    def test_a_hostile_commit_title_reaches_the_detail_clean_and_short(self):
+        # The detail is read by an agent and printed in a terminal: a title is data from whoever can push, not text to trust.
+        commit(self.other, "x.txt", "feat: \x1b[31mred\x1b[0m\ttab \u202eevil " + "z" * 300)
+        git(self.other, "push", "-q", "origin", "main")
+        detail = self.check().detail
+        title = detail.split(": ", 1)[1]
+        self.assertNotRegex(detail, r"[\x00-\x1f\x7f\u202a-\u202e\u2066-\u2069]")
+        self.assertLessEqual(len(title), 72)
+        self.assertTrue(title.endswith("…"))
+        self.assertIn("red", title)
+
+    def test_a_short_clean_title_is_left_alone(self):
+        self.publish("fix: a plain title")
+        self.assertIn("fix: a plain title", self.check().detail)
+
+    def test_an_install_on_another_branch_is_unknown_without_asking_the_remote(self):
+        git(self.install, "checkout", "-q", "-b", "feat/x")
+        shutil.rmtree(self.origin)  # if it asked, the answer would be «could not reach»
+        result = self.check()
+        self.assertEqual(result.state, "unknown")
+        self.assertIn("feat/x", result.detail)
+        self.assertIn("not main", result.detail)
+
+    def test_a_detached_head_is_unknown_too(self):
+        git(self.install, "checkout", "-q", "--detach")
+        result = self.check()
+        self.assertEqual(result.state, "unknown")
+        self.assertIn("detached", result.detail)
+
     def test_the_version_is_the_short_commit_and_its_date(self):
         self.assertRegex(update.version(self.install), r"^[0-9a-f]{7,} \d{4}-\d{2}-\d{2}$")
         self.assertEqual(update.version(self.tmp / "nowhere"), "unknown")

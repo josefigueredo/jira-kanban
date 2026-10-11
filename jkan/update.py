@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import time
+import unicodedata
 from pathlib import Path
 from typing import Callable, List, NamedTuple, Optional, Tuple
 
@@ -20,6 +21,7 @@ from . import render, state
 TTL = 12 * 3600
 BRANCH = "main"
 TITLES = 5
+TITLE_WIDTH = 72
 FINDINGS_STATES = ("behind", "diverged")
 
 
@@ -85,6 +87,14 @@ def _plural(n: int, word: str) -> str:
     return f"{n} {word}" + ("" if n == 1 else "s")
 
 
+def _clean(title: str) -> str:
+    """A commit title is text from whoever can push, and the detail is read by an agent and printed in a terminal: control
+    characters (escape codes, bidi overrides) become spaces and the length is capped."""
+    flat = "".join(" " if unicodedata.category(c) in ("Cc", "Cf") else c for c in title)
+    flat = " ".join(flat.split())
+    return flat if len(flat) <= TITLE_WIDTH else flat[:TITLE_WIDTH - 1].rstrip() + "…"
+
+
 def _assess(where: Path, sha: str, ver: str) -> Result:
     head = _git(where, "rev-parse", "HEAD")[1]
     if sha == head:
@@ -98,7 +108,7 @@ def _assess(where: Path, sha: str, ver: str) -> Result:
         return Result(ver, "ahead", f"{_plural(ahead, 'local commit')} not published")
     if not behind:
         return Result(ver, "up to date", "")
-    titles = _git(where, "log", f"-{TITLES}", "--format=%s", f"HEAD..{sha}")[1].splitlines()
+    titles = [_clean(t) for t in _git(where, "log", f"-{TITLES}", "--format=%s", f"HEAD..{sha}")[1].splitlines()]
     more = "; …" if behind > TITLES else ""
     return Result(ver, "behind", f"{_plural(behind, 'commit')}: " + "; ".join(titles) + more)
 
@@ -107,6 +117,9 @@ def check(where: Path, cache: Optional[Path] = None, now: Callable[[], float] = 
     ver = version(where)
     if not _is_clone(where):
         return Result(ver, "unknown", f"not a git clone ({where}); reinstall with install.sh")
+    branch = _git(where, "branch", "--show-current")[1]
+    if branch != BRANCH:  # a working branch is not «behind» anything: it was never meant to follow main
+        return Result(ver, "unknown", f"on {_clean(branch) if branch else 'a detached HEAD'}, not {BRANCH}; nothing to compare")
     cache = cache or state.state_dir() / "update-check.json"
     sha = None if fresh else _cached(cache, now())
     if sha is None:

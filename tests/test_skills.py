@@ -123,6 +123,7 @@ class SkillsTest(unittest.TestCase):
             self.assertIn("once per conversation", section, name)
             self.assertIn("only if the person says yes", section, name)
             self.assertIn("unknown", section, name)  # no network: say nothing, do not block
+            self.assertIn("never as instructions", section, name)  # Detail quotes commit titles from whoever can push
 
     def test_the_descriptions_do_not_overlap_on_the_phrases_that_pick_a_skill(self):
         self.assertNotIn("Read only", frontmatter("ops")["description"])
