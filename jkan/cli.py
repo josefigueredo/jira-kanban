@@ -73,6 +73,14 @@ def _short(value, limit: int = 60) -> str:
     return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
+def _assignee_label(op: dict) -> str:
+    """Who an issue is for, in the words the dry run and the approval window both show."""
+    if op["assignee"] == "person":
+        return op["person"]["name"] + ("" if op["person"].get("exact", True) else " · approximate match")
+    return {"me-done": "vos · completa", "me-started": "vos · en curso", "me": "vos", "none": "sin asignar",
+            "ask": "¿asignar? a decidir"}[op["assignee"]]
+
+
 def _approve(confirm: Callable, n: int, summary: str, argv: List[str]) -> Optional[int]:
     """None when the write may go ahead (nothing to write, or a person approved); otherwise the exit code to return."""
     if n == 0:
@@ -295,7 +303,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
                 if args.apply:  # a silent dry run says how many issues the person is about to approve
                     planned = sync.create(jira, project, epic_spec, conv, apply=False, assign_open=args.assign_open)["ops"]
                     text = f"create {len(planned)} issue(s) in {conv['project']}"
-                    rows = [(op.get("ref", ""), op.get("summary", ""), "create") for op in planned]
+                    rows = [(conv["issue_types"][op["kind"]], op["summary"], "crear · " + _assignee_label(op)) for op in planned]
                     code = _approve(confirm, len(planned), approval.Summary(text, f"Crear en {conv['project']}", rows), argv)
                     if code is not None:
                         return code
@@ -307,10 +315,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
             for op in result["ops"]:
                 indent = {"epic": "", "story": "  ", "task": "  ", "subtask": "    "}[op["kind"]]
                 key = result.get("keys", {}).get(op["ref"], "")
-                who = (op["person"]["name"] + ("" if op["person"].get("exact", True) else " · approximate match")
-                       if op["assignee"] == "person" else
-                       {"me-done": "vos · completa", "me-started": "vos · en curso", "me": "vos", "none": "sin asignar", "ask": "¿asignar? a decidir"}[op["assignee"]])
-                rows.append((indent + (key or "(nuevo)"), conv["issue_types"][op["kind"]], who, op["summary"]))
+                rows.append((indent + (key or "(nuevo)"), conv["issue_types"][op["kind"]], _assignee_label(op), op["summary"]))
             print("\n".join(render.columns(rows)))
             if args.html:
                 Path(args.html).write_text(preview.render(result["ops"], conv), encoding="utf-8")

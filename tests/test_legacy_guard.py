@@ -104,7 +104,19 @@ class CreateTest(unittest.TestCase):
         run(self.args("--apply", "--assign-open"), self.jira, asked)
         summary = asked.calls[0][1]
         self.assertEqual(len(summary.rows), asked.calls[0][0])
-        self.assertTrue(all(r[2] == "create" and r[1] for r in summary.rows))
+        self.assertTrue(all(r[1] for r in summary.rows))
+
+    def test_each_row_says_the_type_and_who_gets_it_like_the_dry_run_and_never_a_spec_path(self):
+        asked = Asked()
+        _, out, _ = run(self.args("--apply", "--assign-open"), self.jira, asked)
+        rows = asked.calls[0][1].rows
+        for key, _name, change in rows:
+            self.assertNotIn("items[", key)  # a spec path means nothing to the person approving
+            self.assertNotEqual(key, "epic")
+            self.assertTrue(change.startswith("crear · "), change)
+        self.assertEqual([r[0] for r in rows][0], "Epic")
+        for _key, _name, change in rows:
+            self.assertIn(change.split(" · ", 1)[1], " | ".join(out.splitlines()))
 
     def test_without_approval_nothing_is_created_and_no_local_folder_appears(self):
         code, _, err = run(self.args("--apply", "--assign-open"), self.jira, Asked(approve=False))
