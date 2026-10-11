@@ -20,13 +20,23 @@ def _cell(value) -> str:
     return "–" if value in (None, "") else str(value).replace("|", "\\|").replace("\n", " ")
 
 
+_LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+
+
+def _shown(cell: str) -> int:
+    """The width a cell takes once rendered: a link counts as its text, not its url."""
+    return len(_LINK.sub(r"\1", cell))
+
+
 def table(headers: List[str], rows: List[list], empty: str = "_Nada._") -> str:
-    """A Markdown table whose source is aligned too, so it reads the same rendered or raw."""
+    """A Markdown table whose source is aligned too, so it reads the same rendered or raw. Widths follow what a link shows,
+    not its url, so alignment costs a few spaces and not a copy of every url."""
     if not rows:
         return empty
     cells = [[_cell(c) for c in row] for row in rows]
-    widths = [max(3, len(h), *(len(row[i]) for row in cells)) for i, h in enumerate(headers)]
-    line = lambda values: "| " + " | ".join(v.ljust(w) for v, w in zip(values, widths)) + " |"  # noqa: E731
+    widths = [max(3, len(h), *(_shown(row[i]) for row in cells)) for i, h in enumerate(headers)]
+    pad = lambda v, w: v + " " * (w - _shown(v))  # noqa: E731
+    line = lambda values: "| " + " | ".join(pad(v, w) for v, w in zip(values, widths)) + " |"  # noqa: E731
     return "\n".join([line(headers), "| " + " | ".join("-" * w for w in widths) + " |"] + [line(row) for row in cells])
 
 

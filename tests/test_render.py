@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import unittest
 from datetime import date
 
@@ -21,6 +22,16 @@ class TableTest(unittest.TestCase):
                                                            ["PLATE-22", "Un título bastante más largo", "PROCESANDO"]]).splitlines()
         self.assertEqual(len({len(line) for line in lines}), 1)
         self.assertEqual(len({tuple(i for i, c in enumerate(line) if c == "|") for line in lines}), 1)
+
+    def test_table_pads_to_what_a_link_shows_not_to_its_url(self):
+        # [PLATE-1](https://…) reads as «PLATE-1»: padding it to the url's width would triple the size for nothing
+        url = "https://example.atlassian.net/browse/"
+        rows = [[f"[PLATE-1]({url}PLATE-1)", "Uno", "Done"], [f"[PLATE-22]({url}PLATE-22)", "Dos", "En curso"]]
+        text = render.table(["Key", "Título", "Estado"], rows)
+        shown = [re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", line) for line in text.splitlines()]
+        self.assertEqual(len({len(line) for line in shown}), 1)
+        self.assertEqual(len({tuple(i for i, c in enumerate(line) if c == "|") for line in shown}), 1)
+        self.assertLess(len(text), 330)
 
     def test_columns_pad_every_column_but_the_last_and_strip_the_end_of_the_line(self):
         self.assertEqual(render.columns([("Issue", "Estado", "Título"), ("PLATE-1", "Done", "Uno"), ("A", "", "Dos")]),
