@@ -1,6 +1,6 @@
 ---
 name: jira-em
-description: Use when a manager asks about their team or their boards as a whole ("cómo viene mi equipo", "qué está bloqueado en mis boards", "qué está estancado", "resumen de la semana", "cómo anda la mesa de ayuda", "cómo andan mis equipos"), not about themselves. Read only. For "what did I do" or "what can I do" use jira-standup, and to create or sync epics use jira-team-kit.
+description: Use when a manager asks about their team or their boards as a whole ("cómo viene mi equipo", "qué está bloqueado en mis boards", "qué está estancado", "resumen de la semana", "cómo anda la mesa de ayuda", "cómo andan mis equipos"), not about themselves. Read only. For "what did I do" or "what can I do" use jira-standup, and to create or sync epics use jira-team-kit. Jira always goes through jtk, never an Atlassian MCP.
 ---
 
 # jira-em

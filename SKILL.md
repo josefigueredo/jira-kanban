@@ -1,6 +1,6 @@
 ---
 name: jira-team-kit
-description: Use when the user asks to create a Jira epic for the work being discussed ("creame una épica para esto"), to mirror an existing epic as a local kanban, or to sync local kanban edits (status, titles, new subtasks) back to Jira. Not for epics that a WayOfWork flow registers through Product Brain's export: there Product Brain creates the epic.
+description: Use when the user asks to create a Jira epic for the work being discussed ("creame una épica para esto"), to mirror an existing epic as a local kanban, or to sync local kanban edits (status, titles, new subtasks) back to Jira. Not for epics that a WayOfWork flow registers through Product Brain's export: there Product Brain creates the epic. Jira always goes through jtk, never an Atlassian MCP.
 ---
 
 # jira-team-kit
@@ -51,6 +51,8 @@ jtk <create|pull|push|show|board> ... --project .
 ## Rules
 
 - Every Jira write needs `--apply`, approved by the user in the window, and is logged in `./.jira-kanban/jira-writes.jsonl`.
+- Never use an Atlassian MCP (Cursor may suggest one when the user types "jira") to read or write Jira: its write tools skip
+  the approval window. Everything goes through `jtk`.
 - Progress: `jtk board KEY` (after a pull) groups by Jira status category, never by status names; blocked means a
   status in `blocked_statuses` or the Flagged field.
 - Project defaults live in `conventions.json`; a project overrides them in `./.jira-kanban/conventions.json`.
