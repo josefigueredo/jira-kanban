@@ -18,7 +18,7 @@ descartables. El agente arma los planes y lee Jira para verificar; **vos hacés 
 | # | Qué hacés | Qué tiene que pasar |
 |---|---|---|
 | 1 | Pedile al agente que arme un `plan move` de una tarea a PROCESANDO | Muestra el plan en el chat; Jira no cambia |
-| 2 | Corré `! jtk apply <id>` (con `!`) | **Aparece una ventana al frente de Cursor** con título, una fila (clave, título, `Backlog -> PROCESANDO`) y dos botones: **Cancelar** (resaltado) y **Apruebo 1** |
+| 2 | Corré `! jtk apply <id>` (con `!`) | **Aparece una ventana al frente de Cursor** con el título del plan, una tarjeta por tarea (clave, título y el cambio `Backlog → PROCESANDO`) y dos botones: **Cancelar** y **Apruebo 1** |
 | 3 | Hacé clic en **Cancelar** | El comando sale con código 3 y dice que no se aprobó; Jira no cambia |
 | 4 | Repetí y apretá **Escape** | Igual que el paso 3 |
 | 5 | Repetí y apretá **Return** | **No aprueba** (no hay tecla que apruebe); Jira no cambia. Anotá si la ventana sigue abierta |

@@ -28,11 +28,11 @@ sin caja de texto); la ventana muestra el detalle de lo que se va a hacer, como 
    correr en una terminal. Sin variable de entorno, bandera ni configuración que salte la aprobación.
 2. **Patrón copiado de pbmcp**, que ya funciona con el usuario en Cursor: `product-brain-mcp/src/pbmcp/approval.py:45-55`
    (HTML a un archivo temporal 0600, `osascript -l JavaScript alert.js`, aprobado solo si el código es 0 y la salida es
-   `approved`; cualquier fallo o timeout es rechazo), `alert.js:31-38` (`NSAlert` con la vista del plan, Cancelar
+   `approved`; cualquier fallo o timeout es rechazo), `alert.js:31-38` (`NSAlert` con la vista del plan; la ventana final es un panel propio, ver «Prueba real», Cancelar
    primero y con Escape, el botón de aprobar con `keyEquivalent` vacío, ventana flotante) y `approval.py:21` (timeout de
    100 s porque Cursor corta una herramienta inactiva a los 120 s, medido el 2026-10-07). Se copian, no se importan:
    cada repo es independiente.
-3. **Botones.** Primero `Cancelar` (resaltado como predeterminado, con Escape; Return no hace nada, como en pbmcp), segundo `Apruebo <n>` sin tecla
+3. **Botones.** Primero `Cancelar` (con Escape; Return no hace nada, como en pbmcp: ningún botón es el predeterminado), segundo `Apruebo <n>` sin tecla
    equivalente: aprobar exige un clic. No hay caja de texto.
 4. **Detalle.** Un módulo `jkan/approval.py` arma un HTML con la misma paleta de chips que pbmcp: encabezado (tipo de
    plan y vista), una fila por cambio y, si el plan dejó issues afuera, la sección «Quedan afuera» con el motivo. La
@@ -101,3 +101,27 @@ sin caja de texto); la ventana muestra el detalle de lo que se va a hacer, como 
   `docs/superpowers/acceptance/aprobacion-con-dialogo.md`.
 - Menores diferidos: `render_html` recibe `n` y no lo usa; el «100 s» del texto de la ventana está repetido en vez de salir
   de `TIMEOUT`; falsos positivos del hook ante un mensaje de commit que nombre `osascript … click` y `jtk apply`.
+
+## Prueba real y rediseño (2026-10-10, en Cursor, con tareas descartables de PLATE)
+
+La probó la persona, con `jtk apply` y `jtk assign --apply` sobre PLATE-664 a 669. Lo medido:
+
+- **Primera versión (`NSAlert` con un `NSTextView`).** Apareció al frente de Cursor; Cancelar, Escape y Return se portaron
+  como se esperaba y el timeout cerró la ventana a los 100 s sin escribir. Pero no pasó la revisión de diseño: el
+  renderizador de texto de macOS ignora `padding`, bordes y fondos, así que el detalle parecía un textarea; el ícono del
+  escudo ocupaba 64 pt, el título se repetía y la caja tenía alto fijo.
+- **Versión final: panel propio.** `jkan/alert.js` abre un `NSPanel` con un `WKWebView` (sin JavaScript, sin recursos
+  externos) y dos botones nativos; `approval.render_html` arma la página (tarjeta por tarea con la clave como chip, el
+  cambio como píldora origen → destino, «Quedan afuera» aparte, modo claro y oscuro del sistema) y `window_height` estima
+  el alto (con margen; el tope es 560 y pasado eso la página scrollea). El diseño se iteró en el navegador, en claro y en oscuro, antes
+  de tocar la ventana.
+- **Recorrido real con la versión final** (plan de 2 tareas, PLATE-664 y PLATE-669): Escape cancela (`exit=3`); Return no
+  hace nada y la ventana sigue abierta; el botón rojo cancela (`exit=3`, asumido por la persona); a los 100 s sin tocar nada se
+  cierra sola (`exit=3`); un clic en **Apruebo 2** escribe y dice `applied` (`exit=0`). Antes, con la primera versión: Apruebo
+  1 y Apruebo 4 escribieron; el título `Prueba <b>negrita</b> & más` se vio literal; «Quedan afuera» mostró PLATE-665 con el motivo;
+  `jtk assign --apply` mostró `-> Jose Ramon Figueredo`, y repetido sobre un issue ya asignado dijo `assigned 0` sin abrir ventana.
+- **Fallas vistas y corregidas:** la altura se estimaba mal dos veces (una barra de scroll innecesaria, y un título largo de
+  plan que ocupa dos líneas dejó el pie cortado). Se corrigió contando las líneas del título y con margen, y se **quitó la
+  regla que escondía la barra**: con una estimación corta, la barra es la red que deja ver lo que se está aprobando.
+- **Sin medir:** pantalla completa y modo claro (el modo oscuro sí se vio); la ventana nunca se vio con un plan que llegue al tope de 560.
+- Menores: ya no queda diferido que `render_html` ignore `n` (el pie dice «Apruebo n») ni que el «100 s» esté repetido (sale de `TIMEOUT`).
