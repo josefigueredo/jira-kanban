@@ -8,7 +8,7 @@ import unittest
 from helpers import ROOT
 from jkan import board_cli, plan_cli, team_cli
 
-SKILLS = ((".", "jira-toolkit"), ("standup", "jira-standup"), ("em", "jira-em"), ("ops", "jira-em-ops"))
+SKILLS = ((".", "jira-team-kit"), ("standup", "jira-standup"), ("em", "jira-em"), ("ops", "jira-em-ops"))
 
 
 def frontmatter(folder: str) -> dict:
@@ -25,7 +25,7 @@ class SkillsTest(unittest.TestCase):
             self.assertTrue(fm["description"].startswith("Use when"), name)
 
     def test_the_personal_skill_never_claims_team_questions(self):
-        description = frontmatter("standup")["description"].lower()
+        description = re.sub(r"\bjira-[a-z-]+", "", frontmatter("standup")["description"].lower())  # skill names are not claims
         self.assertIsNone(re.search(r"\bteams?\b", description))  # «a teammate» is fine; «the team» is jira-em's
         self.assertNotIn("equipo", description)
 
@@ -34,7 +34,7 @@ class SkillsTest(unittest.TestCase):
         self.assertIn("team", description)
         self.assertIn("not about themselves", description)
         self.assertIn("jira-standup", description)
-        self.assertIn("jira-toolkit", description)
+        self.assertIn("jira-team-kit", description)
 
     def test_the_team_skill_calls_only_jk_and_never_writes_to_jira(self):
         text = (ROOT / "em" / "SKILL.md").read_text(encoding="utf-8")
@@ -54,7 +54,7 @@ class SkillsTest(unittest.TestCase):
         description = frontmatter("ops")["description"]
         self.assertIn("team", description)
         self.assertIn("jira-em", description)
-        self.assertIn("jira-toolkit", description)
+        self.assertIn("jira-team-kit", description)
 
     def test_the_ops_skill_applies_only_when_asked_through_the_window_and_never_retries_a_cancel(self):
         text = (ROOT / "ops" / "SKILL.md").read_text(encoding="utf-8")

@@ -1,4 +1,4 @@
-# jira-toolkit
+# jira-team-kit
 
 Una skill para Claude Code, Codex y Cursor que crea una épica de Jira a partir de lo que se está trabajando y la mantiene
 espejada, en los dos sentidos, como un kanban local en `./.jira-kanban/` del proyecto.
@@ -16,9 +16,9 @@ cd jira-kanban && ./install.sh
 ```
 
 Por defecto instala `jira-standup` (reportes de solo lectura) y deja `jtk` en `~/.local/bin/jtk`; con
-`./install.sh --with-write` suma `jira-toolkit` (crear y sincronizar épicas) y `jira-em-ops` (planes de cambios del equipo). Volver a correrlo nunca quita una skill
+`./install.sh --with-write` suma `jira-team-kit` (crear y sincronizar épicas) y `jira-em-ops` (planes de cambios del equipo). Volver a correrlo nunca quita una skill
 ya instalada. Sigue el
-mismo layout que WayOfWork: `~/.agents/skills/jira-toolkit` apunta a este repo, `~/.agents/skills/jira-standup` a su
+mismo layout que WayOfWork: `~/.agents/skills/jira-team-kit` apunta a este repo, `~/.agents/skills/jira-standup` a su
 carpeta `standup/`, y `~/.claude/skills/<skill>`, `~/.codex/skills/<skill>` y `~/.cursor/skills/<skill>` apuntan a
 `../../.agents/skills/<skill>`. Cursor tiene su propio enlace porque `~/.cursor/skills` sólo contenía enlaces explícitos
 (medido el 2026-10-09). Repetirlo es seguro; nunca reemplaza un directorio real.
