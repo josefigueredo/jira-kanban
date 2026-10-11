@@ -33,6 +33,59 @@ Se buscan en este orden, igual que WayOfWork:
 2. `./.env.local` del proyecto.
 3. `./.spec-kit/.env` del proyecto.
 
+#### Cómo conseguirlas en una instalación nueva
+
+| Variable | Qué es | De dónde sale |
+|---|---|---|
+| `IC_JIRA_BASE_URL` | La URL de tu sitio de Jira Cloud, sin barra final: `https://tu-empresa.atlassian.net` | Es la de la barra del navegador cuando abrís Jira |
+| `IC_JIRA_USER_EMAIL` | El email de tu cuenta de Atlassian | El que usás para entrar a Jira |
+| `IC_JIRA_API_TOKEN` | Un token de API tuyo | [Crear un token de API](https://id.atlassian.com/manage-profile/security/api-tokens) → **Create API token** → nombre y vencimiento (de 1 a 365 días) → **Copy to clipboard**. Se muestra una sola vez. [Guía oficial](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/) |
+
+> **Creá el token sin alcance (el botón «Create API token», no «Create API token with scopes»).** `jtk` llama a la URL de
+> tu sitio con autenticación básica (email y token). Un token con alcance solo funciona a través de
+> `https://api.atlassian.com/ex/jira/{cloudId}`, que `jtk` no usa: con ese token no entra. Atlassian recomienda los
+> tokens con alcance por seguridad (medido en su guía el 2026-10-11); como `jtk` todavía no los soporta, usá el clásico y
+> guardalo como un secreto.
+
+Dónde ponerlas, a elección:
+
+```bash
+# A) Para todos tus proyectos: en ~/.zshrc (o ~/.bashrc), y abrí una terminal nueva
+export IC_JIRA_BASE_URL="https://tu-empresa.atlassian.net"
+export IC_JIRA_USER_EMAIL="vos@tu-empresa.com"
+export IC_JIRA_API_TOKEN="el-token-que-copiaste"
+```
+
+```bash
+# B) Para un solo proyecto: las mismas tres líneas, sin `export`, en ./.env.local. Que el archivo esté en .gitignore.
+IC_JIRA_BASE_URL=https://tu-empresa.atlassian.net
+```
+
+Para comprobar que entran sin escribir nada en Jira: `jtk who "tu nombre" --jira-project KEY` (solo lectura). Si el
+token vence, `jtk` deja de poder entrar: creá otro en el mismo link y cambiá la variable.
+
+## Frente al MCP de Atlassian
+
+Si en Cursor escribís «jira», te sugiere el [MCP de Atlassian](https://github.com/atlassian/atlassian-mcp-server)
+(servidor remoto, OAuth, [herramientas](https://support.atlassian.com/atlassian-rovo-mcp-server/docs/supported-tools/) para
+leer, buscar, crear, editar, transicionar y comentar). Se pisan solo en el CRUD básico; el resto es de esta skill:
+
+| | `jira-team-kit` (`jtk`) | MCP de Atlassian |
+|---|---|---|
+| Escribir en Jira | Dry run por defecto; `--apply` abre una ventana de macOS que solo una persona puede aprobar | Lo hace el agente directo, sin ventana |
+| Registro | `./.jira-kanban/jira-writes.jsonl` con cada escritura | Sin registro local |
+| Kanban local | Espejo en dos sentidos (`pull` / `push`) | No |
+| Forma de los issues | Plantillas (por qué, qué, hecho cuando) y evidencia | La que invente el agente |
+| Reportes de equipo | `standup`, `em`, métricas, perfiles de board, planes de cambios | No |
+| Costo y acceso | Tu token; no depende de un admin | Créditos de Rovo del pool de la organización y permisos que fija el admin de Atlassian |
+| Código | Este repo | El repo oficial trae documentación y manifiestos, no el código del servidor (corre en la nube de Atlassian; revisado el 2026-10-11) |
+
+**Recomendación: no instales el MCP de Atlassian junto a esta skill.** Sus herramientas de escritura se saltean la ventana
+de aprobación, y los permisos los controla un admin que puede cambiarlos sin avisarte, así que no sirven como garantía.
+Las cuatro skills le dicen al agente que Jira va siempre por `jtk`; eso lo orienta, pero no impide que alguien instale el
+MCP a mano. Si lo instalás igual, que sea con permisos de solo lectura. El hook de Claude Code (ver «Segunda capa») cubre los rodeos
+de la ventana de `jtk`, pero no bloquea las herramientas de un MCP.
+
 ## Comandos
 
 Todos aceptan `--project DIR` (por defecto, el directorio actual). **Ninguno escribe en Jira sin `--apply`**, y el
