@@ -160,12 +160,17 @@ def render_load(head_text: str, name: str, numbers: dict, mine_name: Optional[st
     return "\n\n".join([head_text, grid, line])
 
 
+def _same_day(n: int) -> str:
+    return f"{n} creado y cerrado el mismo día" if n == 1 else f"{n} creados y cerrados el mismo día"
+
+
 def render_stats(head_text: str, s: dict, link: Link) -> str:
     weekly = table(["Semana (lunes)", "Cerrados"],
                    [[w["week"], f"{w['closed']}{' (en curso)' if w['partial'] else ''}"] for w in s["weekly"]])
     lead = s["lead"]
     lead_text = (f"n={lead['n']} · mediana {lead['median']} d · p85 {lead['p85']} d"
-                 + (" · pocos casos, no concluyas nada" if lead["n"] < 10 else "")) if lead else "_Sin cierres en el período._"
+                 + (" · pocos casos, no concluyas nada" if lead["n"] < 10 else "")
+                 + (f" · {_same_day(lead['same_day'])}" if lead.get("same_day") else "")) if lead else "_Sin cierres en el período._"
     wip = table(["Key", "Título", "Días sin cambio", "Estado"],
                 [[link(r["issue"]["key"]), r["issue"]["summary"], r["days"], "estancado" if r["stalled"] else ""]
                  for r in s["wip"]], "_Nada en curso._")

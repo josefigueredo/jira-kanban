@@ -48,6 +48,15 @@ class MathTest(unittest.TestCase):
         self.assertEqual(stats.mix(done, CONVENTIONS["areas"]),
                          {"by_area": {"BE": 1, "AI": 1, "(sin área)": 2}, "by_type": {"Tarea": 3, "Historia": 1}})
 
+    def test_compute_counts_the_issues_created_and_closed_the_same_day_inside_lead(self):
+        done = [issue("A", created="2026-10-05", resolved="2026-10-05"), issue("B", created="2026-10-05", resolved="2026-10-05"),
+                issue("C", created="2026-09-01", resolved="2026-10-05")]
+        lead = stats.compute(done, [], TODAY, 4, CONVENTIONS)["lead"]
+        self.assertEqual((lead["n"], lead["median"], lead["same_day"]), (3, 0, 2))
+
+    def test_compute_has_no_lead_and_no_count_when_nothing_closed(self):
+        self.assertIsNone(stats.compute([], [], TODAY, 4, CONVENTIONS)["lead"])
+
     def test_by_label_counts_an_issue_in_each_of_its_labels_and_names_the_unlabelled_last(self):
         done = [issue("A", labels=["be", "ai"]), issue("B", labels=["be"]), issue("C")]
         open_now = [issue("D", labels=["ai"]), issue("E"), issue("F")]

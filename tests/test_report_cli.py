@@ -134,6 +134,21 @@ class ReportCliTest(unittest.TestCase):
         self.assertNotIn('"labels"', out)
         self.assertNotIn('"components"', out)
 
+    def test_stats_says_how_many_closed_the_day_they_were_created_so_a_zero_median_is_not_read_as_speed(self):
+        def answer(many):
+            return lambda jql: ([] if "!= Done" in jql else
+                                [issue(f"PLATE-{n}", category="done", status="Done", created="2026-10-06", changed="2026-10-06", resolved="2026-10-06")
+                                 for n in range(many)])
+        jira = FakeJira(); jira.search_answer = answer(3)
+        self.assertIn("3 creados y cerrados el mismo día", run(["stats"], jira)[1])
+        jira = FakeJira(); jira.search_answer = answer(1)
+        self.assertIn("1 creado y cerrado el mismo día", run(["stats"], jira)[1])
+
+    def test_stats_stays_quiet_about_same_day_when_none_closed_that_way(self):
+        jira = FakeJira()
+        jira.search_answer = lambda jql: [] if "!= Done" in jql else [issue("PLATE-1", category="done", status="Done", created="2026-09-01", changed="2026-10-06", resolved="2026-10-06")]
+        self.assertNotIn("mismo día", run(["stats"], jira)[1])
+
     def test_stats_by_component_has_its_own_heading(self):
         code, out, _ = run(["stats", "--by", "component"], FakeJira())
         self.assertEqual(code, 0)

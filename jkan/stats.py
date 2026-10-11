@@ -104,8 +104,15 @@ def compute(done: List[dict], open_issues: List[dict], today: _dt.date, weeks: i
     return result
 
 
+def lead(done: List[dict]) -> Optional[dict]:
+    """Lead time, plus how many were created and closed the same day: those say when the work was filed, not how long it took."""
+    days = lead_days(done)
+    found = spread(days)
+    return dict(found, same_day=sum(1 for d in days if d == 0)) if found else None
+
+
 def _compute(done: List[dict], open_issues: List[dict], today: _dt.date, weeks: int, conv: dict) -> dict:
-    return {"weeks": weeks, "weekly": throughput(done, today, weeks), "lead": spread(lead_days(done)),
+    return {"weeks": weeks, "weekly": throughput(done, today, weeks), "lead": lead(done),
             "wip": wip(open_issues, today), "on_time": on_time(done), "mix": mix(done, conv.get("areas") or []),
             "oldest": oldest(open_issues, today)}
 
