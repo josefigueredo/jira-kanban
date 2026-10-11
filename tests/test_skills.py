@@ -94,6 +94,14 @@ class SkillsTest(unittest.TestCase):
         for name in ("yesterday", "last-week", "next-week"):
             self.assertIn(name, standup)
 
+    def test_the_write_skill_looks_before_drafting_with_one_call_instead_of_three_manual_lookups(self):
+        text = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("jtk create --check", text)
+        steps = text.split("## Steps")[1].split("## People")[0]
+        self.assertIn("jtk create --check", steps)
+        for result in ("wow plan", "jira project", "existing epic"):
+            self.assertIn(result, steps)
+
     def test_the_descriptions_do_not_overlap_on_the_phrases_that_pick_a_skill(self):
         self.assertNotIn("Read only", frontmatter("ops")["description"])
         self.assertNotIn("assign", frontmatter("em")["description"].lower())

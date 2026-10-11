@@ -1,4 +1,4 @@
-"""jtk: create | pull | push | show | board | who | assign | done | next | blocked | load | stats | board setup|set|show|check|survey | team … | plan … | apply. Every Jira write is a dry run unless --apply is passed; the reports only read."""
+"""jtk: create [--check] | pull | push | show | board | who | assign | done | next | blocked | load | stats | board setup|set|show|check|survey | team … | plan … | apply. Every Jira write is a dry run unless --apply is passed; the reports only read."""
 from __future__ import annotations
 
 import argparse
@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from . import (approval, board_cli, board_profile, config, guard, journal, kanban, people, plan_cli, preview, render, roles, standup,
+from . import (approval, board_cli, board_profile, check, config, guard, journal, kanban, people, plan_cli, preview, render, roles, standup,
                state, stats, sync, team_cli, views, window)
 from .jira import Jira, JiraError
 
@@ -205,7 +205,9 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
         p = sub.add_parser(name)
         p.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
         if name == "create":
-            p.add_argument("--spec", required=True, help="epic spec JSON (see SKILL.md)")
+            p.add_argument("--spec", help="epic spec JSON (see SKILL.md); not with --check")
+            p.add_argument("--check", action="store_true",
+                           help="before drafting: is there a wow plan, which Jira project applies, does an epic already exist (offline)")
             p.add_argument("--html", help="also write a standalone, navigable HTML preview to this path")
             p.add_argument("--jira-project", help="Jira project key for the new epic (no default: ask the user)")
         else:
@@ -250,6 +252,8 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
         if name in ("load", "stats"):
             r.add_argument("--weeks", type=int, default=4, help="how many weeks of history, 1 to 52 (default: 4)")
     args = parser.parse_args(argv)
+    if args.cmd == "create" and bool(args.check) == bool(args.spec):
+        parser.error("create needs --spec to create, or --check alone to look before drafting")
     project = Path(args.project).resolve()
     conv = config.load_conventions(project)
     if getattr(args, "jira_project", None):
@@ -265,6 +269,9 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
     try:
         if args.cmd == "show":
             _show(project, args.epic)
+            return OK
+        if args.cmd == "create" and args.check:  # offline: no credentials, no Jira
+            print("\n".join(render.columns([("Check", "Result", "Detail"), *check.preflight(project, conv, flag=args.jira_project)])))
             return OK
         if args.cmd == "board":
             result = sync.board(project, args.epic, conv)

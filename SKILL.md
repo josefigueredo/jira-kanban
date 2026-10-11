@@ -17,24 +17,25 @@ jtk <create|pull|push|show|board> ... --project .
 
 ## Steps
 
-1. **Not inside a WayOfWork flow:** if the project has `wow/plan/manifest.json`, its epics come from Product Brain's
-   export; say so and use this skill only if the user confirms the work is outside that plan.
-2. **Jira project:** there is no default. Use `"project"` from `./.jira-kanban/conventions.json` if it exists;
-   otherwise ask the user which project and pass `--jira-project KEY`.
-3. **Existing epic first:** a `**Jira Epic:** KEY` in `specs/*/spec.md`, a key in the conversation or the branch. If one
-   covers the work, ask before creating anything; to mirror it, run `jtk pull KEY`.
-4. **Draft the spec** (JSON, in the scratchpad) from the conversation. Read `references/spec.md` first: it has the
+1. **Look first:** `jtk create --check --project .` (offline, no Jira) prints three rows; read them, do not look these up by hand.
+   - `wow plan` = `yes`: its epics come from Product Brain's export (`wow/plan/manifest.json`); say so and use this skill
+     only if the user confirms the work is outside that plan.
+   - `jira project` = `none`: there is no default; ask the user which project and pass `--jira-project KEY` from here on.
+   - `existing epic` = a key: it comes from a `**Jira Epic:** KEY` in `specs/*/spec.md` or from the branch. If one covers the
+     work, ask before creating anything; to mirror it, run `jtk pull KEY`. A key the user gave in the conversation is not
+     in that row: check it yourself.
+2. **Draft the spec** (JSON, in the scratchpad) from the conversation. Read `references/spec.md` first: it has the
    format, the `why` / `what` / `done_when` every issue needs (prose a person can follow and correct; jtk renders them through `templates/description.md`), the optional `how` / `out_of_scope` / `assumptions` / `edge_cases` / `references` only when the conversation already has them, and when an item is a story or a task, finished (`done`, with its `evidence`: the commits, branch or URL), in progress (`started`) or open.
-5. **Preview:** `jtk create --spec <file> --jira-project KEY --html <scratchpad>/vista.html` (dry run). Show the tree and
+3. **Preview:** `jtk create --spec <file> --jira-project KEY --html <scratchpad>/vista.html` (dry run). Show the tree and
    `open` the HTML, a Jira-like view of what this pass does. If any issue shows "a decidir", ask the user whether to
    assign the open ones to them. Wait for an explicit yes.
-6. **Create:** only after that explicit yes, tell the user a window will show the issues to create, then run
+4. **Create:** only after that explicit yes, tell the user a window will show the issues to create, then run
    `jtk create --spec <file> --jira-project KEY --apply` plus `--assign-open` or `--no-assign-open` with their answer.
    The window (**Cancelar** / **Apruebo <n>**) is the approval; never click or automate it, and if they cancel, do not
    run it again unless they ask. If Jira rejects an issue halfway, jtk keeps what was created and names the keys: fix the cause and hand
    the user the same command again; it resumes without duplicating. If only a move to
    Done or in progress fails, every issue exists: never rerun create; finish it with a status edit and push.
-7. **Sync:** `jtk pull KEY` refreshes from Jira. Local edits go back with `jtk push KEY` (dry run), then hand the user
+5. **Sync:** `jtk pull KEY` refreshes from Jira. Local edits go back with `jtk push KEY` (dry run), then hand the user
    the same command with `--apply`. `references/layout.md` has the folders, how to edit and add a subtask, and what a
    conflict means.
 
