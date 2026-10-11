@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from . import (approval, board_cli, board_profile, check, config, guard, journal, kanban, people, plan_cli, preview, render, roles, standup,
+from . import (approval, board_cli, board_profile, check, config, facts, guard, journal, kanban, people, plan_cli, preview, render, roles, standup,
                state, stats, sync, team_cli, update, views, window)
 from .jira import Jira, JiraError
 
@@ -71,21 +71,6 @@ def _who(jira, name: str, project: Optional[str], as_json: bool) -> int:
 def _short(value, limit: int = 60) -> str:
     text = " ".join(str(value or "").split())
     return text if len(text) <= limit else text[: limit - 1] + "…"
-
-
-def _assignee_label(op: dict) -> str:
-    """Who an issue is for, in the words the dry run and the approval window both show."""
-    if op["assignee"] == "person":
-        return op["person"]["name"] + ("" if op["person"].get("exact", True) else " · approximate match")
-    return {"me-done": "vos · completa", "me-started": "vos · en curso", "me": "vos", "none": "sin asignar",
-            "ask": "¿asignar? a decidir"}[op["assignee"]]
-
-
-def _window_assignee(op: dict, mine: str) -> str:
-    """Who an issue goes to, as the approval window says it: a name or «Sin asignar», never «vos» (`mine` is the approver's name)."""
-    if op["assignee"] == "person":
-        return op["person"]["name"] + ("" if op["person"].get("exact", True) else " · approximate match")
-    return {"none": "Sin asignar", "ask": "A decidir"}.get(op["assignee"], mine)
 
 
 def _approve(confirm: Callable, n: int, summary: str, argv: List[str]) -> Optional[int]:
@@ -314,12 +299,13 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
             try:
                 if args.apply:  # a silent dry run says how many issues the person is about to approve
                     planned = sync.create(jira, project, epic_spec, conv, apply=False, assign_open=args.assign_open)["ops"]
-                    text = f"create {len(planned)} issue(s) in {conv['project']}"
+                    moves = sum(1 for op in planned if op.get("done") or op.get("started"))
+                    text = f"create {len(planned)} issue(s) in {conv['project']}" + (f" and move {moves} of them to Done or in progress" if moves else "")
                     mine = ""
                     if any(op["assignee"].startswith("me") for op in planned):
                         mine = (jira.user(jira.myself()) or {}).get("name") or "vos"
                     rows = [(conv["issue_types"][op["kind"]], op["summary"],
-                             f"Acción: Crear\nAsignado a: {_window_assignee(op, mine)}") for op in planned]
+                             f"Acción: {facts.action(op, conv)}\nAsignado a: {facts.assignee(op, mine)}") for op in planned]
                     code = _approve(confirm, len(planned), approval.Summary(text, f"Crear en {conv['project']}", rows, kinds=[op["kind"] for op in planned]), argv)
                     if code is not None:
                         return code
@@ -327,11 +313,12 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
             except (ValueError, sync.NeedsDecision, sync.PartialCreate) as exc:
                 sys.stderr.write(f"{exc}\n")
                 return FINDINGS
-            rows = [("Issue", "Tipo", "Asignado", "Título")]
-            for op in result["ops"]:
+            rows = [("Issue", "Tipo", "Estado", "Asignado", "Título")]
+            for position, op in enumerate(result["ops"], 1):
                 indent = {"epic": "", "story": "  ", "task": "  ", "subtask": "    "}[op["kind"]]
                 key = result.get("keys", {}).get(op["ref"], "")
-                rows.append((indent + (key or "(nuevo)"), conv["issue_types"][op["kind"]], _assignee_label(op), op["summary"]))
+                rows.append((indent + (key or facts.placeholder(position)), conv["issue_types"][op["kind"]], facts.status(op, conv),
+                             facts.assignee(op), op["summary"]))
             print("\n".join(render.columns(rows)))
             if args.html:
                 Path(args.html).write_text(preview.render(result["ops"], conv), encoding="utf-8")

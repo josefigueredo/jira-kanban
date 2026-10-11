@@ -27,7 +27,9 @@ jtk <create|pull|push|show|board> ... --project .
 2. **Draft the spec** (JSON, in the scratchpad) from the conversation. Read `references/spec.md` first: it has the
    format, the `why` / `what` / `done_when` every issue needs (prose a person can follow and correct; jtk renders them through `templates/description.md`), the optional `how` / `out_of_scope` / `assumptions` / `edge_cases` / `references` only when the conversation already has them, and when an item is a story or a task, finished (`done`, with its `evidence`: the commits, branch or URL), in progress (`started`) or open.
 3. **Preview:** `jtk create --spec <file> --jira-project KEY --html <scratchpad>/vista.html` (dry run). Show the tree and
-   `open` the HTML, a Jira-like view of what this pass does. If any issue shows "a decidir", ask the user whether to
+   `open` the HTML, a Jira-like view of what this pass does. The console, the HTML and the approval window say the same
+   things in the same words (keys `NUEVO-n`, the `Estado` each issue ends in, who gets it); an issue marked done or started
+   is created and then moves, and all three say so. If any issue shows "A decidir", ask the user whether to
    assign the open ones to them. Wait for an explicit yes.
 4. **Create:** only after that explicit yes, tell the user a window will show the issues to create, then run
    `jtk create --spec <file> --jira-project KEY --apply` plus `--assign-open` or `--no-assign-open` with their answer.

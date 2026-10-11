@@ -168,6 +168,12 @@ una pantalla de issue de Jira: árbol a la izquierda, breadcrumb, descripción c
 estado y panel de detalles con el responsable. Las claves son `NUEVO-1…n` en el orden de creación y la navegación es por
 `#hash` (el botón Atrás funciona). Muestra sólo lo que va a ejecutar esa pasada.
 
+La consola (el dry run), esta página y la ventana de aprobación salen de los mismos datos (`jkan/facts.py`): las mismas
+claves `NUEVO-n`, el mismo estado en el que termina cada issue (Backlog, En progreso o Done), las mismas palabras para el
+responsable. Cambia cuánto muestra cada una: la consola, una tabla; la página, todo el detalle; la ventana, dos líneas por
+tarjeta (`Acción: Crear` o `Crear y mover a Done`, y `Asignado a: …`). Un issue marcado como hecho o en curso se crea y
+después se mueve, y esa segunda escritura figura en la ventana.
+
 ## Reportes (solo lectura)
 
 Responden en tablas y árboles, leyendo Jira en vivo (el kanban local no guarda fechas ni asignados). La skill hermana

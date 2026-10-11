@@ -140,7 +140,7 @@ class CreateCliAssigneeTest(unittest.TestCase):
         _, out, _ = run(["create", "--spec", str(path), "--project", str(project), "--jira-project", "PLATE",
                          "--no-assign-open"], jira)
         self.assertIn("Mario Fernandez", out)
-        self.assertIn("approximate", out)
+        self.assertIn("coincidencia aproximada", out)
 
 
 if __name__ == "__main__":
