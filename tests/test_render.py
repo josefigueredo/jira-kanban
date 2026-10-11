@@ -32,8 +32,30 @@ class DoneTest(unittest.TestCase):
         tree = standup.done_tree([story, sub], {}, "Epic")
         text = render.render_tree(tree)
         self.assertEqual(text.splitlines(), [
-            "PLATE-100 Épica (contexto)", "└─ PLATE-101 Summary of PLATE-101 · Done · 2026-10-07",
-            "Sin épica", "└─ PLATE-103 Summary of PLATE-103 · Done · 2026-10-06"])
+            "Issue         Estado  Fecha       Título",
+            "PLATE-100" + " " * 25 + "Épica (contexto)",
+            "└─ PLATE-101  Done    2026-10-07  Summary of PLATE-101",
+            "Sin épica",
+            "└─ PLATE-103  Done    2026-10-06  Summary of PLATE-103"])
+
+    def test_tree_columns_line_up_whatever_the_depth_the_status_or_the_title(self):
+        node = lambda key, title, status, children=(): {  # noqa: E731
+            "issue": {"key": key, "summary": title, "status": status, "changed": "2026-10-02"},
+            "context": False, "children": list(children)}
+        leaf = node("PLATE-495", "[QA] Fijar los commits de referencia con un título larguísimo " * 2, "Done")
+        mid = node("PLATE-492", "[QA] Auditar", "PROCESANDO", [leaf])
+        top = node("PLATE-491", "Línea base", "Done", [mid, node("PLATE-493", "Corto", "Blocked")])
+        lines = render.render_tree([top]).splitlines()
+        self.assertEqual(len(lines), 5)
+        statuses = [line.index(word) for line, word in zip(lines[1:], ("Done", "PROCESANDO", "Done", "Blocked"))]
+        dates = [line.index("2026-10-02") for line in lines[1:]]
+        titles = [line.index(title) for line, title in zip(lines[1:], ("Línea base", "[QA] Auditar", "[QA] Fijar", "Corto"))]
+        self.assertEqual(len(set(statuses)), 1)
+        self.assertEqual(len(set(dates)), 1)
+        self.assertEqual(len(set(titles)), 1)
+        self.assertEqual(lines[0].index("Estado"), statuses[0])
+        self.assertEqual(lines[0].index("Fecha"), dates[0])
+        self.assertEqual(lines[0].index("Título"), titles[0])
 
     def test_render_done_has_totals_and_a_fenced_tree_or_an_empty_message(self):
         busy = render.render_done(HEAD, {"done": 7, "in_progress": 3, "tree": standup.done_tree([issue("PLATE-5")], {}, "Epic")})

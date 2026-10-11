@@ -37,31 +37,34 @@ def head(title: str, owner: str, today: _dt.date, window: Optional[tuple] = None
     return f"## {title}\n" + " · ".join(parts)
 
 
-def _label(node: dict) -> str:
+COLUMNS = ("Issue", "Estado", "Fecha", "Título")
+GAP = "  "
+
+
+def _walk(node: dict, lead: str, below: str, rows: List[tuple]) -> None:
+    """Adds the node's line, then its children's. A row is (tree + key, status, date, title); a heading with no key is
+    (label,). The title goes last so a long one never pushes the other columns out of line."""
     issue = node["issue"]
     if not issue["key"]:
-        return issue["summary"]
-    bits = [f"{issue['key']} {issue['summary']}"]
-    if not node["context"]:
-        bits += [b for b in (issue["status"], issue["changed"]) if b]
-    return " · ".join(bits) + (" (contexto)" if node["context"] else "")
-
-
-def _branch(children: List[dict], prefix: str) -> List[str]:
-    lines: List[str] = []
-    for k, child in enumerate(children):
-        last = k == len(children) - 1
-        lines.append(f"{prefix}{'└─ ' if last else '├─ '}{_label(child)}")
-        lines += _branch(child["children"], prefix + ("   " if last else "│  "))
-    return lines
+        rows.append((issue["summary"],))
+    elif node["context"]:
+        rows.append((lead + issue["key"], "", "", issue["summary"] + " (contexto)"))
+    else:
+        rows.append((lead + issue["key"], issue["status"] or "", issue["changed"] or "", issue["summary"]))
+    for k, child in enumerate(node["children"]):
+        last = k == len(node["children"]) - 1
+        _walk(child, below + ("└─ " if last else "├─ "), below + ("   " if last else "│  "), rows)
 
 
 def render_tree(tree: List[dict]) -> str:
-    lines: List[str] = []
+    rows: List[tuple] = []
     for root in tree:
-        lines.append(_label(root))
-        lines += _branch(root["children"], "")
-    return "\n".join(lines)
+        _walk(root, "", "", rows)
+    full = [COLUMNS] + [r for r in rows if len(r) == 4]
+    widths = [max(len(r[i]) for r in full) for i in range(3)]
+    lines = [r[0] if len(r) == 1 else GAP.join(r[i].ljust(widths[i]) for i in range(3)) + GAP + r[3]
+             for r in [COLUMNS] + rows]
+    return "\n".join(line.rstrip() for line in lines)
 
 
 def render_done(head_text: str, result: dict) -> str:
