@@ -66,6 +66,14 @@ class PreflightTest(unittest.TestCase):
         verdict, _ = rows(check.preflight(project, {}, branch="feat/plate-491-x"))["existing epic"]
         self.assertEqual(verdict, "PLATE-491")
 
+    def test_a_spec_that_names_its_epic_twice_is_listed_once(self):
+        # Spec-Kit's sync writes the key in the header and again under «Source Documentation».
+        project = make_project()
+        write(project, "specs/001-checkout/spec.md",
+              "**Jira Epic:** [ECOM-456](https://x/browse/ECOM-456)\n\n### Source Documentation\n- **Jira Epic:** ECOM-456\n")
+        _, detail = rows(check.preflight(project, {}, branch=""))["existing epic"]
+        self.assertEqual(detail.count("specs/001-checkout/spec.md"), 1)
+
     def test_a_key_in_the_branch_counts_whatever_its_case(self):
         verdict, detail = rows(check.preflight(make_project(), {}, branch="feat/plate-504-tablero"))["existing epic"]
         self.assertEqual(verdict, "PLATE-504")

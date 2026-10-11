@@ -51,7 +51,8 @@ def preflight(project: Path, conv: dict, branch: Optional[str] = None, flag: Opt
         rows.append(("jira project", "none", "ask the person which project and pass --jira-project KEY"))
     where: dict = {}
     for key, source in _epics(project, branch):
-        where.setdefault(key, []).append(source)
+        if source not in where.setdefault(key, []):
+            where[key].append(source)
     if where:
         rows.append(("existing epic", ", ".join(where), "; ".join(f"{key} in {', '.join(s)}" for key, s in where.items())
                      + ". If one covers the work, ask before creating; to mirror it run jtk pull KEY"))
