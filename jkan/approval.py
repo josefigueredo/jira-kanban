@@ -80,6 +80,10 @@ _HEAD_LINE = 38  # the same for the 19 px heading
 
 def _change(text: str) -> str:
     """«A -> B» as origin, arrow and a destination pill; «-> B» as the pill alone; anything else as plain text."""
+    if "\n" in text:  # one labelled line each, «Label: value»
+        lines = "".join(f'<div class="line"><span class="from">{escape(label)}:</span> {escape(value)}</div>'
+                        for label, _, value in (line.partition(": ") for line in text.splitlines()))
+        return f'<div class="lines">{lines}</div>'
     if "->" not in text:
         return f'<span class="plain">{escape(text)}</span>'
     origin, destination = (s.strip() for s in text.split("->", 1))
@@ -125,6 +129,7 @@ def window_height(summary) -> int:
     rows = rows_of(summary)
     height = 140 + 74 * len(rows) + 24 * (max(len(_heading(summary)) - 1, 0) // _HEAD_LINE)
     height += sum(20 * (max(len(name) - 1, 0) // _LINE) for _key, name, _change in rows)
+    height += sum(18 * change.count("\n") for _key, _name, change in rows)  # a change of several lines is taller
     if not rows:
         height += 40 * max(len(str(summary).splitlines()), 1)
     left_out = list(getattr(summary, "left_out", []))

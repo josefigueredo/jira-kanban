@@ -77,6 +77,17 @@ class HtmlTest(unittest.TestCase):
         self.assertNotIn(" k-", body)
         self.assertNotIn("onload", body)
 
+    def test_a_change_of_several_lines_is_one_line_each_with_its_label_muted(self):
+        summary = approval.Summary("T", "Crear", [("Epic", "x", "Acción: Crear\nAsignado a: Ana <Gómez>")])
+        html = approval.render_html(summary, 1)
+        self.assertIn('<div class="lines"><div class="line"><span class="from">Acción:</span> Crear</div>', html)
+        self.assertIn('<div class="line"><span class="from">Asignado a:</span> Ana &lt;Gómez&gt;</div>', html)
+
+    def test_the_window_is_taller_for_cards_with_a_second_line(self):
+        one = approval.Summary("T", "Crear", [("Epic", "x", "crear")] * 3)
+        two = approval.Summary("T", "Crear", [("Epic", "x", "Acción: Crear\nAsignado a: Ana")] * 3)
+        self.assertGreater(approval.window_height(two), approval.window_height(one))
+
     def test_a_change_with_no_origin_shows_only_the_destination(self):
         summary = approval.Summary("T", "Asignar", [("A-1", "x", "-> Ana Gómez")])
         html = approval.render_html(summary, 1)

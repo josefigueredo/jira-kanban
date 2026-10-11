@@ -81,6 +81,13 @@ def _assignee_label(op: dict) -> str:
             "ask": "¿asignar? a decidir"}[op["assignee"]]
 
 
+def _window_assignee(op: dict, mine: str) -> str:
+    """Who an issue goes to, as the approval window says it: a name or «Sin asignar», never «vos» (`mine` is the approver's name)."""
+    if op["assignee"] == "person":
+        return op["person"]["name"] + ("" if op["person"].get("exact", True) else " · approximate match")
+    return {"none": "Sin asignar", "ask": "A decidir"}.get(op["assignee"], mine)
+
+
 def _approve(confirm: Callable, n: int, summary: str, argv: List[str]) -> Optional[int]:
     """None when the write may go ahead (nothing to write, or a person approved); otherwise the exit code to return."""
     if n == 0:
@@ -303,7 +310,11 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
                 if args.apply:  # a silent dry run says how many issues the person is about to approve
                     planned = sync.create(jira, project, epic_spec, conv, apply=False, assign_open=args.assign_open)["ops"]
                     text = f"create {len(planned)} issue(s) in {conv['project']}"
-                    rows = [(conv["issue_types"][op["kind"]], op["summary"], "crear · " + _assignee_label(op)) for op in planned]
+                    mine = ""
+                    if any(op["assignee"].startswith("me") for op in planned):
+                        mine = (jira.user(jira.myself()) or {}).get("name") or "vos"
+                    rows = [(conv["issue_types"][op["kind"]], op["summary"],
+                             f"Acción: Crear\nAsignado a: {_window_assignee(op, mine)}") for op in planned]
                     code = _approve(confirm, len(planned), approval.Summary(text, f"Crear en {conv['project']}", rows, kinds=[op["kind"] for op in planned]), argv)
                     if code is not None:
                         return code

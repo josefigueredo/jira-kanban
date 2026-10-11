@@ -106,17 +106,21 @@ class CreateTest(unittest.TestCase):
         self.assertEqual(len(summary.rows), asked.calls[0][0])
         self.assertTrue(all(r[1] for r in summary.rows))
 
-    def test_each_row_says_the_type_and_who_gets_it_like_the_dry_run_and_never_a_spec_path(self):
+    def test_each_row_says_the_type_the_action_and_who_gets_it_never_a_spec_path(self):
+        self.jira.users.append({"id": "acc-me", "name": "Ana Gómez", "email": "ana@x.com"})
         asked = Asked()
-        _, out, _ = run(self.args("--apply", "--assign-open"), self.jira, asked)
+        run(self.args("--apply", "--assign-open"), self.jira, asked)
         rows = asked.calls[0][1].rows
+        self.assertEqual(rows[0][0], "Epic")
         for key, _name, change in rows:
             self.assertNotIn("items[", key)  # a spec path means nothing to the person approving
-            self.assertNotEqual(key, "epic")
-            self.assertTrue(change.startswith("crear · "), change)
-        self.assertEqual([r[0] for r in rows][0], "Epic")
-        for _key, _name, change in rows:
-            self.assertIn(change.split(" · ", 1)[1], " | ".join(out.splitlines()))
+            self.assertEqual(change, "Acción: Crear\nAsignado a: Ana Gómez")  # the person's name, not «vos»
+
+    def test_what_nobody_gets_says_sin_asignar(self):
+        asked = Asked()
+        run(self.args("--apply", "--no-assign-open"), self.jira, asked)
+        changes = {r[2] for r in asked.calls[0][1].rows}
+        self.assertEqual(changes, {"Acción: Crear\nAsignado a: Sin asignar"})
 
     def test_without_approval_nothing_is_created_and_no_local_folder_appears(self):
         code, _, err = run(self.args("--apply", "--assign-open"), self.jira, Asked(approve=False))
