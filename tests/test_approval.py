@@ -46,8 +46,17 @@ class SummaryTest(unittest.TestCase):
 class HtmlTest(unittest.TestCase):
     def test_it_shows_every_change_and_what_was_left_out(self):
         html = approval.render_html(SUMMARY, 2)
-        for part in ("TEAM-1", "TEAM-2", "Backlog -&gt; En curso", "TEAM-3", "already there", "Plan abc"):
+        for part in ("TEAM-1", "TEAM-2", "Backlog → En curso", "TEAM-3", "already there"):
             self.assertIn(part, html)
+
+    def test_the_heading_is_not_repeated_inside_the_body_because_the_window_title_carries_it(self):
+        self.assertNotIn("Plan abc", approval.render_html(SUMMARY, 2))
+
+    def test_the_change_goes_on_its_own_line_with_an_arrow_not_in_a_far_column(self):
+        html = approval.render_html(SUMMARY, 2)
+        self.assertEqual(html.count('class="chg"'), 3)  # two rows and one left out
+        self.assertNotIn("-&gt;", html)
+        self.assertNotIn("<table", html)
 
     def test_jira_text_is_escaped_so_a_hostile_title_cannot_become_markup(self):
         html = approval.render_html(SUMMARY, 2)
@@ -82,6 +91,7 @@ class ApproveTest(unittest.TestCase):
         self.assertEqual(argv[:3], ["/usr/bin/osascript", "-l", "JavaScript"])
         self.assertEqual(Path(argv[3]).name, "alert.js")
         self.assertEqual(argv[7], "Apruebo 3")
+        self.assertIn(f"{approval.TIMEOUT} s", argv[6])  # the text says what the code does
         self.assertLess(approval.TIMEOUT, 120)
 
     def test_the_temporary_html_exists_while_the_window_runs_is_private_and_is_removed_after(self):
@@ -125,6 +135,15 @@ class AlertScriptTest(unittest.TestCase):
 
     def test_the_approve_button_has_no_key_equivalent_so_it_takes_a_click(self):
         self.assertIn("ok.keyEquivalent = ''", self.js)
+
+    def test_the_icon_is_a_small_symbol_on_a_padded_canvas_not_the_raw_symbol_stretched_to_the_alert(self):
+        self.assertIn("function paddedIcon", self.js)
+        self.assertIn("const icon = paddedIcon()", self.js)
+
+    def test_the_box_height_follows_the_content_between_a_minimum_and_the_old_340(self):
+        self.assertIn("usedRectForTextContainer", self.js)
+        self.assertIn("Math.min(340", self.js)
+        self.assertIn("Math.max(100", self.js)
 
     def test_only_the_second_button_prints_approved(self):
         self.assertIn("NSAlertSecondButtonReturn ? 'approved' : 'cancelled'", self.js)

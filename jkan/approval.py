@@ -17,11 +17,11 @@ from typing import Callable, List, Optional, Sequence, Tuple
 ALERT_JS = Path(__file__).resolve().parent / "alert.js"
 OSASCRIPT = "/usr/bin/osascript"
 TIMEOUT = 100  # seconds; Cursor cuts a tool call at 120 s idle
-_INFO = "Revisá el detalle. Aprobar solo con un clic; Escape o Cancelar no escriben nada. Se cancela sola a los 100 s."
+_INFO = f"Aprobás con un clic en el botón Apruebo. Escape o Cancelar no escriben nada. Se cancela sola a los {TIMEOUT} s."
 
-_CSS = ("body{font:13px -apple-system,Helvetica,sans-serif;color:#172B4D;margin:0}h1{font-size:15px;margin:0 0 8px}"
-        "table{border-collapse:collapse;width:100%}td{padding:5px 6px;border-bottom:1px solid #DFE1E6;vertical-align:top}"
-        ".k{font-weight:600;white-space:nowrap}.c{color:#42526E}.out{color:#974F0C;margin-top:12px}.t{color:#42526E}")
+_CSS = ("body{font:13px -apple-system,Helvetica,sans-serif;color:#172B4D;margin:0}"
+        ".row{padding:7px 2px;border-bottom:1px solid #DFE1E6}.k{font-weight:600}.t{color:#172B4D}"
+        ".chg{color:#42526E;font-size:12px;margin-top:2px}.out{color:#974F0C;font-weight:600;margin:14px 0 2px}")
 
 
 class Unavailable(Exception):
@@ -43,22 +43,24 @@ def rows_of(summary) -> List[Tuple[str, str, str]]:
     return list(getattr(summary, "rows", []))
 
 
+def _arrow(text: str) -> str:
+    return escape(text.replace("->", "→"))
+
+
 def render_html(summary, n: int) -> str:
-    title = getattr(summary, "heading", "") or (str(summary).splitlines() or [""])[0]
-    out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{_CSS}</style></head><body>',
-           f"<h1>{escape(title)}</h1><table>"]
+    """The window's body. Its heading is the window title, so it is not repeated here (`n` is the button's, not ours)."""
+    out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{_CSS}</style></head><body>']
     rows = rows_of(summary)
     if not rows:  # a writer with no rows: show the text it has
-        out.append("".join(f'<tr><td colspan="2">{escape(line)}</td></tr>' for line in str(summary).splitlines()))
+        out += [f'<div class="row">{escape(line)}</div>' for line in str(summary).splitlines()]
     for key, name, change in rows:
         label = f' <span class="t">{escape(name)}</span>' if name else ""
-        out.append(f'<tr><td class="k">{escape(key)}{label}</td><td class="c">{escape(change)}</td></tr>')
-    out.append("</table>")
+        out.append(f'<div class="row"><span class="k">{escape(key)}</span>{label}<div class="chg">{_arrow(change)}</div></div>')
     left_out = list(getattr(summary, "left_out", []))
     if left_out:
-        out.append('<p class="out"><b>Quedan afuera</b></p><table>')
-        out += [f'<tr><td class="k">{escape(k)}</td><td class="c">{escape(why)}</td></tr>' for k, why in left_out]
-        out.append("</table>")
+        out.append('<div class="out">Quedan afuera</div>')
+        out += [f'<div class="row"><span class="k">{escape(k)}</span><div class="chg">{_arrow(why)}</div></div>'
+                for k, why in left_out]
     out.append("</body></html>")
     return "\n".join(out)
 
