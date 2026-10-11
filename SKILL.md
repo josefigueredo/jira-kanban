@@ -1,9 +1,9 @@
 ---
-name: jira-kanban
+name: jira-toolkit
 description: Use when the user asks to create a Jira epic for the work being discussed ("creame una épica para esto"), to mirror an existing epic as a local kanban, or to sync local kanban edits (status, titles, new subtasks) back to Jira. Not for epics that a WayOfWork flow registers through Product Brain's export: there Product Brain creates the epic.
 ---
 
-# jira-kanban
+# jira-toolkit
 
 Create a Jira epic from the conversation and mirror it, both ways, as a local kanban in `./.jira-kanban/`. All Jira
 access goes through `jtk`; never hand-roll Jira calls or another folder layout.

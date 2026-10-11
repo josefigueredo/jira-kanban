@@ -32,24 +32,50 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(os.readlink(home / ".agents/skills/jira-standup"), str(ROOT / "standup"))
         for host in (".claude", ".codex", ".cursor"):
             self.assertEqual(os.readlink(home / host / "skills/jira-standup"), "../../.agents/skills/jira-standup")
-        self.assertFalse(os.path.lexists(home / ".agents/skills/jira-kanban"))
+        self.assertFalse(os.path.lexists(home / ".agents/skills/jira-toolkit"))
         self.assertFalse(os.path.lexists(home / ".agents/skills/jira-em-ops"))
         self.assertEqual(install(home).returncode, 0)  # re-running is safe
 
     def test_with_write_adds_the_skill_that_writes_to_jira(self):
         home = fresh_home()
         self.assertEqual(install(home, "--with-write").returncode, 0)
-        self.assertEqual(os.readlink(home / ".agents/skills/jira-kanban"), str(ROOT))
+        self.assertEqual(os.readlink(home / ".agents/skills/jira-toolkit"), str(ROOT))
         self.assertEqual(os.readlink(home / ".agents/skills/jira-em-ops"), str(ROOT / "ops"))
         for host in (".claude", ".codex", ".cursor"):
-            for name in ("jira-kanban", "jira-standup", "jira-em-ops"):
+            for name in ("jira-toolkit", "jira-standup", "jira-em-ops"):
                 self.assertEqual(os.readlink(home / host / "skills" / name), f"../../.agents/skills/{name}")
 
     def test_running_it_again_without_the_flag_does_not_remove_a_skill_installed_before(self):
         home = fresh_home()
         install(home, "--with-write")
         install(home)
-        self.assertTrue(os.path.islink(home / ".agents/skills/jira-kanban"))
+        self.assertTrue(os.path.islink(home / ".agents/skills/jira-toolkit"))
+
+    def test_the_old_skill_name_jira_kanban_is_removed_only_when_it_points_to_this_repo(self):
+        home = fresh_home()
+        mine = home / ".agents/skills/jira-kanban"
+        mine.parent.mkdir(parents=True)
+        os.symlink(str(ROOT), mine)
+        for host in (".claude", ".codex", ".cursor"):
+            (home / host / "skills").mkdir(parents=True)
+            os.symlink("../../.agents/skills/jira-kanban", home / host / "skills/jira-kanban")
+        result = install(home, "--with-write")
+        self.assertEqual(result.returncode, 0)
+        self.assertFalse(os.path.lexists(mine))
+        for host in (".claude", ".codex", ".cursor"):
+            self.assertFalse(os.path.lexists(home / host / "skills/jira-kanban"))
+        self.assertEqual(os.readlink(home / ".agents/skills/jira-toolkit"), str(ROOT))
+        self.assertIn("jira-toolkit", result.stdout)
+
+    def test_a_skill_named_jira_kanban_that_is_not_this_repo_is_left_alone(self):
+        home = fresh_home()
+        other = home / "elsewhere"
+        other.mkdir()
+        (home / ".agents/skills").mkdir(parents=True)
+        os.symlink(str(other), home / ".agents/skills/jira-kanban")
+        result = install(home, "--with-write")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(os.readlink(home / ".agents/skills/jira-kanban"), str(other))
 
     def test_jk_is_put_on_the_path_and_is_executable(self):
         home = fresh_home()
