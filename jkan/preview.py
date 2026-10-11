@@ -8,7 +8,7 @@ from __future__ import annotations
 import html
 from typing import Dict, List
 
-from . import description, template
+from . import description, facts, template
 
 ICON = {
     "epic": '<svg viewBox="0 0 16 16" class="ti"><rect width="16" height="16" rx="3" fill="#904EE2"/>'
@@ -84,9 +84,6 @@ function show(){var id=location.hash.slice(1);if(ids.indexOf(id)<0)id=ids[0];
 window.scrollTo(0,0);}window.addEventListener('hashchange',show);show();})();
 """
 
-ASSIGNEE = {"me-done": ("Vos · completa", ""), "me-started": ("Vos · en curso", ""), "me": ("Vos", ""), "none": ("Sin asignar", " off"),
-            "ask": ("A decidir", " off")}
-
 e = html.escape
 
 
@@ -115,13 +112,7 @@ def _description_html(text: str) -> str:
 def render(ops: List[dict], conv: dict) -> str:
     types: Dict[str, str] = conv["issue_types"]
     project = conv["project"]
-    initial = conv.get("initial_status", "Backlog")
-
-    def status_of(op: dict) -> str:  # where the issue ends after this pass, not where Jira first puts it
-        if op.get("done"):  # an epic is done only when everything under it is (spec.plan)
-            return "Done"
-        return "En progreso" if op.get("started") else initial
-    key = {op["ref"]: f"NUEVO-{i}" for i, op in enumerate(ops, 1)}
+    key = {op["ref"]: facts.placeholder(i) for i, op in enumerate(ops, 1)}
     by_ref = {op["ref"]: op for op in ops}
     children: Dict[str, List[dict]] = {}
     for op in ops:
@@ -149,23 +140,19 @@ def render(ops: List[dict], conv: dict) -> str:
         title = "Issues secundarios" if op["kind"] == "epic" else "Subtareas"
         rows = "".join(f'<tr><td>{ICON[k["kind"]]}</td><td class="key"><a href="#{key[k["ref"]]}">{key[k["ref"]]}</a></td>'
                        f'<td>{e(k["summary"])}</td><td class="pri">{PRIORITY.get(k.get("priority") or "", "")}</td>'
-                       f'<td class="st"><span class="lz">{e(status_of(k))}</span></td></tr>' for k in kids)
+                       f'<td class="st"><span class="lz">{e(facts.status(k, conv))}</span></td></tr>' for k in kids)
         table = f"<h3>{title}</h3><table>{rows}</table>" if kids else (
             f'<h3>{title}</h3><p class="muted">Ninguno.</p>' if op["kind"] != "subtask" else "")
         parent = by_ref.get(op["parent"]) if op["parent"] else None
         labels = "".join(f'<span class="tag">{e(lb)}</span>' for lb in op.get("labels") or []) or '<span class="muted">Ninguno</span>'
         prio = op.get("priority") or ""
-        if op.get("assignee") == "person":
-            near = "" if op["person"].get("exact", True) else " · coincidencia aproximada"
-            who, av_cls = e(op["person"]["name"] + near), ""
-        else:
-            who, av_cls = ASSIGNEE.get(op.get("assignee") or "ask", ASSIGNEE["ask"])
+        who, av_cls = e(facts.assignee(op)), (" off" if facts.unassigned(op) else "")
         order = (f"Se crea primero (paso 1 de {len(ops)}): el resto cuelga de esta épica." if not parent
                  else f"Se crea en el paso {n} de {len(ops)}, después de {key[parent['ref']]}.")
         pages.append(template.render(template.load("card.html"), {
             "key": key[op["ref"]], "crumbs_html": ' <span class="sep">/</span> '.join(crumbs), "summary": op["summary"],
             "description_html": _description_html(op.get("description") or ""), "children_html": table,
-            "status": status_of(op), "type_icon_html": ICON[op["kind"]], "type": types[op["kind"]],
+            "status": facts.status(op, conv), "type_icon_html": ICON[op["kind"]], "type": types[op["kind"]],
             "assignee_class": av_cls, "assignee": who, "priority_icon_html": PRIORITY.get(prio, ""), "priority": prio,
             "labels_html": labels, "parent_html": link(parent) if parent else '<span class="muted">Ninguno</span>',
             "order": order}, escape=template.html_escape))

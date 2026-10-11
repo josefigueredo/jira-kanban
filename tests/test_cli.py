@@ -56,7 +56,7 @@ class CliTest(unittest.TestCase):
         self.assertIn("[FE] Ver el tablero", out)
         self.assertIn("dry run", out)
         preview = [line for line in out.splitlines() if line.startswith("Issue ") or re.match(r"^\s*(\(nuevo\)|[A-Z]+-\d+)\s", line)]
-        self.assertTrue(preview[0].split()[:4] == ["Issue", "Tipo", "Asignado", "Título"])
+        self.assertTrue(preview[0].split()[:5] == ["Issue", "Tipo", "Estado", "Asignado", "Título"])
         assert_aligned(self, preview)
         self.assertEqual(jira.writes, [])
         code, _, err = run(["create", "--spec", str(path), "--project", str(project), "--jira-project", "PLATE",

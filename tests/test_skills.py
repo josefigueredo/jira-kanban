@@ -102,6 +102,12 @@ class SkillsTest(unittest.TestCase):
         for result in ("wow plan", "jira project", "existing epic"):
             self.assertIn(result, steps)
 
+    def test_the_write_skill_says_the_three_views_of_a_create_show_the_same_facts(self):
+        step = (ROOT / "SKILL.md").read_text(encoding="utf-8").split("3. **Preview:**")[1].split("4. **Create:**")[0]
+        self.assertIn("Estado", step)  # the console column
+        self.assertIn("A decidir", step)  # the word the three views share
+        self.assertIn("moves", step)  # a done or started issue is created and then moved: the window says so too
+
     def test_the_report_skills_say_what_to_do_with_a_long_report_instead_of_reprinting_it(self):
         # A month of `jtk done` is ~13 KB; reprinting what the tool already printed pays for it twice.
         for folder in ("standup", "em"):
