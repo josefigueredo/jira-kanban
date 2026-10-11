@@ -88,6 +88,12 @@ class HtmlTest(unittest.TestCase):
         many = approval.Summary("T", "h", [(f"A-{i}", "x", "a -> b") for i in range(30)])
         self.assertNotIn("::-webkit-scrollbar", approval.render_html(many, 30))  # never hide what a person approves
 
+    def test_a_heading_that_wraps_to_two_lines_gets_more_height(self):
+        row = [("A-1", "x", "a -> b")]
+        one_line = approval.Summary("T", "Plan abc · move · 2 issue(s)", row)
+        two_lines = approval.Summary("T", "Plan ab06252a6571 · move · view plataforma · 2 issue(s)", row)
+        self.assertGreater(approval.window_height(two_lines), approval.window_height(one_line))
+
     def test_a_long_title_gets_more_height_than_a_short_one(self):
         short = approval.Summary("T", "h", [("A-1", "x", "a -> b")])
         long = approval.Summary("T", "h", [("A-1", "x" * 130, "a -> b")])

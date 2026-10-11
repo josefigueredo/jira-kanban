@@ -67,6 +67,7 @@ def rows_of(summary) -> List[Tuple[str, str, str]]:
 
 _CAP = 560   # tallest the page area gets; past it the page scrolls
 _LINE = 44   # characters of a title that fit on a line, on the low side so the estimate errs tall
+_HEAD_LINE = 38  # the same for the 19 px heading
 
 
 def _change(text: str) -> str:
@@ -78,10 +79,14 @@ def _change(text: str) -> str:
     return f'{left}<span class="to">{escape(destination)}</span>'
 
 
+def _heading(summary) -> str:
+    return getattr(summary, "heading", "") or (str(summary).splitlines() or [""])[0]
+
+
 def render_html(summary, n: int) -> str:
     """The window's whole page (the window is this page plus two native buttons). Every Jira string is escaped; the
     page has no script and loads nothing."""
-    heading = getattr(summary, "heading", "") or (str(summary).splitlines() or [""])[0]
+    heading = _heading(summary)
     # A plan that fits has no scrollbar. One that hits the cap keeps it: never hide what a person is about to approve.
     css = _CSS + ("" if window_height(summary) >= _CAP else "::-webkit-scrollbar{display:none}")
     out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{css}</style></head><body>',
@@ -108,7 +113,7 @@ def render_html(summary, n: int) -> str:
 def window_height(summary) -> int:
     """Height in points of the page area: an estimate from the rows (long titles wrap), clamped; past the cap the page scrolls."""
     rows = rows_of(summary)
-    height = 130 + 74 * len(rows)
+    height = 140 + 74 * len(rows) + 24 * (max(len(_heading(summary)) - 1, 0) // _HEAD_LINE)
     height += sum(20 * (max(len(name) - 1, 0) // _LINE) for _key, name, _change in rows)
     if not rows:
         height += 40 * max(len(str(summary).splitlines()), 1)
