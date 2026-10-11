@@ -41,7 +41,8 @@ jtk team rollup VIEW [VIEW ...]
    range use `--since D --until D` with `YYYY-MM-DD`.
 4. **Run it and show the output as it is.** It is already Markdown and ends with a «Límites» section: do not retell it
    unless asked (if it runs to about 60 lines or more, do not reprint it: say in one sentence what it holds and that the
-   full report is in the command output, and offer to detail any part), and repeat those limits if the user draws a conclusion from the numbers. A line starting with `> ⚠`
+   full report is in the command output, and offer to detail any part; and do not run the same report again in the same conversation unless the user asks for
+   fresh data or time has passed), and repeat those limits if the user draws a conclusion from the numbers. A line starting with `> ⚠`
    at the top says what to distrust (a search that hit its cap, a status the profile has never seen): keep it.
 5. **Another person inside the view.** Pass `--person "<name>"`. If the command exits 1 listing candidates, show them
    (name and email) and ask which one; never pick.

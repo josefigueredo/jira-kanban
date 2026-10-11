@@ -39,6 +39,11 @@ class Jira:
         self._journal = journal or (lambda entry: None)
         self._flag_id: Optional[str] = None
         self._flag_known = False
+        # Who a person is does not change during one run, so the dry run and the write share one answer. Issues are never
+        # kept here: apply reads them again on purpose, to notice that someone moved one after the plan.
+        self._me: Optional[str] = None
+        self._people: Dict[str, dict] = {}
+        self._searches: Dict[tuple, List[dict]] = {}
 
     def _send(self, method: str, path: str, body: Optional[dict] = None) -> dict:
         data = json.dumps(body).encode() if body is not None else None
@@ -55,7 +60,9 @@ class Jira:
         return f"{self.base}/browse/{key}"
 
     def myself(self) -> str:
-        return self._send("GET", "/rest/api/3/myself")["accountId"]
+        if self._me is None:
+            self._me = self._send("GET", "/rest/api/3/myself")["accountId"]
+        return self._me
 
     @staticmethod
     def _person(raw: dict) -> dict:
@@ -67,6 +74,9 @@ class Jira:
         With a project, only people who can be assigned issues there. Bots and deactivated accounts are left out.
         Jira matches the start of a word, so it forgives no typo: that is people.py's job.
         """
+        asked = (query, project, limit, page)
+        if asked in self._searches:
+            return [dict(p) for p in self._searches[asked]]
         path = "/rest/api/3/user/assignable/search" if project else "/rest/api/3/user/search"
         found: List[dict] = []
         start = 0
@@ -79,12 +89,17 @@ class Jira:
             if len(batch) < page:
                 break
             start += page
+        self._searches[asked] = [dict(p) for p in found[:limit]]
         return found[:limit]
 
     def user(self, account_id: str) -> Optional[dict]:
         """The person behind an account id, or None when Jira does not know that id."""
+        if account_id in self._people:
+            return dict(self._people[account_id])
         try:
-            return self._person(self._send("GET", "/rest/api/3/user?" + urllib.parse.urlencode({"accountId": account_id})))
+            person = self._person(self._send("GET", "/rest/api/3/user?" + urllib.parse.urlencode({"accountId": account_id})))
+            self._people[account_id] = person
+            return dict(person)
         except JiraError as exc:
             if "HTTP 404" in str(exc) or "HTTP 400" in str(exc):
                 return None

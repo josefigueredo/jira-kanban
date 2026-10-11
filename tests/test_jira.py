@@ -172,5 +172,46 @@ class JiraProfileTest(unittest.TestCase):
         self.assertEqual((found[0]["status_id"], found[0]["status"], found[0]["category"]), ("7", "Review", "in_progress"))
 
 
+class IdentityCacheTest(unittest.TestCase):
+    """Who a person is does not change during one jtk run, so asking twice (the dry run, then the write) asks Jira once.
+    An issue is different: apply reads it again on purpose, to notice that someone moved it after the plan."""
+
+    def asked(self, rec, method, prefix):
+        return [c for c in rec.calls if c[0] == method and c[1].startswith(prefix)]
+
+    def test_myself_is_asked_once_per_run(self):
+        jira, rec = client({("GET", "/rest/api/3/myself"): {"accountId": "acc-me"}})
+        self.assertEqual((jira.myself(), jira.myself()), ("acc-me", "acc-me"))
+        self.assertEqual(len(self.asked(rec, "GET", "/rest/api/3/myself")), 1)
+
+    def test_a_person_by_account_id_is_asked_once_each(self):
+        jira, rec = client({("GET", "/rest/api/3/user"): lambda body: person("a1", "Ana Gomez", "ana@x.com")})
+        self.assertEqual(jira.user("a1"), jira.user("a1"))
+        jira.user("a2")
+        self.assertEqual(len(self.asked(rec, "GET", "/rest/api/3/user?")), 2)
+
+    def test_a_person_jira_does_not_know_is_asked_again(self):
+        def missing(request, timeout=None):
+            raise urllib.error.HTTPError(request.full_url, 404, "Not Found", {}, io.BytesIO(b"{}"))
+        jira = jira_mod.Jira("https://example.atlassian.net", "me@x", "tok", opener=missing)
+        self.assertIsNone(jira.user("ghost"))
+        self.assertIsNone(jira.user("ghost"))  # not remembered: a failure may be transient
+
+    def test_the_same_people_search_is_asked_once_and_a_caller_cannot_poison_it(self):
+        jira, rec = client({("GET", "/rest/api/3/user/assignable/search"): [person("a1", "Ana Gomez")]})
+        first = jira.search_users("Ana", "PLATE")
+        first.clear()  # a caller that edits its list must not change what the next one gets
+        self.assertEqual([p["id"] for p in jira.search_users("Ana", "PLATE")], ["a1"])
+        self.assertEqual(len(self.asked(rec, "GET", "/rest/api/3/user/assignable/search")), 1)
+        jira.search_users("Beto", "PLATE")  # another query asks again
+        self.assertEqual(len(self.asked(rec, "GET", "/rest/api/3/user/assignable/search")), 2)
+
+    def test_reading_an_issue_is_never_cached(self):
+        jira, rec = client({("GET", "/rest/api/2/issue/PLATE-1"): ISSUE_V2, ("GET", "/rest/api/3/field"): FIELDS})
+        jira.get("PLATE-1")
+        jira.get("PLATE-1")
+        self.assertEqual(len(self.asked(rec, "GET", "/rest/api/2/issue/PLATE-1")), 2)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -109,6 +109,11 @@ class SkillsTest(unittest.TestCase):
             self.assertIn("60 lines", text, folder)
             self.assertIn("one sentence", text, folder)
 
+    def test_the_report_skills_do_not_run_the_same_report_twice_in_one_conversation(self):
+        for folder in ("standup", "em"):
+            text = (ROOT / folder / "SKILL.md").read_text(encoding="utf-8")
+            self.assertIn("same conversation", text, folder)
+
     def test_the_descriptions_do_not_overlap_on_the_phrases_that_pick_a_skill(self):
         self.assertNotIn("Read only", frontmatter("ops")["description"])
         self.assertNotIn("assign", frontmatter("em")["description"].lower())

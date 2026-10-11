@@ -29,7 +29,8 @@ jtk <done|next|blocked|load|stats> ... --project .
 2. **Run it** with `--jira-project KEY` if the user names a project (otherwise the project in
    `./.jira-kanban/conventions.json`, if any, applies). Show the output as it is: it is already Markdown. Do not
    retell it unless asked. If it runs to about 60 lines or more (a month of `done` is ~13 KB), do not reprint it: say in
-   one sentence what it holds and that the full report is in the command output, and offer to detail any part.
+   one sentence what it holds and that the full report is in the command output, and offer to detail any part. Do not run the same report again in the same conversation: the answer is already in it;
+   run it again only if the user asks for fresh data or time has passed.
 3. **Another person.** Pass `--person "<name, email or accountId>"`. If the command exits 1 listing candidates,
    show them (name and email) and ask which one; never pick. `jtk who "<name>"` finds a person without running a report.
 4. **Capacity.** `load` shows measured numbers. It gives a verdict only if `wip_limit` is set in
