@@ -125,7 +125,7 @@ class ReportCliTest(unittest.TestCase):
         self.assertIn("### Por etiqueta", out)
         self.assertRegex(out, r"\| ai\s+\| 1\s+\| 1\s+\|")
         self.assertRegex(out, r"\| be\s+\| 1\s+\| 0\s+\|")
-        self.assertIn("cuenta en cada una", out)
+        self.assertIn("Un issue con varias etiquetas cuenta en cada una", out)
 
     def test_done_json_does_not_carry_the_label_and_component_fields_only_stats_asks_for(self):
         jira = FakeJira()
@@ -138,6 +138,7 @@ class ReportCliTest(unittest.TestCase):
         code, out, _ = run(["stats", "--by", "component"], FakeJira())
         self.assertEqual(code, 0)
         self.assertIn("### Por componente", out)
+        self.assertIn("Un issue con varios componentes cuenta en cada uno", out)
 
     def test_stats_without_by_prints_no_grouping_and_json_carries_it_only_when_asked(self):
         _, out, _ = run(["stats"], FakeJira())

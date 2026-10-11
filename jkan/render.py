@@ -179,10 +179,10 @@ def render_stats(head_text: str, s: dict, link: Link) -> str:
     tags = s.get("tags")
     grouped = []
     if tags:
-        word, plural = {"label": ("Etiqueta", "etiquetas"), "component": ("Componente", "componentes")}[tags["by"]]
+        word, plural = {"label": ("Etiqueta", "varias etiquetas cuenta en cada una"), "component": ("Componente", "varios componentes cuenta en cada uno")}[tags["by"]]
         grouped = [f"### Por {word.lower()}\n" + table([word, "Cerrados", "Abiertos"], [[r["name"], r["closed"], r["open"]] for r in tags["rows"]],
                                                        "_Nada que contar._")
-                   + f"\n\nUn issue con varias {plural} cuenta en cada una; la suma puede pasar el total."]
+                   + f"\n\nUn issue con {plural}; la suma puede pasar el total."]
     return "\n\n".join([head_text, f"### Velocidad: issues cerrados por semana (últimas {s['weeks']})\n" + weekly,
                         "### Lead time (creación → cierre)\n" + lead_text,
                         f"### Edad del WIP (estancado ≥ {stats.STALLED_DAYS} días)\n" + wip,
