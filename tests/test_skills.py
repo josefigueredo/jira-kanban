@@ -102,6 +102,13 @@ class SkillsTest(unittest.TestCase):
         for result in ("wow plan", "jira project", "existing epic"):
             self.assertIn(result, steps)
 
+    def test_the_report_skills_say_what_to_do_with_a_long_report_instead_of_reprinting_it(self):
+        # A month of `jtk done` is ~13 KB; reprinting what the tool already printed pays for it twice.
+        for folder in ("standup", "em"):
+            text = (ROOT / folder / "SKILL.md").read_text(encoding="utf-8")
+            self.assertIn("60 lines", text, folder)
+            self.assertIn("one sentence", text, folder)
+
     def test_the_descriptions_do_not_overlap_on_the_phrases_that_pick_a_skill(self):
         self.assertNotIn("Read only", frontmatter("ops")["description"])
         self.assertNotIn("assign", frontmatter("em")["description"].lower())
