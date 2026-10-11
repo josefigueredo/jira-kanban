@@ -85,7 +85,7 @@ class HtmlTest(unittest.TestCase):
     def test_the_height_grows_with_the_plan_and_stays_between_a_floor_and_a_cap(self):
         one = approval.Summary("T", "h", [("A-1", "x", "a -> b")])
         many = approval.Summary("T", "h", [(f"A-{i}", "x" * 120, "a -> b") for i in range(30)], [("A-9", "r")])
-        self.assertEqual(approval.window_height(one), 240)
+        self.assertEqual(approval.window_height(one), 200)
         self.assertEqual(approval.window_height(many), 560)
         self.assertGreater(approval.window_height(SUMMARY), approval.window_height(one))
 

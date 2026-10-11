@@ -102,14 +102,14 @@ def render_html(summary, n: int) -> str:
 def window_height(summary) -> int:
     """Height in points of the page area: an estimate from the rows (long titles wrap), clamped; past the cap the page scrolls."""
     rows = rows_of(summary)
-    height = 150 + 74 * len(rows)
+    height = 110 + 74 * len(rows)
     height += sum(18 * (max(len(name) - 1, 0) // 52) for _key, name, _change in rows)
     if not rows:
         height += 40 * max(len(str(summary).splitlines()), 1)
     left_out = list(getattr(summary, "left_out", []))
     if left_out:
         height += 40 + 36 * len(left_out)
-    return max(240, min(560, height))
+    return max(200, min(560, height))
 
 
 def available(platform: Optional[str] = None, osascript: str = OSASCRIPT) -> bool:
