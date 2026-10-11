@@ -49,6 +49,17 @@ jtk <create|pull|push|show|board> ... --project .
 - Reassigning what exists: `jtk assign KEY "<person>" [--tree]` is a dry run; hand the user the same command with
   `--apply`.
 
+## Updates
+
+Run `jtk update --check` once per conversation, before the first other `jtk` command. It reads the remote only (no Jira, cached for 12 hours) and prints one row; act on its State:
+
+- `up to date` or `ahead`: say nothing.
+- `behind`: say in one sentence that jtk is behind (Detail names the new commits) and offer `jtk update`. Run it only if the person says yes; it fast-forwards the install and never resets anything. Then tell them to start a new conversation, because this one still has the old skill loaded.
+- `diverged`: tell them once and do not update.
+- `unknown` (no network, or not a git clone): say nothing and carry on; never block on it.
+
+If `jtk update` refuses (uncommitted changes, another branch), pass the reason on; do not fix it with git yourself.
+
 ## Rules
 
 - Every Jira write needs `--apply`, approved by the user in the window, and is logged in `./.jira-kanban/jira-writes.jsonl`.

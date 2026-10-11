@@ -114,6 +114,16 @@ class SkillsTest(unittest.TestCase):
             text = (ROOT / folder / "SKILL.md").read_text(encoding="utf-8")
             self.assertIn("same conversation", text, folder)
 
+    def test_every_skill_checks_for_a_newer_install_once_and_updates_only_when_the_person_says_yes(self):
+        for folder, name in SKILLS:
+            text = (ROOT / folder / "SKILL.md").read_text(encoding="utf-8")
+            self.assertIn("jtk update --check", text, name)
+            section = text.split("## Updates")[1].split("\n## ")[0]
+            self.assertIn("behind", section, name)
+            self.assertIn("once per conversation", section, name)
+            self.assertIn("only if the person says yes", section, name)
+            self.assertIn("unknown", section, name)  # no network: say nothing, do not block
+
     def test_the_descriptions_do_not_overlap_on_the_phrases_that_pick_a_skill(self):
         self.assertNotIn("Read only", frontmatter("ops")["description"])
         self.assertNotIn("assign", frontmatter("em")["description"].lower())

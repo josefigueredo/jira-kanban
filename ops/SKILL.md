@@ -35,6 +35,17 @@ jtk plan revert  PLAN_ID
    finish. The window is the approval; your question is not.
 4. **After they applied it**, offer `jtk team status VIEW` to see the result, or `jtk plan revert <id>` if they want it back.
 
+## Updates
+
+Run `jtk update --check` once per conversation, before the first other `jtk` command. It reads the remote only (no Jira, cached for 12 hours) and prints one row; act on its State:
+
+- `up to date` or `ahead`: say nothing.
+- `behind`: say in one sentence that jtk is behind (Detail names the new commits) and offer `jtk update`. Run it only if the person says yes; it fast-forwards the install and never resets anything. Then tell them to start a new conversation, because this one still has the old skill loaded.
+- `diverged`: tell them once and do not update.
+- `unknown` (no network, or not a git clone): say nothing and carry on; never block on it.
+
+If `jtk update` refuses (uncommitted changes, another branch), pass the reason on; do not fix it with git yourself.
+
 ## Rules
 
 - Run `jtk apply <id>` only after the person asked to apply that plan, and never the older writers (create, push,

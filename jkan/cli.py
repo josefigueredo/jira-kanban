@@ -1,4 +1,4 @@
-"""jtk: create [--check] | pull | push | show | board | who | assign | done | next | blocked | load | stats | board setup|set|show|check|survey | team … | plan … | apply. Every Jira write is a dry run unless --apply is passed; the reports only read."""
+"""jtk: create [--check] | pull | push | show | board | who | assign | done | next | blocked | load | stats | board setup|set|show|check|survey | team … | plan … | apply | update [--check]. Every Jira write is a dry run unless --apply is passed; the reports only read."""
 from __future__ import annotations
 
 import argparse
@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Callable, List, Optional
 
 from . import (approval, board_cli, board_profile, check, config, guard, journal, kanban, people, plan_cli, preview, render, roles, standup,
-               state, stats, sync, team_cli, views, window)
+               state, stats, sync, team_cli, update, views, window)
 from .jira import Jira, JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
@@ -197,6 +197,11 @@ def _report(jira, args, conv: dict, today: _dt.date) -> int:
 def main(argv: Optional[List[str]] = None, client: Callable = _client,
          today: Optional[Callable[[], _dt.date]] = None, confirm: Callable = guard.confirm) -> int:
     argv = sys.argv[1:] if argv is None else list(argv)
+    if argv == ["--version"]:
+        print(f"jtk {update.version(update.root())}")
+        return OK
+    if argv and argv[0] == "update":  # about the install, not Jira: no credentials, no project
+        return update.run(argv[1:])
     if len(argv) > 1 and argv[0] == "board" and argv[1] in board_cli.VERBS:  # `jtk board EPIC` stays the local kanban
         here = Path(".").resolve()
         return board_cli.run(argv[1:], lambda: client(here) if client is not _client else _client(here, command="board"))
