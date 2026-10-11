@@ -65,6 +65,10 @@ def rows_of(summary) -> List[Tuple[str, str, str]]:
     return list(getattr(summary, "rows", []))
 
 
+_CAP = 560   # tallest the page area gets; past it the page scrolls
+_LINE = 44   # characters of a title that fit on a line, on the low side so the estimate errs tall
+
+
 def _change(text: str) -> str:
     """«A -> B» as origin, arrow and a destination pill; «-> B» as the pill alone; anything else as plain text."""
     if "->" not in text:
@@ -78,7 +82,9 @@ def render_html(summary, n: int) -> str:
     """The window's whole page (the window is this page plus two native buttons). Every Jira string is escaped; the
     page has no script and loads nothing."""
     heading = getattr(summary, "heading", "") or (str(summary).splitlines() or [""])[0]
-    out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{_CSS}</style></head><body>',
+    # A plan that fits has no scrollbar. One that hits the cap keeps it: never hide what a person is about to approve.
+    css = _CSS + ("" if window_height(summary) >= _CAP else "::-webkit-scrollbar{display:none}")
+    out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{css}</style></head><body>',
            '<div class="eyebrow">jtk quiere escribir en Jira</div>', f"<h1>{escape(heading)}</h1>", '<ul class="cards">']
     rows = rows_of(summary)
     if not rows:  # a writer with no rows: show the text it has
@@ -102,14 +108,14 @@ def render_html(summary, n: int) -> str:
 def window_height(summary) -> int:
     """Height in points of the page area: an estimate from the rows (long titles wrap), clamped; past the cap the page scrolls."""
     rows = rows_of(summary)
-    height = 110 + 74 * len(rows)
-    height += sum(18 * (max(len(name) - 1, 0) // 52) for _key, name, _change in rows)
+    height = 130 + 74 * len(rows)
+    height += sum(20 * (max(len(name) - 1, 0) // _LINE) for _key, name, _change in rows)
     if not rows:
         height += 40 * max(len(str(summary).splitlines()), 1)
     left_out = list(getattr(summary, "left_out", []))
     if left_out:
-        height += 40 + 36 * len(left_out)
-    return max(200, min(560, height))
+        height += 40 + sum(36 + 20 * (max(len(why) - 1, 0) // _LINE) for _key, why in left_out)
+    return max(200, min(_CAP, height))
 
 
 def available(platform: Optional[str] = None, osascript: str = OSASCRIPT) -> bool:

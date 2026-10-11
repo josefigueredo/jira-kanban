@@ -82,10 +82,28 @@ class HtmlTest(unittest.TestCase):
         self.assertNotIn("<b>el</b>", html)
         self.assertIn("&lt;b&gt;el&lt;/b&gt; login &amp; más", html)
 
+    def test_the_scrollbar_is_hidden_when_the_plan_fits_but_shown_when_it_hits_the_cap(self):
+        fits = approval.render_html(SUMMARY, 2)
+        self.assertIn("::-webkit-scrollbar{display:none}", fits)
+        many = approval.Summary("T", "h", [(f"A-{i}", "x", "a -> b") for i in range(30)])
+        self.assertNotIn("::-webkit-scrollbar", approval.render_html(many, 30))  # never hide what a person approves
+
+    def test_a_long_title_gets_more_height_than_a_short_one(self):
+        short = approval.Summary("T", "h", [("A-1", "x", "a -> b")])
+        long = approval.Summary("T", "h", [("A-1", "x" * 130, "a -> b")])
+        self.assertGreater(approval.window_height(long), approval.window_height(short))
+
+    def test_a_long_reason_for_leaving_one_out_gets_more_height_than_a_short_one(self):
+        rows = [("A-1", "x", "a -> b")] * 3
+        short = approval.Summary("T", "h", rows, [("A-2", "r")])
+        long = approval.Summary("T", "h", rows, [("A-2", "r" * 130)])
+        self.assertGreater(approval.window_height(long), approval.window_height(short))
+
     def test_the_height_grows_with_the_plan_and_stays_between_a_floor_and_a_cap(self):
         one = approval.Summary("T", "h", [("A-1", "x", "a -> b")])
         many = approval.Summary("T", "h", [(f"A-{i}", "x" * 120, "a -> b") for i in range(30)], [("A-9", "r")])
-        self.assertEqual(approval.window_height(one), 200)
+        self.assertEqual(approval.window_height(""), 200)  # the floor
+        self.assertGreaterEqual(approval.window_height(one), 200)
         self.assertEqual(approval.window_height(many), 560)
         self.assertGreater(approval.window_height(SUMMARY), approval.window_height(one))
 
