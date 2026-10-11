@@ -6,7 +6,7 @@ import json
 import unittest
 
 import team_fixtures as fx
-from helpers import FakeJira, config_dir, issue
+from helpers import FakeJira, config_dir, issue, flat
 from jkan import board_profile, cli, views
 from jkan.jira import JiraError
 
@@ -82,12 +82,12 @@ class ShowAndListTest(unittest.TestCase):
         code, out, _ = run(["show", "plataforma"], FakeJira())
         self.assertEqual(code, 0)
         self.assertIn("**Boards:** TEAM, DESK", out)
-        self.assertIn("| TEAM | confirmado |", out)
-        self.assertIn("| DESK | sin perfil |", out)
+        self.assertIn("| TEAM | confirmado |", flat(out))
+        self.assertIn("| DESK | sin perfil |", flat(out))
 
     def test_list_names_the_views_and_an_empty_list_says_how_to_start(self):
         _, out, _ = run(["list"], FakeJira())
-        self.assertIn("| plataforma | TEAM, DESK | grupo team |", out)
+        self.assertIn("| plataforma | TEAM, DESK | grupo team |", flat(out))
         config_dir()
         self.assertIn("Creá uno con `jtk team setup`", run(["list"], FakeJira())[1])
 
@@ -129,7 +129,7 @@ class ReportsTest(unittest.TestCase):
         self.assertTrue(out.startswith("## Estado del equipo\n**View:** plataforma · **Boards:** TEAM, DESK"))
         self.assertIn("**Perfiles:** confirmados", out)
         self.assertIn("**4 abiertos**", out)
-        self.assertIn("| TEAM | 3 | 1 | 1 | 1 | 0 | 0 | 1 |", out)
+        self.assertIn("| TEAM | 3 | 1 | 1 | 1 | 0 | 0 | 1 |", flat(out))
         self.assertTrue(out.rstrip().endswith("sin límite, solo números."))
         self.assertEqual(self.jira.writes, [])
 
@@ -152,7 +152,7 @@ class ReportsTest(unittest.TestCase):
         _, out, _ = run(["status", "plataforma"], self.jira)
         self.assertIn("**Perfiles:** sin confirmar — TEAM (1 sin decidir)", out)
         self.assertIn("> ⚠ Perfil sin confirmar en TEAM: faltan decidir Esperando al cliente.", out)
-        self.assertIn("| TEAM | 1 | 0 | 0 | 0 | 0 | 1 | 0 |", out)
+        self.assertIn("| TEAM | 1 | 0 | 0 | 0 | 0 | 1 | 0 |", flat(out))
 
     def test_a_search_that_hits_the_cap_says_so_instead_of_cutting_in_silence(self):
         self.jira.search_answer = fx.answers(open_=[fx.at(f"TEAM-{n}", "todo") for n in range(1001)])
@@ -217,7 +217,7 @@ class ReportsTest(unittest.TestCase):
                                                     fx.at("DESK-2", "waiting", created="2026-08-01")])
         code, out, _ = run(["desk", "plataforma"], self.jira)
         self.assertEqual(code, 0)
-        self.assertIn("| DESK | 2 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |", out)
+        self.assertIn("| DESK | 2 | 1 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |", flat(out))
         self.assertIn("Sin SLA", out)
         self.jira.search_answer = fx.answers(open_=[fx.at("DESK-1", None, created="2026-10-07"),
                                                     fx.at("DESK-2", "todo", created="2026-10-07")])
@@ -235,8 +235,8 @@ class ReportsTest(unittest.TestCase):
         self.jira.search_answer = fx.answers(open_=self.open_work())
         code, out, _ = run(["rollup", "plataforma", "otro"], self.jira)
         self.assertEqual(code, 1)
-        self.assertIn("| plataforma | 4 | 1 | 1 | 0 | – |", out)
-        self.assertIn("| otro | sin perfil: UA |", out)
+        self.assertIn("| plataforma | 4 | 1 | 1 | 0 | – |", flat(out))
+        self.assertIn("| otro | sin perfil: UA |", flat(out))
         data = json.loads(run(["rollup", "plataforma", "--json"], self.jira)[1])
         self.assertEqual(data["rows"][0]["open"], 4)
 
@@ -253,8 +253,8 @@ class ReportsTest(unittest.TestCase):
         self.jira.search_answer = answer
         code, out, _ = run(["rollup", "solo", "otro"], self.jira)
         self.assertEqual(code, 1)
-        self.assertIn("| solo |", out)
-        self.assertIn("| otro | POST /rest/api/3/search/jql: HTTP 400", out)
+        self.assertIn("| solo |", flat(out))
+        self.assertIn("| otro | POST /rest/api/3/search/jql: HTTP 400", flat(out))
 
     def test_rollup_keeps_the_other_rows_when_a_profile_holds_data_that_cannot_be_queried(self):
         path = self.base / "profiles" / "DESK.json"
@@ -268,8 +268,8 @@ class ReportsTest(unittest.TestCase):
         self.jira.search_answer = fx.answers(open_=self.open_work())
         code, out, _ = run(["rollup", "solo", "otro"], self.jira)
         self.assertEqual(code, 1)
-        self.assertIn("| solo |", out)
-        self.assertIn("| otro | not status ids", out)
+        self.assertIn("| solo |", flat(out))
+        self.assertIn("| otro | not status ids", flat(out))
 
     def test_an_unreadable_profile_is_named_in_rollup_and_show_not_called_missing(self):
         (self.base / "profiles" / "DESK.json").write_text("{not json", encoding="utf-8")
@@ -340,8 +340,8 @@ class ListFlagTest(unittest.TestCase):
         code, out, _ = run(["status", "plataforma", "--list"], self.jira)
         self.assertEqual(code, 0)
         self.assertIn("### Issues\n", out)
-        self.assertIn("| [TEAM-1](https://example.atlassian.net/browse/TEAM-1) | Summary of TEAM-1 | Ana Gómez | En curso | active | 37 |", out)
-        self.assertIn("| [TEAM-2](https://example.atlassian.net/browse/TEAM-2) | Summary of TEAM-2 | sin asignar | Backlog | todo | 2 |", out)
+        self.assertIn("| [TEAM-1](https://example.atlassian.net/browse/TEAM-1) | Summary of TEAM-1 | Ana Gómez | En curso | active | 37 |", flat(out))
+        self.assertIn("| [TEAM-2](https://example.atlassian.net/browse/TEAM-2) | Summary of TEAM-2 | sin asignar | Backlog | todo | 2 |", flat(out))
         self.assertEqual(out.count("/browse/"), 5)
         self.assertLess(out.index("### Issues"), out.index("### Límites"))
 

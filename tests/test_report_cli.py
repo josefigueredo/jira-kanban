@@ -6,7 +6,7 @@ import json
 import unittest
 from datetime import date
 
-from helpers import FakeJira, issue, make_project
+from helpers import FakeJira, issue, make_project, flat
 from jkan import cli
 
 TODAY = date(2026, 10, 8)
@@ -76,14 +76,14 @@ class ReportCliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual([r["issue"]["key"] for r in json.loads(out)["rows"]], ["PLATE-1"])
         code, out, _ = run(["next"], jira)
-        self.assertIn("| [PLATE-2](https://example.atlassian.net/browse/PLATE-2) |", out)
+        self.assertIn("| [PLATE-2](https://example.atlassian.net/browse/PLATE-2) |", flat(out))
 
     def test_load_with_a_person_compares_with_me(self):
         jira = FakeJira()
         jira.search_answer = lambda jql: [issue("PLATE-1", category="in_progress")]
         code, out, _ = run(["load", "--person", "Ana Gómez", "--weeks", "2"], jira)
         self.assertEqual(code, 0)
-        self.assertIn("| Métrica | Ana Gómez | vos |", out)
+        self.assertIn("| Métrica | Ana Gómez | vos |", flat(out))
         self.assertEqual(len(jira.jqls), 4)  # closed + open for her, closed + open for me
         self.assertTrue(any("currentUser()" in j for j in jira.jqls) and any("acc-ana" in j for j in jira.jqls))
 

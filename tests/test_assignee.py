@@ -119,8 +119,8 @@ class CreateCliAssigneeTest(unittest.TestCase):
         code, out, _ = run(["create", "--spec", str(path), "--project", str(project), "--jira-project", "PLATE",
                             "--no-assign-open"], jira)
         self.assertEqual(code, 0)
-        self.assertIn("(Matías Andrés Fernandez)", out)
-        self.assertIn("(Ana Gómez)", out)
+        self.assertIn("Matías Andrés Fernandez", out)
+        self.assertIn("Ana Gómez", out)
 
     def test_an_ambiguous_assignee_exits_1_and_lists_the_candidates_on_stderr(self):
         jira, project = FakeJira(), make_project()

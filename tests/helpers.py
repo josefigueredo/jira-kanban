@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import os
 import sys
 import tempfile
@@ -287,3 +289,8 @@ def described(spec: dict) -> dict:
         entry.setdefault("what", "Lo que dice el título.")
         entry.setdefault("done_when", "Se ve hecho.")
     return spec
+
+
+def flat(text: str) -> str:
+    """A report with its table padding collapsed, for tests that read a row's content, not its spacing."""
+    return re.sub(r" {2,}", " ", text)

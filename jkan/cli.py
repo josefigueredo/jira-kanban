@@ -46,10 +46,12 @@ def _show(project: Path, key: str) -> None:
     if not (epic / "epic.md").is_file():
         print(f"no local kanban for {key}: run jtk pull {key}")
         return
+    rows = [("Issue", "Tipo", "Estado", "Título")]
     for entry in sync._local(epic, key):
         depth = {"epic": 0, "story": 1, "task": 1, "subtask": 2}[entry["kind"]]
         label = entry["key"] or entry["path"].parent.name
-        print(f"{'  ' * depth}{label} [{entry['kind']}] {entry['status'] or 'new'} · {entry['summary']}")
+        rows.append(("  " * depth + label, entry["kind"], entry["status"] or "new", entry["summary"]))
+    print("\n".join(render.columns(rows)))
 
 
 def _who(jira, name: str, project: Optional[str], as_json: bool) -> int:
@@ -292,13 +294,15 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
             except (ValueError, sync.NeedsDecision, sync.PartialCreate) as exc:
                 sys.stderr.write(f"{exc}\n")
                 return FINDINGS
+            rows = [("Issue", "Tipo", "Asignado", "Título")]
             for op in result["ops"]:
                 indent = {"epic": "", "story": "  ", "task": "  ", "subtask": "    "}[op["kind"]]
                 key = result.get("keys", {}).get(op["ref"], "")
                 who = (op["person"]["name"] + ("" if op["person"].get("exact", True) else " · approximate match")
                        if op["assignee"] == "person" else
                        {"me-done": "vos · completa", "me-started": "vos · en curso", "me": "vos", "none": "sin asignar", "ask": "¿asignar? a decidir"}[op["assignee"]])
-                print(f"{indent}{key + ' ' if key else ''}[{conv['issue_types'][op['kind']]}] {op['summary']}  ({who})")
+                rows.append((indent + (key or "(nuevo)"), conv["issue_types"][op["kind"]], who, op["summary"]))
+            print("\n".join(render.columns(rows)))
             if args.html:
                 Path(args.html).write_text(preview.render(result["ops"], conv), encoding="utf-8")
                 print(f"preview: {Path(args.html).resolve()}")

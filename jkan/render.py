@@ -21,10 +21,13 @@ def _cell(value) -> str:
 
 
 def table(headers: List[str], rows: List[list], empty: str = "_Nada._") -> str:
+    """A Markdown table whose source is aligned too, so it reads the same rendered or raw."""
     if not rows:
         return empty
-    lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join("---" for _ in headers) + " |"]
-    return "\n".join(lines + ["| " + " | ".join(_cell(c) for c in row) + " |" for row in rows])
+    cells = [[_cell(c) for c in row] for row in rows]
+    widths = [max(3, len(h), *(len(row[i]) for row in cells)) for i, h in enumerate(headers)]
+    line = lambda values: "| " + " | ".join(v.ljust(w) for v, w in zip(values, widths)) + " |"  # noqa: E731
+    return "\n".join([line(headers), "| " + " | ".join("-" * w for w in widths) + " |"] + [line(row) for row in cells])
 
 
 def head(title: str, owner: str, today: _dt.date, window: Optional[tuple] = None, project: Optional[str] = None) -> str:
@@ -37,8 +40,24 @@ def head(title: str, owner: str, today: _dt.date, window: Optional[tuple] = None
     return f"## {title}\n" + " · ".join(parts)
 
 
-COLUMNS = ("Issue", "Estado", "Fecha", "Título")
 GAP = "  "
+
+
+def _widths(rows: List[tuple]) -> List[int]:
+    return [max(len(r[i]) for r in rows) for i in range(len(rows[0]) - 1)]
+
+
+def _line(row: tuple, widths: List[int]) -> str:
+    return (GAP.join(c.ljust(w) for c, w in zip(row, widths)) + GAP + row[-1]).rstrip()
+
+
+def columns(rows: List[tuple]) -> List[str]:
+    """Aligned text lines: every column padded to its widest cell but the last, which is free to be long."""
+    widths = _widths(rows)
+    return [_line(r, widths) for r in rows]
+
+
+TREE_HEAD = ("Issue", "Estado", "Fecha", "Título")
 
 
 def _walk(node: dict, lead: str, below: str, rows: List[tuple]) -> None:
@@ -60,11 +79,8 @@ def render_tree(tree: List[dict]) -> str:
     rows: List[tuple] = []
     for root in tree:
         _walk(root, "", "", rows)
-    full = [COLUMNS] + [r for r in rows if len(r) == 4]
-    widths = [max(len(r[i]) for r in full) for i in range(3)]
-    lines = [r[0] if len(r) == 1 else GAP.join(r[i].ljust(widths[i]) for i in range(3)) + GAP + r[3]
-             for r in [COLUMNS] + rows]
-    return "\n".join(line.rstrip() for line in lines)
+    widths = _widths([TREE_HEAD] + [r for r in rows if len(r) == 4])
+    return "\n".join(r[0] if len(r) == 1 else _line(r, widths) for r in [TREE_HEAD] + rows)
 
 
 def render_done(head_text: str, result: dict) -> str:

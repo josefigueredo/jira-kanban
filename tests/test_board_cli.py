@@ -6,7 +6,7 @@ import json
 import unittest
 
 import shapes
-from helpers import FakeJira, config_dir
+from helpers import FakeJira, config_dir, flat
 from jkan import board_profile, cli
 
 
@@ -35,8 +35,8 @@ class SetupTest(unittest.TestCase):
         code, out, _ = run(["setup", "GDNC"], fake(GDNC=shapes.GDNC))
         self.assertEqual(code, 3)
         self.assertIn("## Perfil GDNC", out)
-        self.assertIn("| Done | 22 | en curso | ¿delivered? | decidir |", out)
-        self.assertIn("| ON HOLD | 25 | en curso | ¿? | decidir |", out)  # no guess to offer
+        self.assertIn("| Done | 22 | en curso | ¿delivered? | decidir |", flat(out))
+        self.assertIn("| ON HOLD | 25 | en curso | ¿? | decidir |", flat(out))  # no guess to offer
         self.assertIn("**Faltan 2 decisiones.**", out)
         self.assertEqual(len(board_profile.open_statuses(board_profile.load("GDNC"))), 2)
 

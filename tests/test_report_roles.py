@@ -4,7 +4,7 @@ import json
 import unittest
 
 import shapes
-from helpers import FakeJira, config_dir, issue
+from helpers import FakeJira, config_dir, issue, flat
 from jkan import board_profile
 from test_report_cli import run
 
@@ -71,7 +71,7 @@ class RoleReportsTest(unittest.TestCase):
         jira = FakeJira()
         jira.search_answer = lambda jql: [] if "statusCategory = Done" in jql else [closed("GDNC-1"), active("GDNC-3")]
         _, out, _ = run(["stats"], jira)
-        self.assertIn("| 2026-10-05 | 1 (en curso) |", out)
+        self.assertIn("| 2026-10-05 | 1 (en curso) |", flat(out))
         self.assertIn("GDNC-3", out)
         self.assertNotIn("GDNC-1", out)
 

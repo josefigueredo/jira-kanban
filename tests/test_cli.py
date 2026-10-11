@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import re
 import unittest
 
 from helpers import FakeJira, approve, epic_with_children, make_project
@@ -15,6 +16,15 @@ def run(args, jira):
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
         code = cli.main(args, client=lambda project: jira, confirm=approve)
     return code, out.getvalue(), err.getvalue()
+
+
+def assert_aligned(test, lines):
+    """Every column starts where its header does: a gap space before it and text at it."""
+    header, rows = lines[0], lines[1:]
+    test.assertTrue(rows)
+    for start in (m.start() for m in re.finditer(r"(?<=  )\S+", header)):
+        for line in rows:
+            test.assertEqual((line[start - 1], line[start] != " "), (" ", True), (header[start:], line))
 
 
 class CliTest(unittest.TestCase):
@@ -45,6 +55,9 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("[FE] Ver el tablero", out)
         self.assertIn("dry run", out)
+        preview = [line for line in out.splitlines() if line.startswith("Issue ") or re.match(r"^\s*(\(nuevo\)|[A-Z]+-\d+)\s", line)]
+        self.assertTrue(preview[0].split()[:4] == ["Issue", "Tipo", "Asignado", "Título"])
+        assert_aligned(self, preview)
         self.assertEqual(jira.writes, [])
         code, _, err = run(["create", "--spec", str(path), "--project", str(project), "--jira-project", "PLATE",
                             "--apply"], jira)
@@ -70,6 +83,8 @@ class CliTest(unittest.TestCase):
         self.assertEqual(run(["pull", key, "--project", str(project)], jira)[0], 0)
         code, out, _ = run(["show", key, "--project", str(project)], jira)
         self.assertIn("PLATE-602", out)
+        assert_aligned(self, out.splitlines())
+        self.assertEqual(out.splitlines()[0].split(), ["Issue", "Tipo", "Estado", "Título"])
         task = project / ".jira-kanban" / key / "tasks/PLATE-603/task.md"
         task.write_text(task.read_text(encoding="utf-8").replace("status: Backlog", "status: Done"), encoding="utf-8")
         code, out, _ = run(["push", key, "--project", str(project)], jira)
