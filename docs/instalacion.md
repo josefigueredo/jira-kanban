@@ -77,7 +77,7 @@ Imprime el commit y su fecha. Si dice `command not found`, falta el `PATH` de ar
 
 Se buscan en este orden, igual que WayOfWork:
 
-1. Variables de entorno: `IC_JIRA_BASE_URL`, `IC_JIRA_USER_EMAIL`, `IC_JIRA_API_TOKEN` (o `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`).
+1. Variables de entorno: `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`.
 2. `./.env.local` del proyecto.
 3. `./.spec-kit/.env` del proyecto.
 
@@ -85,9 +85,9 @@ Se buscan en este orden, igual que WayOfWork:
 
 | Variable | Qué es | De dónde sale |
 |---|---|---|
-| `IC_JIRA_BASE_URL` | La URL de tu sitio de Jira Cloud, sin barra final: `https://tu-empresa.atlassian.net` | Es la de la barra del navegador cuando abrís Jira |
-| `IC_JIRA_USER_EMAIL` | El email de tu cuenta de Atlassian | El que usás para entrar a Jira |
-| `IC_JIRA_API_TOKEN` | Un token de API tuyo | [Crear un token de API](https://id.atlassian.com/manage-profile/security/api-tokens) → **Create API token** → nombre y vencimiento (de 1 a 365 días) → **Copy to clipboard**. Se muestra una sola vez. [Guía oficial](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/) |
+| `JIRA_BASE_URL` | La URL de tu sitio de Jira Cloud, sin barra final: `https://tu-empresa.atlassian.net` | Es la de la barra del navegador cuando abrís Jira |
+| `JIRA_EMAIL` | El email de tu cuenta de Atlassian | El que usás para entrar a Jira |
+| `JIRA_API_TOKEN` | Un token de API tuyo | [Crear un token de API](https://id.atlassian.com/manage-profile/security/api-tokens) → **Create API token** → nombre y vencimiento (de 1 a 365 días) → **Copy to clipboard**. Se muestra una sola vez. [Guía oficial](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/) |
 
 > **Creá el token sin alcance (el botón «Create API token», no «Create API token with scopes»).** `jtk` llama a la URL de
 > tu sitio con autenticación básica (email y token). Un token con alcance solo funciona a través de
@@ -99,16 +99,16 @@ Dónde ponerlas, a elección:
 
 ```bash
 # A) Para todos tus proyectos: en ~/.zshrc (o ~/.bashrc), y abrí una terminal nueva
-export IC_JIRA_BASE_URL="https://tu-empresa.atlassian.net"
-export IC_JIRA_USER_EMAIL="vos@tu-empresa.com"
-export IC_JIRA_API_TOKEN="el-token-que-copiaste"
+export JIRA_BASE_URL="https://tu-empresa.atlassian.net"
+export JIRA_EMAIL="vos@tu-empresa.com"
+export JIRA_API_TOKEN="el-token-que-copiaste"
 ```
 
 ```bash
 # B) Para un solo proyecto: las mismas tres líneas, sin `export`, en ./.env.local. Que el archivo esté en .gitignore.
-IC_JIRA_BASE_URL=https://tu-empresa.atlassian.net
-IC_JIRA_USER_EMAIL=vos@tu-empresa.com
-IC_JIRA_API_TOKEN=el-token-que-copiaste
+JIRA_BASE_URL=https://tu-empresa.atlassian.net
+JIRA_EMAIL=vos@tu-empresa.com
+JIRA_API_TOKEN=el-token-que-copiaste
 ```
 
 Para comprobar que entran **sin escribir nada en Jira**:

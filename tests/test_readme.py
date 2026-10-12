@@ -32,7 +32,8 @@ class ReadmeTest(unittest.TestCase):
     def test_credentials_name_every_variable_and_link_to_where_to_get_it(self):
         text = self.section("## 3. Credenciales de Jira")
         for names in config.KEYS.values():
-            self.assertIn(names[0], text)
+            self.assertIn(names[1], text)  # the generic JIRA_* names are the documented ones; IC_* is WayOfWork's alias
+        self.assertNotIn("IC_JIRA", INSTALL)  # IC_* are one person's own variables, not something to tell a new install to set
         self.assertIn("https://id.atlassian.com/manage-profile/security/api-tokens", text)
         self.assertIn("https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/", text)
 
