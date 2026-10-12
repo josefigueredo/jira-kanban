@@ -4,12 +4,14 @@ The skills and the CLI are symlinks to one git clone (see install.sh), so «late
 check asks the remote for the sha of main (one `git ls-remote`, about two seconds) and compares it with HEAD locally. The
 answer to the question is cached for twelve hours as the remote's sha, not as a verdict, so pulling flips it at once; a
 failed lookup is never cached. Updating is `git pull --ff-only` on a clean checkout of main: it never resets, merges or
-force-pushes anything, and it stops with the reason when it cannot fast-forward."""
+force-pushes anything, and it stops with the reason when it cannot fast-forward. A pull can rename a skill folder, which
+leaves the ~/.agents/skills/<name> links made by install.sh dangling, so every update also repairs those (and only those)."""
 from __future__ import annotations
 
 import argparse
 import json
 import os
+import re
 import subprocess
 import time
 import unicodedata
@@ -130,6 +132,52 @@ def check(where: Path, cache: Optional[Path] = None, now: Callable[[], float] = 
     return _assess(where, sha, ver)
 
 
+def _published_skills(where: Path) -> List[Tuple[str, str]]:
+    """[(name, folder inside the repo)] from the SKILLS=(...) / SKILLS+=(...) lines of install.sh, the one list of what the
+    installer publishes («» is the repo itself). Empty when there is no install.sh to read."""
+    try:
+        text = (where / "install.sh").read_text(encoding="utf-8")
+    except OSError:
+        return []
+    entries = [e for group in re.findall(r"SKILLS\+?=\(([^)]*)\)", text) for e in re.findall(r'"([^"]+)"', group)]
+    return [tuple(e.split(":", 1)) for e in entries if ":" in e]  # type: ignore[misc]
+
+
+def _inside(path: str, folder: Path) -> bool:
+    here, top = os.path.realpath(path), os.path.realpath(folder)
+    return here == top or here.startswith(top + os.sep)
+
+
+def repair_links(where: Path) -> int:
+    """Repoint the dangling ~/.agents/skills/<name> symlinks that install.sh made to this clone, to where the skill is now.
+    Number of links repaired. It only ever touches a symlink that exists, whose target does not, and that pointed into this
+    clone: a real directory, a link that resolves, a link to another clone and a link that was never installed (the person
+    chose what to install with --with-write) are left alone."""
+    skills = Path(os.environ.get("HOME") or Path.home()) / ".agents" / "skills"
+    repaired = 0
+    for name, folder in _published_skills(where):
+        link, target = skills / name, where / folder if folder else where
+        try:
+            if not link.is_symlink() or link.exists() or not target.exists():
+                continue
+            if not _inside(os.path.join(os.path.dirname(link), os.readlink(link)), where):
+                continue
+            fresh = skills / f".{name}.jtk-repair"
+            if os.path.lexists(fresh):
+                os.unlink(fresh)
+            os.symlink(target, fresh)
+            os.replace(fresh, link)  # atomic: the link is never missing in between
+            repaired += 1
+        except OSError:
+            continue  # a link that cannot be repaired is left as it was; the update itself did not fail
+    return repaired
+
+
+def _repair_note(where: Path) -> str:
+    n = repair_links(where)
+    return f"\nrepaired {_plural(n, 'skill link')}" if n else ""
+
+
 def apply(where: Path, cache: Optional[Path] = None, now: Callable[[], float] = time.time) -> Tuple[int, str]:
     """Fast-forward the clone to origin/main. (exit code, what to tell the person)."""
     if not _is_clone(where):
@@ -145,12 +193,12 @@ def apply(where: Path, cache: Optional[Path] = None, now: Callable[[], float] = 
     if result.state == "diverged":
         return 1, f"jtk update: the install has diverged from origin ({result.detail})"
     if result.state != "behind":
-        return 0, "jtk is already up to date" + (f" ({result.detail})" if result.detail else "")
+        return 0, "jtk is already up to date" + (f" ({result.detail})" if result.detail else "") + _repair_note(where)
     code, out = _git(where, "pull", "-q", "--ff-only", "origin", BRANCH, timeout=60)
     if code != 0:
         return 1, f"jtk update: git pull failed: {out}"
     return 0, (f"jtk updated to {version(where)}. The skills and the CLI are the same checkout, so the CLI is new now; "
-               "start a new conversation so the agent re-reads the skill.")
+               "start a new conversation so the agent re-reads the skill." + _repair_note(where))
 
 
 def run(argv: List[str], root: Optional[Path] = None, cache: Optional[Path] = None,

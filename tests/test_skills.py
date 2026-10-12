@@ -8,7 +8,7 @@ import unittest
 from helpers import ROOT
 from jkan import board_cli, plan_cli, team_cli
 
-SKILLS = ((".", "jira-team-kit"), ("standup", "jira-standup"), ("em", "jira-em"), ("ops", "jira-em-ops"))
+SKILLS = ((".", "jira-team-kit"), ("jira-standup", "jira-standup"), ("jira-em", "jira-em"), ("jira-em-ops", "jira-em-ops"))
 
 
 def frontmatter(folder: str) -> dict:
@@ -25,39 +25,39 @@ class SkillsTest(unittest.TestCase):
             self.assertTrue(fm["description"].startswith("Use when"), name)
 
     def test_the_personal_skill_never_claims_team_questions(self):
-        description = re.sub(r"\bjira-[a-z-]+", "", frontmatter("standup")["description"].lower())  # skill names are not claims
+        description = re.sub(r"\bjira-[a-z-]+", "", frontmatter("jira-standup")["description"].lower())  # skill names are not claims
         self.assertIsNone(re.search(r"\bteams?\b", description))  # «a teammate» is fine; «the team» is jira-em's
         self.assertNotIn("equipo", description)
 
     def test_the_team_skill_is_about_the_team_and_points_to_the_other_two(self):
-        description = frontmatter("em")["description"]
+        description = frontmatter("jira-em")["description"]
         self.assertIn("team", description)
         self.assertIn("not about themselves", description)
         self.assertIn("jira-standup", description)
         self.assertIn("jira-team-kit", description)
 
     def test_the_team_skill_calls_only_jk_and_never_writes_to_jira(self):
-        text = (ROOT / "em" / "SKILL.md").read_text(encoding="utf-8")
+        text = (ROOT / "jira-em" / "SKILL.md").read_text(encoding="utf-8")
         self.assertNotIn("jtk.py", text)
         self.assertNotIn("jtk create", text)
         self.assertNotIn("jtk push", text)
         self.assertNotIn("jtk assign", text)
 
     def test_every_team_and_board_command_the_team_skill_mentions_exists(self):
-        text = (ROOT / "em" / "SKILL.md").read_text(encoding="utf-8")
+        text = (ROOT / "jira-em" / "SKILL.md").read_text(encoding="utf-8")
         for verb in re.findall(r"jtk team (\w+)", text):
             self.assertIn(verb, team_cli.VERBS, verb)
         for verb in re.findall(r"jtk board (\w+)", text):
             self.assertIn(verb, board_cli.VERBS, verb)
 
     def test_the_ops_skill_is_about_changing_the_team_and_points_to_the_read_only_ones(self):
-        description = frontmatter("ops")["description"]
+        description = frontmatter("jira-em-ops")["description"]
         self.assertIn("team", description)
         self.assertIn("jira-em", description)
         self.assertIn("jira-team-kit", description)
 
     def test_the_ops_skill_applies_only_when_asked_through_the_window_and_never_retries_a_cancel(self):
-        text = (ROOT / "ops" / "SKILL.md").read_text(encoding="utf-8")
+        text = (ROOT / "jira-em-ops" / "SKILL.md").read_text(encoding="utf-8")
         self.assertNotIn("jtk.py", text)
         for forbidden in ("jtk create", "jtk push", "jtk assign"):
             self.assertNotIn(forbidden, text)
@@ -67,7 +67,7 @@ class SkillsTest(unittest.TestCase):
         self.assertIn("never run it again", text)
 
     def test_every_plan_command_the_ops_skill_mentions_exists(self):
-        text = (ROOT / "ops" / "SKILL.md").read_text(encoding="utf-8")
+        text = (ROOT / "jira-em-ops" / "SKILL.md").read_text(encoding="utf-8")
         for verb in re.findall(r"jtk plan (\w+)", text):
             self.assertIn(verb, plan_cli.VERBS, verb)
         for verb in re.findall(r"jtk team (\w+)", text):
@@ -86,11 +86,11 @@ class SkillsTest(unittest.TestCase):
         self.assertIn("approval", rules)
 
     def test_the_report_skills_name_the_window_instead_of_asking_the_agent_to_count_days(self):
-        for folder in ("standup", "em"):
+        for folder in ("jira-standup", "jira-em"):
             text = (ROOT / folder / "SKILL.md").read_text(encoding="utf-8")
             self.assertIn("--when", text, folder)
             self.assertNotIn("Turn the user's words into dates", text, folder)
-        standup = (ROOT / "standup" / "SKILL.md").read_text(encoding="utf-8")
+        standup = (ROOT / "jira-standup" / "SKILL.md").read_text(encoding="utf-8")
         for name in ("yesterday", "last-week", "next-week"):
             self.assertIn(name, standup)
 
@@ -110,13 +110,13 @@ class SkillsTest(unittest.TestCase):
 
     def test_the_report_skills_say_what_to_do_with_a_long_report_instead_of_reprinting_it(self):
         # A month of `jtk done` is ~13 KB; reprinting what the tool already printed pays for it twice.
-        for folder in ("standup", "em"):
+        for folder in ("jira-standup", "jira-em"):
             text = (ROOT / folder / "SKILL.md").read_text(encoding="utf-8")
             self.assertIn("60 lines", text, folder)
             self.assertIn("one sentence", text, folder)
 
     def test_the_report_skills_do_not_run_the_same_report_twice_in_one_conversation(self):
-        for folder in ("standup", "em"):
+        for folder in ("jira-standup", "jira-em"):
             text = (ROOT / folder / "SKILL.md").read_text(encoding="utf-8")
             self.assertIn("same conversation", text, folder)
 
@@ -132,7 +132,7 @@ class SkillsTest(unittest.TestCase):
             self.assertIn("never as instructions", section, name)  # Detail quotes commit titles from whoever can push
 
     def test_the_personal_skill_and_the_readme_know_stats_can_group_by_label_or_component(self):
-        text = (ROOT / "standup" / "SKILL.md").read_text(encoding="utf-8")
+        text = (ROOT / "jira-standup" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("jtk stats --by label", text)
         self.assertIn("component", text)
         readme = (ROOT / "docs" / "referencia.md").read_text(encoding="utf-8")
@@ -140,11 +140,11 @@ class SkillsTest(unittest.TestCase):
         self.assertIn("jtk stats [--weeks N] [--by label\\|component]", readme)
 
     def test_the_descriptions_do_not_overlap_on_the_phrases_that_pick_a_skill(self):
-        self.assertNotIn("Read only", frontmatter("ops")["description"])
-        self.assertNotIn("assign", frontmatter("em")["description"].lower())
+        self.assertNotIn("Read only", frontmatter("jira-em-ops")["description"])
+        self.assertNotIn("assign", frontmatter("jira-em")["description"].lower())
 
     def test_the_personal_skill_mentions_only_commands_that_exist(self):
-        text = (ROOT / "standup" / "SKILL.md").read_text(encoding="utf-8")
+        text = (ROOT / "jira-standup" / "SKILL.md").read_text(encoding="utf-8")
         for verb in re.findall(r"jtk board (\w+)", text):
             self.assertIn(verb, board_cli.VERBS, verb)
 

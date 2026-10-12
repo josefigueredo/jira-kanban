@@ -1,10 +1,10 @@
 """The skills of this repo follow the Agent Skills format (https://agentskills.io/specification), checked offline with
 the port in skillspec.py.
 
-Three of the four skills live in a folder that is not their name (standup/ is jira-standup) and `jtk update` is only a
-`git pull --ff-only`, so renaming folders would leave the installed ~/.agents/skills/jira-* links dangling. Each skill is
-therefore checked against the name install.sh publishes it under, read from its SKILLS table: that is the folder the
-agent sees. `skills-ref validate standup/` run straight on the repo would fail the folder-name rule on purpose."""
+Three of the four skills live in a folder named like the skill (jira-standup/, jira-em/, jira-em-ops/), so the spec rule
+«name = folder» holds for them and `skills-ref validate jira-standup/` passes as is. The fourth sits at the root of the
+repo, whose folder name is whatever the person called the clone, so it is checked against the name install.sh publishes it
+under. Both are read from the SKILLS table of install.sh, not hardcoded."""
 from __future__ import annotations
 
 import re
@@ -99,10 +99,22 @@ class RepoSkillsTest(unittest.TestCase):
     def test_every_skill_of_the_repo_is_published_and_every_published_skill_exists(self):
         self.assertEqual(repo_skill_folders(), set(published_skills().values()))
 
-    def test_each_skill_conforms_under_the_name_it_is_published_with(self):
+    def test_each_subfolder_skill_conforms_under_the_strict_folder_name_rule(self):
         for name, folder in published_skills().items():
-            with self.subTest(name):
-                self.assertEqual(check_skill(ROOT / folder if folder else ROOT, published_name=name), [])
+            if folder:
+                with self.subTest(name):
+                    self.assertEqual(folder, name)  # the folder install.sh links is the skill's name
+                    self.assertEqual(check_skill(ROOT / folder), [])  # no published_name: the spec's own rule
+
+    def test_the_root_skill_conforms_under_its_published_name(self):
+        name = next(n for n, f in published_skills().items() if f == "")
+        self.assertEqual(check_skill(ROOT, published_name=name), [])
+
+    def test_a_folder_that_diverges_from_its_name_is_caught(self):
+        skill = Path(tempfile.mkdtemp(prefix="jira-standup-old-"))
+        self.addCleanup(shutil.rmtree, skill, True)
+        shutil.copy(ROOT / "jira-standup" / "SKILL.md", skill / "SKILL.md")
+        self.assertTrue(any("does not match" in e for e in check_skill(skill)))
 
     def test_the_root_skill_is_judged_by_its_published_name_not_by_the_clone_folder(self):
         root_name = next(n for n, f in published_skills().items() if f == "")

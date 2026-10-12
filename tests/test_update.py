@@ -252,6 +252,146 @@ class ApplyTest(Repos):
         self.assertIn("not a git clone", message)
 
 
+INSTALL_SH = """#!/usr/bin/env bash
+SKILLS=("jira-standup:jira-standup" "jira-em:jira-em")  # name:folder inside the repo ("" is the repo itself)
+case "${1:-}" in
+  --with-write) SKILLS+=("jira-team-kit:" "jira-em-ops:jira-em-ops") ;;
+esac
+"""
+RENAMED = ("jira-standup", "jira-em", "jira-em-ops")
+OLD_FOLDER = {"jira-standup": "standup", "jira-em": "em", "jira-em-ops": "ops"}
+
+
+class RepairLinksTest(Repos):
+    """After `jtk update` a skill folder may have been renamed by the pull: the symlinks ~/.agents/skills/<name> that
+    install.sh made then dangle. The update repairs those, and only those. HOME is a throwaway directory."""
+
+    def setUp(self):
+        super().setUp()
+        self.home = self.tmp / "home"
+        self.skills = self.home / ".agents" / "skills"
+        self.skills.mkdir(parents=True)
+        patcher = mock.patch.dict(os.environ, {"HOME": str(self.home)})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        # the clone as the person installed it: the OLD folders, linked from ~/.agents/skills
+        for name, old in OLD_FOLDER.items():
+            Path(self.install, old).mkdir()
+            Path(self.install, old, "SKILL.md").write_text(name, encoding="utf-8")
+            os.symlink(self.install / old, self.skills / name)
+        # origin moves to the NEW layout
+        for name, old in OLD_FOLDER.items():
+            (self.other / name).mkdir()
+            (self.other / name / "SKILL.md").write_text(name, encoding="utf-8")
+        Path(self.other, "install.sh").write_text(INSTALL_SH, encoding="utf-8")
+        git(self.other, "add", "-A")
+        git(self.other, "commit", "-q", "--no-verify", "-m", "rename")
+        git(self.other, "push", "-q", "origin", "main")
+        for old in OLD_FOLDER.values():  # the old folders were tracked in the real repo: here, just gone after the pull
+            shutil.rmtree(self.install / old)
+
+    def resolves(self, name):
+        return (self.skills / name / "SKILL.md").is_file()
+
+    def test_a_dangling_link_is_repointed_to_the_new_folder(self):
+        update.apply(self.install)
+        for name in RENAMED:
+            self.assertEqual(os.readlink(self.skills / name), str(self.install / name))
+        self.assertTrue(all(self.resolves(n) for n in ("jira-standup", "jira-em", "jira-em-ops")))
+
+    def test_it_says_how_many_it_repaired_and_nothing_when_there_was_nothing(self):
+        self.publish("second")
+        code, message = update.apply(self.install)
+        self.assertEqual(code, 0)
+        self.assertIn("repaired 3 skill links", message)
+        self.publish("third")
+        self.assertNotIn("repaired", update.apply(self.install)[1])
+
+    def test_a_second_run_when_already_up_to_date_still_repairs(self):
+        # whoever updated with the OLD update.py pulled without repairing: the links dangle and the clone is current
+        git(self.install, "pull", "-q", "--ff-only", "origin", "main")
+        self.assertFalse(self.resolves("jira-em"))
+        code, message = update.apply(self.install)
+        self.assertEqual(code, 0)
+        self.assertIn("already up to date", message)
+        self.assertIn("repaired 3 skill links", message)
+        self.assertTrue(self.resolves("jira-em"))
+
+    def test_a_second_run_repairs_nothing(self):
+        update.apply(self.install)
+        self.assertEqual(update.repair_links(self.install), 0)
+
+    def test_a_healthy_link_is_left_alone(self):
+        git(self.install, "pull", "-q", "--ff-only", "origin", "main")
+        os.unlink(self.skills / "jira-em")
+        os.symlink(self.install / "jira-em", self.skills / "jira-em")
+        before = os.readlink(self.skills / "jira-em")
+        self.assertEqual(update.repair_links(self.install), 2)  # only the other two dangled
+        self.assertEqual(os.readlink(self.skills / "jira-em"), before)
+
+    def test_a_healthy_link_to_somewhere_else_keeps_its_target(self):
+        git(self.install, "pull", "-q", "--ff-only", "origin", "main")
+        elsewhere = self.tmp / "elsewhere"
+        elsewhere.mkdir()
+        os.unlink(self.skills / "jira-em")
+        os.symlink(elsewhere, self.skills / "jira-em")
+        update.repair_links(self.install)
+        self.assertEqual(os.readlink(self.skills / "jira-em"), str(elsewhere))
+
+    def test_a_real_directory_is_never_touched(self):
+        git(self.install, "pull", "-q", "--ff-only", "origin", "main")
+        os.unlink(self.skills / "jira-em")
+        (self.skills / "jira-em").mkdir()
+        (self.skills / "jira-em" / "mine.txt").write_text("keep", encoding="utf-8")
+        self.assertEqual(update.repair_links(self.install), 2)
+        self.assertTrue((self.skills / "jira-em").is_dir() and not (self.skills / "jira-em").is_symlink())
+        self.assertEqual((self.skills / "jira-em" / "mine.txt").read_text(encoding="utf-8"), "keep")
+
+    def test_a_link_that_was_never_installed_is_not_created(self):
+        git(self.install, "pull", "-q", "--ff-only", "origin", "main")
+        os.unlink(self.skills / "jira-em-ops")
+        update.repair_links(self.install)
+        self.assertFalse(os.path.lexists(self.skills / "jira-em-ops"))
+        self.assertFalse(os.path.lexists(self.skills / "jira-team-kit"))
+
+    def test_a_dangling_link_to_another_clone_is_not_hijacked(self):
+        git(self.install, "pull", "-q", "--ff-only", "origin", "main")
+        gone = self.tmp / "other-clone" / "em"
+        os.unlink(self.skills / "jira-em")
+        os.symlink(gone, self.skills / "jira-em")
+        update.repair_links(self.install)
+        self.assertEqual(os.readlink(self.skills / "jira-em"), str(gone))
+
+    def test_the_root_skill_points_at_the_clone_itself(self):
+        git(self.install, "pull", "-q", "--ff-only", "origin", "main")
+        Path(self.install, "install.sh").write_text(INSTALL_SH.replace('"jira-em:jira-em"', '"jira-team-kit:"'), encoding="utf-8")
+        os.symlink(self.install / "gone", self.skills / "jira-team-kit")
+        update.repair_links(self.install)
+        self.assertEqual(os.readlink(self.skills / "jira-team-kit"), str(self.install))
+
+    def test_a_clone_without_install_sh_or_without_skills_dir_is_not_an_error(self):
+        loose = self.tmp / "loose"
+        loose.mkdir()
+        self.assertEqual(update.repair_links(loose), 0)
+        shutil.rmtree(self.skills)
+        git(self.install, "pull", "-q", "--ff-only", "origin", "main")
+        self.assertEqual(update.repair_links(self.install), 0)
+
+    def test_check_neither_repairs_nor_prints_it(self):
+        git(self.install, "pull", "-q", "--ff-only", "origin", "main")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            update.run(["--check"], root=self.install, cache=self.cache, now=lambda: self.clock)
+        self.assertNotIn("repaired", out.getvalue())
+        self.assertFalse(self.resolves("jira-em"))
+
+    def test_a_failed_update_repairs_nothing(self):
+        self.publish("second")
+        Path(self.install, "a.txt").write_text("edited", encoding="utf-8")
+        self.assertEqual(update.apply(self.install)[0], 1)
+        self.assertFalse(os.path.lexists(self.skills / "jira-em") and self.resolves("jira-em"))
+
+
 class RunTest(Repos):
     def run_cli(self, *argv):
         out = io.StringIO()

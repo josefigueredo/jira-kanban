@@ -10,7 +10,7 @@ from unittest import mock
 from helpers import ROOT
 from jkan import cli, config
 
-SKILLS = (".", "standup", "em", "ops")
+SKILLS = (".", "jira-standup", "jira-em", "jira-em-ops")
 GENERIC = {"base_url": "JIRA_BASE_URL", "email": "JIRA_EMAIL", "token": "JIRA_API_TOKEN"}
 
 
