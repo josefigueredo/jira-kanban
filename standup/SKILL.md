@@ -66,6 +66,6 @@ If `jtk update` refuses (uncommitted changes, another branch), pass the reason o
 ## Rules
 
 - Read only: never run `create`, `push`, `assign --apply` or anything with `--apply`.
-- Never print or ask for Jira credentials (`IC_JIRA_*`).
+- Never print or ask for Jira credentials (`JIRA_*`).
 - `jtk board setup|set` write only the local profile in `~/.config/jtk`, never Jira.
 - Output labels are Spanish; if the user writes in English, the tables stay as they are.

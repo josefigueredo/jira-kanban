@@ -59,4 +59,4 @@ If `jtk update` refuses (uncommitted changes, another branch), pass the reason o
 - Read only otherwise: never `jtk board` writes other than the profile commands the user asks for.
 - If a plan says a board's profile has statuses without a role, stop: that is a decision for the user
   (`jtk board set`), never yours.
-- Never print or ask for Jira credentials (`IC_JIRA_*`).
+- Never print or ask for Jira credentials (`JIRA_*`).

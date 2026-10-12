@@ -36,8 +36,8 @@ def excerpt(before: str, after: str, width: int = 60) -> tuple:
 def _client(project: Path, command: Optional[str] = None):
     creds = config.credentials(project)
     if creds is None:
-        raise SystemExit("jtk: Jira credentials not found (IC_JIRA_* or JIRA_* in the environment, ./.env.local, "
-                         "./.spec-kit/.env)")
+        raise SystemExit("jtk: Jira credentials not found (set JIRA_BASE_URL, JIRA_EMAIL and JIRA_API_TOKEN in the "
+                         "environment, ./.env.local or ./.spec-kit/.env)")
     return Jira(*creds, journal=journal.journal(project, command, also=state.log_write) if command else None)
 
 

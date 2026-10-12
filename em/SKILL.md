@@ -70,7 +70,7 @@ If `jtk update` refuses (uncommitted changes, another branch), pass the reason o
 
 - Read only: never run `create`, `push`, `assign`, anything with `--apply`, or `jtk board` writes other than the profile
   commands above.
-- Never print or ask for Jira credentials (`IC_JIRA_*`).
+- Never print or ask for Jira credentials (`JIRA_*`).
 - Exit code 3 of `jtk board` means a person has to decide; it is not an error to retry.
 - Questions about the user themselves ("qué hice", "qué puedo hacer", "en qué estoy bloqueado") are `jira-standup`, not this skill.
 - Output labels are Spanish; if the user writes in English, the tables stay as they are.
