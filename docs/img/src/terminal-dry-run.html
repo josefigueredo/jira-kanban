@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><style>
+*{box-sizing:border-box}body{margin:0;background:#e9e7ef;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Helvetica,Arial,sans-serif}
+.win{margin:22px;border-radius:12px;overflow:hidden;box-shadow:0 18px 50px rgba(20,20,40,.35),0 0 0 1px rgba(0,0,0,.25)}
+.bar{height:38px;background:#2b2b31;display:flex;align-items:center;padding:0 14px;position:relative}
+.dots span{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px}
+.dots .r{background:#ff5f57}.dots .y{background:#febc2e}.dots .g{background:#28c840}
+.ttl{position:absolute;left:0;right:0;text-align:center;color:#a9a9b3;font-size:13px}
+.term{background:#16161a;color:#e6e6ea;font:13.5px/1.5 Menlo,Monaco,monospace;padding:14px 18px 18px;white-space:pre}
+.p{color:#7ee787}.c{color:#7d8590}.o{color:#e6e6ea}.k{color:#79c0ff}.w{color:#e3b341}
+</style><div class="win" style="width:996px"><div class="bar"><div class="dots"><span class="r"></span><span class="y"></span><span class="g"></span></div><div class="ttl">zsh — ~/mi-proyecto</div></div><div class="term"><span class="p">$</span> <span class="k">jtk create --check --project .</span>
+<span class="o">Check          Result  Detail</span>
+<span class="o">wow plan       no      no wow/plan/manifest.json</span>
+<span class="o">jira project   none    ask the person which project and pass --jira-project KEY</span>
+<span class="o">existing epic  none    none in specs/*/spec.md or the branch; a key in the conversation is not checked here</span>
+<span class="c"></span>
+<span class="p">$</span> <span class="k">jtk create --spec spec.json --jira-project DEMO --html vista.html --project .</span>
+<span class="o">Issue        Tipo              Estado       Asignado        Título</span>
+<span class="o">NUEVO-1      Epic              Backlog      A decidir       Login corporativo en el back office</span>
+<span class="o">  NUEVO-2    Story (migrated)  En progreso  Vos · en curso  [FE] Página de login</span>
+<span class="o">    NUEVO-3  Subtarea          Backlog      A decidir       Formulario con SSO</span>
+<span class="o">  NUEVO-4    Tarea             Backlog      A decidir       [DEVOPS] Job de CI con los e2e del login</span>
+<span class="o">preview: ~/mi-proyecto/vista.html</span>
+<span class="o">dry run: nothing created; --apply creates 4 issues in DEMO</span></div></div>
