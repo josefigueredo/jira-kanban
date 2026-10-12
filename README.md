@@ -17,10 +17,10 @@ lectura.** La aprobación es un clic tuyo, no del agente (con los [límites](doc
 
 | Skill | Qué resuelve | Jira | Se instala con | Showcase | Instalación |
 |---|---|---|---|---|---|
-| **`jira-team-kit`** | Crear una épica desde la conversación y mantenerla como kanban local (`pull` / `push`) | Escribe, con tu aprobación | `./install.sh --with-write` | [Ver el caso](docs/showcase.md#1-crear-una-épica-desde-la-conversación) | [Instalar](docs/instalacion.md#2-instalar) |
-| **`jira-standup`** | Qué hice, qué puedo hacer, qué me bloquea, la carga de un compañero y métricas de entrega | Solo lectura | `./install.sh` | [Ver el caso](docs/showcase.md#3-qué-hice-qué-puedo-hacer-qué-me-bloquea) | [Instalar](docs/instalacion.md#2-instalar) |
-| **`jira-em`** | Cómo viene el equipo y los boards: estancado, bloqueado, flujo, resumen semanal, mesa de ayuda | Solo lectura | `./install.sh` | [Ver el caso](docs/showcase.md#4-cómo-viene-el-equipo) | [Instalar](docs/instalacion.md#2-instalar) |
-| **`jira-em-ops`** | Cambiar varios issues a la vez (estado, responsable, comentario), con un plan y aprobación humana | Escribe, con tu aprobación | `./install.sh --with-write` | [Ver el caso](docs/showcase.md#5-cambiar-varios-issues-con-aprobación-humana) | [Instalar](docs/instalacion.md#2-instalar) |
+| **`jira-team-kit`** | Crear una épica desde la conversación y mantenerla como kanban local (`pull` / `push`) | Escribe, con tu aprobación | `./install.sh --with-write` | [Ver el caso](docs/showcase.md#1-crear-una-épica-desde-la-conversación) | [Instalar](docs/instalacion.md#1-instalar) |
+| **`jira-standup`** | Qué hice, qué puedo hacer, qué me bloquea, la carga de un compañero y métricas de entrega | Solo lectura | `./install.sh` | [Ver el caso](docs/showcase.md#3-qué-hice-qué-puedo-hacer-qué-me-bloquea) | [Instalar](docs/instalacion.md#1-instalar) |
+| **`jira-em`** | Cómo viene el equipo y los boards: estancado, bloqueado, flujo, resumen semanal, mesa de ayuda | Solo lectura | `./install.sh` | [Ver el caso](docs/showcase.md#4-cómo-viene-el-equipo) | [Instalar](docs/instalacion.md#1-instalar) |
+| **`jira-em-ops`** | Cambiar varios issues a la vez (estado, responsable, comentario), con un plan y aprobación humana | Escribe, con tu aprobación | `./install.sh --with-write` | [Ver el caso](docs/showcase.md#5-cambiar-varios-issues-con-aprobación-humana) | [Instalar](docs/instalacion.md#1-instalar) |
 
 ## Un ejemplo: crear una épica
 
@@ -34,7 +34,8 @@ completo está en el [showcase](docs/showcase.md#1-crear-una-épica-desde-la-con
 
 | Si querés… | Leé | Qué encontrás |
 |---|---|---|
-| **Instalarlo y probarlo** | [Instalación y primer uso](docs/instalacion.md) | Requisitos, `./install.sh`, credenciales de Jira, tu primera épica en Cursor y el mismo recorrido comando por comando, con capturas |
+| **Instalarlo y probarlo, desde Cursor** | [Instalación y primer uso](docs/instalacion.md) | Todo con prompts, sin comandos: instalar, credenciales de Jira, tu primera épica, reportes y cambios en lote, con maquetas de Cursor |
+| **Instalarlo comando por comando** | [Instalación detallada](docs/instalacion-detallada.md) | Requisitos, `./install.sh`, credenciales, y el mismo recorrido corriendo cada comando de `jtk`, con capturas de la terminal |
 | **Ver todo lo que hace** | [Showcase](docs/showcase.md) | Cada skill en un escenario real: qué le decís al agente, qué comandos corre, qué ves en pantalla |
 | **Consultar un comando o un flag** | [Referencia](docs/referencia.md) | Todos los comandos, el formato del spec, asignación, perfiles de board, kanban local, comparación con el MCP de Atlassian |
 
@@ -46,7 +47,7 @@ cd jira-team-kit && ./install.sh --with-write      # enlaza las skills y deja `j
 jtk who "tu nombre" --jira-project KEY             # comprueba tus credenciales, sin escribir nada
 ```
 
-Antes del último comando necesitás [tus credenciales de Jira](docs/instalacion.md#3-credenciales-de-jira) (tres
+Antes del último comando necesitás [tus credenciales de Jira](docs/instalacion-detallada.md#3-credenciales-de-jira) (tres
 variables de entorno). Requisitos: `python3` 3.9 o más (solo biblioteca estándar) y acceso al repo.
 
 ## Por qué no simplemente el MCP de Atlassian

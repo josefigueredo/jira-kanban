@@ -1,6 +1,6 @@
 # Referencia de jira-team-kit
 
-> Esta es la referencia completa. Para empezar, la [instalación](instalacion.md); para ver qué hace, el [showcase](showcase.md); el [índice](../README.md) tiene las dos.
+> Esta es la referencia completa. Para empezar, la [instalación](instalacion.md) (o la [detallada, con comandos](instalacion-detallada.md)); para ver qué hace, el [showcase](showcase.md); el [índice](../README.md) tiene las dos.
 
 Una skill para Claude Code, Codex y Cursor que crea una épica de Jira a partir de lo que se está trabajando y la mantiene
 espejada, en los dos sentidos, como un kanban local en `./.jira-kanban/` del proyecto.
@@ -29,7 +29,7 @@ Requisitos: `python3` (3.9 o más; sólo biblioteca estándar) y credenciales de
 
 ### Credenciales
 
-Van en variables de entorno, en `./.env.local` o en `./.spec-kit/.env`. Cómo conseguirlas y dónde ponerlas, paso a paso: [Instalación, paso 3](instalacion.md#3-credenciales-de-jira).
+Van en variables de entorno, en `./.env.local` o en `./.spec-kit/.env`. Cómo conseguirlas y dónde ponerlas, paso a paso: [Instalación detallada, paso 3](instalacion-detallada.md#3-credenciales-de-jira).
 
 ## Frente al MCP de Atlassian
 

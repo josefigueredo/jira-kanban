@@ -10,9 +10,10 @@ from helpers import ROOT
 from jkan import config
 
 DOCS = ROOT / "docs"
-INSTALL = (DOCS / "instalacion.md").read_text(encoding="utf-8")
+INSTALL = (DOCS / "instalacion-detallada.md").read_text(encoding="utf-8")
+SIMPLE = (DOCS / "instalacion.md").read_text(encoding="utf-8")
 REFERENCE = (DOCS / "referencia.md").read_text(encoding="utf-8")
-PAGES = [ROOT / "README.md", DOCS / "instalacion.md", DOCS / "showcase.md", DOCS / "referencia.md"]
+PAGES = [ROOT / "README.md", DOCS / "instalacion.md", DOCS / "instalacion-detallada.md", DOCS / "showcase.md", DOCS / "referencia.md"]
 
 
 def slug(heading: str) -> str:
@@ -32,7 +33,8 @@ class ReadmeTest(unittest.TestCase):
     def test_credentials_name_every_variable_and_link_to_where_to_get_it(self):
         text = self.section("## 3. Credenciales de Jira")
         for names in config.KEYS.values():
-            self.assertIn(names[0], text)
+            self.assertIn(names[1], text)  # the generic JIRA_* names are the documented ones; IC_* is WayOfWork's alias
+        self.assertNotIn("IC_JIRA", INSTALL)  # IC_* are one person's own variables, not something to tell a new install to set
         self.assertIn("https://id.atlassian.com/manage-profile/security/api-tokens", text)
         self.assertIn("https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/", text)
 
@@ -41,6 +43,17 @@ class ReadmeTest(unittest.TestCase):
         text = self.section("## 3. Credenciales de Jira")
         self.assertIn("sin alcance", text)
         self.assertIn("api.atlassian.com", text)
+
+    def test_the_cursor_guide_has_no_scripts_to_run_and_names_the_generic_credentials(self):
+        # it is for someone who only talks to the agent: prompts, not `jtk` invocations, and not IC_* (one person's own variables)
+        for names in config.KEYS.values():
+            self.assertIn(names[1], SIMPLE)
+        self.assertNotIn("IC_JIRA", SIMPLE)
+        self.assertIn("sin alcance", SIMPLE)
+        self.assertIn("api.atlassian.com", SIMPLE)
+        shells = [block for block in SIMPLE.split("```")[1::2] if block.startswith("bash")]
+        self.assertEqual(len(shells), 1, "the only code block to run is the three exports of the credentials step")
+        self.assertIn("JIRA_API_TOKEN", shells[0])
 
     def test_credentials_have_a_check_that_needs_no_write(self):
         self.assertIn("jtk who", self.section("## 3. Credenciales de Jira"))
