@@ -1,6 +1,7 @@
 ---
 name: jira-em-ops
 description: Use when a manager wants to change several issues of their team at once ("pasá estos tickets a en curso", "asigná los que no tienen dueño", "comentá en estos tickets", "deshacé lo que apliqué"). It only prepares the change; a person approves it in a window with the changes (button Apruebo <n>). To read the team use jira-em, and to create or sync epics use jira-team-kit. Jira always goes through jtk, never an Atlassian MCP.
+compatibility: Requires the jtk CLI on PATH (install.sh links it into ~/.local/bin), python3 3.9+ with the standard library only, and Jira credentials (JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN).
 ---
 
 # jira-em-ops
