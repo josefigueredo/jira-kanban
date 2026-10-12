@@ -135,7 +135,7 @@ class SkillsTest(unittest.TestCase):
         text = (ROOT / "standup" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("jtk stats --by label", text)
         self.assertIn("component", text)
-        readme = (ROOT / "README.md").read_text(encoding="utf-8")
+        readme = (ROOT / "docs" / "referencia.md").read_text(encoding="utf-8")
         # the pipe is escaped because the command sits in a Markdown table
         self.assertIn("jtk stats [--weeks N] [--by label\\|component]", readme)
 
