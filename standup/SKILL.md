@@ -1,6 +1,7 @@
 ---
 name: jira-standup
 description: Use when the user asks what they (or a teammate) did in a period ("qué hice ayer", "la semana pasada"), what they can work on in the next days ("hoy", "la semana que viene"), what they are blocked on, how loaded a teammate is before assigning them work, or for their delivery metrics (velocity, lead time). Read only. To create or sync epics use jira-team-kit. Jira always goes through jtk, never an Atlassian MCP.
+compatibility: Requires the jtk CLI on PATH (install.sh links it into ~/.local/bin), python3 3.9+ with the standard library only, and Jira credentials (JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN).
 ---
 
 # jira-standup

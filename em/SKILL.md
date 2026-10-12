@@ -1,6 +1,7 @@
 ---
 name: jira-em
 description: Use when a manager asks about their team or their boards as a whole ("cómo viene mi equipo", "qué está bloqueado en mis boards", "qué está estancado", "resumen de la semana", "cómo anda la mesa de ayuda", "cómo andan mis equipos"), not about themselves. Read only. For "what did I do" or "what can I do" use jira-standup, and to create or sync epics use jira-team-kit. Jira always goes through jtk, never an Atlassian MCP.
+compatibility: Requires the jtk CLI on PATH (install.sh links it into ~/.local/bin), python3 3.9+ with the standard library only, and Jira credentials (JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN).
 ---
 
 # jira-em
