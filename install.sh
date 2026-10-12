@@ -3,8 +3,8 @@
 #   ./install.sh               the read-only skills: jira-standup and jira-em
 #   ./install.sh --with-write  also the skills that write to Jira: jira-team-kit and jira-em-ops
 # CLI: ~/.local/bin/jtk points at jtk.py; the skills call `jtk`, never another skill's folder.
-# Skills (same layout as WayOfWork): ~/.agents/skills/<name> points at this repo (jira-team-kit) or at its standup/
-# folder (jira-standup); ~/.claude/skills/<name>, ~/.codex/skills/<name> and ~/.cursor/skills/<name> point at
+# Skills (same layout as WayOfWork): ~/.agents/skills/<name> points at this repo (jira-team-kit) or at its own folder
+# (jira-standup/, jira-em/, jira-em-ops/); ~/.claude/skills/<name>, ~/.codex/skills/<name> and ~/.cursor/skills/<name> point at
 # ../../.agents/skills/<name> (measured: ~/.cursor/skills held only explicit links, so Cursor needs its own).
 # Re-running is safe and never removes a skill installed before. A real file or directory where a link goes is
 # never replaced: the script stops with exit 1.
@@ -13,10 +13,10 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILLS=("jira-standup:standup" "jira-em:em")  # name:folder inside the repo ("" is the repo itself)
+SKILLS=("jira-standup:jira-standup" "jira-em:jira-em")  # name:folder inside the repo ("" is the repo itself)
 case "${1:-}" in
   -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
-  --with-write) SKILLS+=("jira-team-kit:" "jira-em-ops:ops") ;;
+  --with-write) SKILLS+=("jira-team-kit:" "jira-em-ops:jira-em-ops") ;;
   "") ;;
   *) echo "unknown argument: $1" >&2; exit 2 ;;
 esac

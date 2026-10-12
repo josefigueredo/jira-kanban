@@ -22,14 +22,14 @@ class InstallTest(unittest.TestCase):
     def test_by_default_the_team_skill_is_linked_for_every_host_too(self):
         home = fresh_home()
         self.assertEqual(install(home).returncode, 0)
-        self.assertEqual(os.readlink(home / ".agents/skills/jira-em"), str(ROOT / "em"))
+        self.assertEqual(os.readlink(home / ".agents/skills/jira-em"), str(ROOT / "jira-em"))
         for host in (".claude", ".codex", ".cursor"):
             self.assertEqual(os.readlink(home / host / "skills/jira-em"), "../../.agents/skills/jira-em")
 
     def test_by_default_only_the_read_only_skills_are_linked_for_every_host(self):
         home = fresh_home()
         self.assertEqual(install(home).returncode, 0)
-        self.assertEqual(os.readlink(home / ".agents/skills/jira-standup"), str(ROOT / "standup"))
+        self.assertEqual(os.readlink(home / ".agents/skills/jira-standup"), str(ROOT / "jira-standup"))
         for host in (".claude", ".codex", ".cursor"):
             self.assertEqual(os.readlink(home / host / "skills/jira-standup"), "../../.agents/skills/jira-standup")
         self.assertFalse(os.path.lexists(home / ".agents/skills/jira-team-kit"))
@@ -40,7 +40,7 @@ class InstallTest(unittest.TestCase):
         home = fresh_home()
         self.assertEqual(install(home, "--with-write").returncode, 0)
         self.assertEqual(os.readlink(home / ".agents/skills/jira-team-kit"), str(ROOT))
-        self.assertEqual(os.readlink(home / ".agents/skills/jira-em-ops"), str(ROOT / "ops"))
+        self.assertEqual(os.readlink(home / ".agents/skills/jira-em-ops"), str(ROOT / "jira-em-ops"))
         for host in (".claude", ".codex", ".cursor"):
             for name in ("jira-team-kit", "jira-standup", "jira-em-ops"):
                 self.assertEqual(os.readlink(home / host / "skills" / name), f"../../.agents/skills/{name}")
