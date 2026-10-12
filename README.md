@@ -1,14 +1,17 @@
 # jira-team-kit
 
-Skills para Claude Code, Codex y Cursor, y un CLI (`jtk`), para trabajar con Jira Cloud sin salir del editor: crear una
-épica a partir de lo que se está trabajando, mantenerla espejada como kanban local, y leer cómo viene uno mismo o el
-equipo. **Nada se escribe en Jira sin una vista previa y sin un clic humano de aprobación.**
+Skills para Claude Code, Codex y Cursor, y un CLI (`jtk`), para trabajar con Jira Cloud sin salir del editor. Son
+cuatro, y cada una responde a algo distinto que le pedís al agente:
 
-Le decís al agente *«creame una épica para esto que estuvimos trabajando»* y te devuelve la épica con sus historias,
-tareas y subtareas, una vista previa navegable con estética de Jira y el comando para crearla. Lo corrés vos, aprobás en
-una ventana con el detalle, y recién ahí se escribe.
+| Le decís al agente… | Y la skill… |
+|---|---|
+| *«Creame una épica para esto que estuvimos trabajando»* | arma la épica con sus historias, tareas y subtareas, la deja como kanban local y la mantiene sincronizada con Jira |
+| *«¿Qué hice ayer?»*, *«¿qué puedo hacer esta semana?»*, *«¿en qué estoy bloqueado?»* | te lo responde leyendo Jira en vivo, sin escribir nada |
+| *«¿Cómo viene mi equipo?»*, *«¿qué está estancado?»* | resume el estado de uno o varios boards y de un equipo, sin escribir nada |
+| *«Pasá estos tickets a en curso»*, *«asigná los que no tienen dueño»* | prepara el cambio sobre varios issues a la vez, para que una persona lo apruebe |
 
-![Vista previa de una épica antes de crearla en Jira](docs/img/preview-epica.png)
+**Todo lo que escribe en Jira pasa por una vista previa y por un clic humano de aprobación; todo lo demás es de solo
+lectura.** La aprobación es un clic tuyo, no del agente (con los [límites](docs/referencia.md#cambiar-varios-issues-a-la-vez-con-guarda) que la referencia explica).
 
 ## Elegí por dónde empezar
 
@@ -18,6 +21,14 @@ una ventana con el detalle, y recién ahí se escribe.
 | **`jira-standup`** | Qué hice, qué puedo hacer, qué me bloquea, la carga de un compañero y métricas de entrega | Solo lectura | `./install.sh` | [Ver el caso](docs/showcase.md#3-qué-hice-qué-puedo-hacer-qué-me-bloquea) | [Instalar](docs/instalacion.md#2-instalar) |
 | **`jira-em`** | Cómo viene el equipo y los boards: estancado, bloqueado, flujo, resumen semanal, mesa de ayuda | Solo lectura | `./install.sh` | [Ver el caso](docs/showcase.md#4-cómo-viene-el-equipo) | [Instalar](docs/instalacion.md#2-instalar) |
 | **`jira-em-ops`** | Cambiar varios issues a la vez (estado, responsable, comentario), con un plan y aprobación humana | Escribe, con tu aprobación | `./install.sh --with-write` | [Ver el caso](docs/showcase.md#5-cambiar-varios-issues-con-aprobación-humana) | [Instalar](docs/instalacion.md#2-instalar) |
+
+## Un ejemplo: crear una épica
+
+El agente te devuelve la épica con sus historias, tareas y subtareas, una vista previa navegable con estética de Jira y
+el comando para crearla. Lo corrés vos, aprobás en una ventana con el detalle, y recién ahí se escribe. El recorrido
+completo está en el [showcase](docs/showcase.md#1-crear-una-épica-desde-la-conversación).
+
+![Vista previa de una épica antes de crearla en Jira](docs/img/preview-epica.png)
 
 ## Qué documento leer
 
