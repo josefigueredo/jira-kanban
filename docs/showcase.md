@@ -1,8 +1,8 @@
 # Showcase
 
 Qué se puede hacer con `jira-team-kit`, escenario por escenario: qué le decís al agente, qué comandos corre por detrás y
-qué ves en pantalla. Para instalarlo, la [guía de instalación](instalacion.md); para cada comando y flag, la
-[referencia](referencia.md).
+qué ves en pantalla. Para instalarlo, la [guía de instalación](instalacion.md) (con prompts de Cursor) o la
+[detallada](instalacion-detallada.md) (con comandos); para cada comando y flag, la [referencia](referencia.md).
 
 | Skill | Escenario | Ir al caso |
 |---|---|---|
