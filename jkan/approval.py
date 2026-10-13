@@ -30,15 +30,15 @@ body{padding:22px 24px 8px}
 h1{font-size:19px;line-height:1.25;font-weight:650;margin:4px 0 16px}
 .cards{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .card{background:var(--card);border-radius:10px;padding:10px 12px;display:grid;gap:6px}
-.top{display:flex;gap:8px;align-items:baseline}
-.key{flex:none;font:600 11.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--chip-bg);border-radius:5px;padding:1px 6px}
+.top{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.key{flex:0 1 auto;min-width:0;overflow-wrap:anywhere;font:600 11.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--chip-bg);border-radius:5px;padding:1px 6px}
 .key[class*=" k-"]{display:inline-flex;align-items:center;gap:5px}
-.key[class*=" k-"]::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--k)}
+.key[class*=" k-"]::before{content:"";flex:none;width:9px;height:9px;border-radius:2px;background:var(--k)}
 .k-epic{--k:#904EE2;background:rgba(144,78,226,.18)}
 .k-story{--k:#63BA3C;background:rgba(99,186,60,.2)}
 .k-task,.k-subtask{--k:#4BADE8;background:rgba(75,173,232,.2)}
 .name{font-weight:500;overflow-wrap:anywhere}
-.chg{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px}
+.chg{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;overflow-wrap:anywhere}
 .from{color:var(--muted)}
 .arrow{color:var(--muted)}
 .to{background:var(--to-bg);color:var(--to-fg);border-radius:999px;padding:1px 9px;font-weight:600}
@@ -76,6 +76,7 @@ KINDS = ("epic", "story", "task", "subtask")
 _CAP = 560   # tallest the page area gets; past it the page scrolls
 _LINE = 44   # characters of a title that fit on a line, on the low side so the estimate errs tall
 _HEAD_LINE = 38  # the same for the 19 px heading
+_KEY_LINE = 40   # characters of a key chip that fit on a line (monospace 11.5 px), on the low side
 
 
 def _change(text: str) -> str:
@@ -129,6 +130,7 @@ def window_height(summary) -> int:
     rows = rows_of(summary)
     height = 140 + 74 * len(rows) + 24 * (max(len(_heading(summary)) - 1, 0) // _HEAD_LINE)
     height += sum(20 * (max(len(name) - 1, 0) // _LINE) for _key, name, _change in rows)
+    height += sum(18 * (max(len(key) - 1, 0) // _KEY_LINE) for key, _name, _change in rows)  # a long key wraps
     height += sum(18 * change.count("\n") for _key, _name, change in rows)  # a change of several lines is taller
     if not rows:
         height += 40 * max(len(str(summary).splitlines()), 1)
