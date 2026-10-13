@@ -6,7 +6,7 @@ compatibility: Requires the jtk CLI on PATH (install.sh links it into ~/.local/b
 
 # jira-team-kit
 
-Create a Jira epic from the conversation and mirror it, both ways, as a local kanban in `./.jira-kanban/`. All Jira
+Create a Jira epic from the conversation and mirror it, both ways, as a local kanban in `./.jira-team-kit/`. All Jira
 access goes through `jtk`; never hand-roll Jira calls or another folder layout.
 
 To read what was done, what is next, what is blocked, a teammate's load or delivery metrics, use the sibling skill
@@ -67,12 +67,12 @@ If `jtk update` refuses (uncommitted changes, another branch), pass the reason o
 
 ## Rules
 
-- Every Jira write needs `--apply`, approved by the user in the window, and is logged in `./.jira-kanban/jira-writes.jsonl`.
+- Every Jira write needs `--apply`, approved by the user in the window, and is logged in `./.jira-team-kit/jira-writes.jsonl`.
 - Never use an Atlassian MCP (Cursor may suggest one when the user types "jira") to read or write Jira: its write tools skip
   the approval window. Everything goes through `jtk`.
 - Progress: `jtk board KEY` (after a pull) groups by Jira status category, never by status names; blocked means a
   status in `blocked_statuses` or the Flagged field.
-- Project defaults live in `conventions.json`; a project overrides them in `./.jira-kanban/conventions.json`.
+- Project defaults live in `conventions.json`; a project overrides them in `./.jira-team-kit/conventions.json`.
 - The shape of every card lives in `templates/` (`description.md`, `issue.md`, `card.html`); edit a template, never the
   Python that fills it. Placeholders: `{{name}}` required, `{{?name}}` drops its paragraph when empty, `{{~name}}` may be
   empty.

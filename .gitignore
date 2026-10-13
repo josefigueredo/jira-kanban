@@ -1,4 +1,5 @@
 __pycache__/
 *.pyc
 # the skill's own epic (PLATE-520) is tracked in Jira; its local kanban is not part of the skill
+.jira-team-kit/
 .jira-kanban/

@@ -26,8 +26,8 @@ qué ves en pantalla. Para instalarlo, la [guía de instalación](instalacion.md
 | **Aprobación humana con un clic** | `--apply` abre una ventana nativa de macOS con el detalle. Solo responde a un clic en `Apruebo <n>`; Return no aprueba y Cancelar es el predeterminado. El agente no puede aprobar por vos |
 | **Evidencia de lo hecho** | Un issue marcado `done` exige commits mergeados o URLs; `jtk` los resuelve antes de escribir y los deja como permalinks en la descripción |
 | **Forma fija de los issues** | Todo issue sale con *Por qué*, *Qué* y *Hecho cuando*; la historia, además, con «Como … quiero … para …» y criterios en Gherkin |
-| **Espejo local** | Un kanban en `./.jira-kanban/` que se trae (`pull`) y se sube (`push`), sin pisar cambios ajenos |
-| **Registro** | Cada escritura queda en `./.jira-kanban/jira-writes.jsonl` y en `~/.local/state/jtk/writes.jsonl` |
+| **Espejo local** | Un kanban en `./.jira-team-kit/` que se trae (`pull`) y se sube (`push`), sin pisar cambios ajenos |
+| **Registro** | Cada escritura queda en `./.jira-team-kit/jira-writes.jsonl` y en `~/.local/state/jtk/writes.jsonl` |
 
 ---
 
@@ -107,10 +107,10 @@ tildes, mayúsculas y una letra de diferencia («Matiaz» encuentra a «Matías�
 Después de `create`, la épica queda como carpetas y archivos Markdown en tu proyecto:
 
 ```text
-.jira-kanban/DEMO-1/epic.md
-.jira-kanban/DEMO-1/stories/DEMO-2/story.md
-.jira-kanban/DEMO-1/stories/DEMO-2/subtasks/DEMO-3/subtask.md
-.jira-kanban/DEMO-1/tasks/DEMO-4/task.md
+.jira-team-kit/DEMO-1/epic.md
+.jira-team-kit/DEMO-1/stories/DEMO-2/story.md
+.jira-team-kit/DEMO-1/stories/DEMO-2/subtasks/DEMO-3/subtask.md
+.jira-team-kit/DEMO-1/tasks/DEMO-4/task.md
 ```
 
 ![Terminal con jtk show y jtk board](img/terminal-kanban.png)

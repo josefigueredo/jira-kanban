@@ -1,15 +1,19 @@
 # The local kanban
 
 ```
-.jira-kanban/<EPIC>/epic.md
-.jira-kanban/<EPIC>/stories/<KEY>/story.md
-.jira-kanban/<EPIC>/tasks/<KEY>/task.md
-.jira-kanban/<EPIC>/<stories|tasks>/<KEY>/subtasks/<KEY>/subtask.md
-.jira-kanban/<EPIC>/.sync.json          # baseline of the last pull; push compares against it
-.jira-kanban/jira-writes.jsonl          # every write to Jira: time, command, issue, change (keep it out of git)
-.jira-kanban/.create-progress-*.json    # keys of a create in flight, removed when it ends (keep it out of git)
-.jira-kanban/conventions.json           # optional project override of the skill's conventions.json
+.jira-team-kit/<EPIC>/epic.md
+.jira-team-kit/<EPIC>/stories/<KEY>/story.md
+.jira-team-kit/<EPIC>/tasks/<KEY>/task.md
+.jira-team-kit/<EPIC>/<stories|tasks>/<KEY>/subtasks/<KEY>/subtask.md
+.jira-team-kit/<EPIC>/.sync.json          # baseline of the last pull; push compares against it
+.jira-team-kit/jira-writes.jsonl          # every write to Jira: time, command, issue, change (keep it out of git)
+.jira-team-kit/.create-progress-*.json    # keys of a create in flight, removed when it ends (keep it out of git)
+.jira-team-kit/conventions.json           # optional project override of the skill's conventions.json
 ```
+
+A project that still has the old `.jira-kanban/` folder gets it moved to `.jira-team-kit/` the first time any `jtk` command
+looks for its data (the move keeps every file as it was). If both folders exist the new one is used and the old one is left
+alone; if the move fails, the old folder keeps working.
 
 Each `.md` is written from `templates/issue.md`: a front matter (`key`, `kind`, `issuetype`, `status`, `category`, `blocked`, `parent`, `url`),
 the title as `# …` and the description below. The last sync time lives only in `.sync.json`, so a pull with
