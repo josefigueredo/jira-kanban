@@ -30,7 +30,7 @@ def journal(project: Path, command: str, now: Optional[Callable[[], str]] = None
             path = home.data_dir(project) / "jira-writes.jsonl"
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("a", encoding="utf-8") as handle:
-                handle.write(json.dumps({"ts": clock(), "tool": "jira-kanban", "command": command, **entry},
+                handle.write(json.dumps({"ts": clock(), "tool": "jtk", "command": command, **entry},
                                         ensure_ascii=False) + "\n")
         except OSError:
             pass

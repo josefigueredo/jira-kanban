@@ -46,7 +46,7 @@ class JournalFileTest(unittest.TestCase):
         write = journal.journal(project, "create", now=lambda: "2026-10-05T12:00:00Z")
         write({"action": "transition", "key": "PLATE-700", "to": "Done"})
         [line] = (project / ".jira-team-kit" / "jira-writes.jsonl").read_text(encoding="utf-8").splitlines()
-        self.assertEqual(json.loads(line), {"ts": "2026-10-05T12:00:00Z", "tool": "jira-kanban", "command": "create",
+        self.assertEqual(json.loads(line), {"ts": "2026-10-05T12:00:00Z", "tool": "jtk", "command": "create",
                                             "action": "transition", "key": "PLATE-700", "to": "Done"})
 
     def test_a_journal_that_cannot_write_never_breaks_the_command(self):
