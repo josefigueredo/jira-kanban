@@ -39,9 +39,9 @@ class PreflightTest(unittest.TestCase):
         project = make_project()
         self.assertEqual(rows(check.preflight(project, {"project": "PLATE"}, branch="", flag="PLATE"))["jira project"],
                          ("PLATE", "--jira-project"))
-        write(project, ".jira-kanban/conventions.json", '{"project": "IRIS"}')
+        write(project, ".jira-team-kit/conventions.json", '{"project": "IRIS"}')
         self.assertEqual(rows(check.preflight(project, {"project": "IRIS"}, branch=""))["jira project"],
-                         ("IRIS", ".jira-kanban/conventions.json"))
+                         ("IRIS", ".jira-team-kit/conventions.json"))
 
     def test_without_a_jira_project_it_says_to_ask_the_person(self):
         verdict, detail = rows(check.preflight(make_project(), {}, branch=""))["jira project"]
@@ -97,7 +97,7 @@ class PreflightTest(unittest.TestCase):
 class CheckCliTest(unittest.TestCase):
     def test_check_needs_no_spec_and_never_touches_jira(self):
         project = make_project()
-        write(project, ".jira-kanban/conventions.json", '{"project": "PLATE"}')
+        write(project, ".jira-team-kit/conventions.json", '{"project": "PLATE"}')
         jira = FakeJira()
         code, out, err = run(["create", "--check", "--project", str(project)], jira)
         self.assertEqual((code, err), (0, ""))

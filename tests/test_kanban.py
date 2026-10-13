@@ -54,7 +54,7 @@ class LayoutTest(unittest.TestCase):
     def test_paths_follow_jira_levels(self):
         project = make_project()
         epic = kanban.epic_dir(project, "PLATE-600")
-        self.assertEqual(epic, project / ".jira-kanban" / "PLATE-600")
+        self.assertEqual(epic, project / ".jira-team-kit" / "PLATE-600")
         self.assertEqual(kanban.item_file(epic, "story", "PLATE-601"), epic / "stories" / "PLATE-601" / "story.md")
         self.assertEqual(kanban.item_file(epic, "task", "PLATE-603"), epic / "tasks" / "PLATE-603" / "task.md")
         parent = kanban.item_file(epic, "story", "PLATE-601").parent

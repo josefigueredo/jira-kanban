@@ -1,4 +1,4 @@
-"""jtk's own writes to Jira, one JSON line each in ./.jira-kanban/jira-writes.jsonl (same shape as WayOfWork's log).
+"""jtk's own writes to Jira, one JSON line each in ./.jira-team-kit/jira-writes.jsonl (same shape as WayOfWork's log).
 
 Jira's changelog shows the account, not the tool. This log records every write jtk made (what, to which issue, from
 which command, when), so a change can at least be ruled in or out as this skill's.
@@ -9,6 +9,8 @@ import datetime as _dt
 import json
 from pathlib import Path
 from typing import Callable, Optional
+
+from . import home
 
 
 def _utc_now() -> str:
@@ -25,7 +27,7 @@ def journal(project: Path, command: str, now: Optional[Callable[[], str]] = None
 
     def write(entry: dict) -> None:
         try:
-            path = project / ".jira-kanban" / "jira-writes.jsonl"
+            path = home.data_dir(project) / "jira-writes.jsonl"
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps({"ts": clock(), "tool": "jira-kanban", "command": command, **entry},

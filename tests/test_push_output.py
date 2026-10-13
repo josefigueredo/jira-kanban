@@ -43,7 +43,7 @@ class PushOutputTest(unittest.TestCase):
         self.jira, self.project = FakeJira(), make_project()
         self.key = epic_with_children(self.jira)
         run(["pull", self.key, "--project", str(self.project)], self.jira)
-        self.task = self.project / ".jira-kanban" / self.key / "tasks/PLATE-603/task.md"
+        self.task = self.project / ".jira-team-kit" / self.key / "tasks/PLATE-603/task.md"
 
     def edit(self, old, new):
         self.task.write_text(self.task.read_text(encoding="utf-8").replace(old, new), encoding="utf-8")

@@ -1,4 +1,4 @@
-"""Every write jtk makes to Jira is kept in ./.jira-kanban/jira-writes.jsonl, in the same shape as WayOfWork's log.
+"""Every write jtk makes to Jira is kept in ./.jira-team-kit/jira-writes.jsonl, in the same shape as WayOfWork's log.
 
 With one Jira token shared by several tools and by hand, Jira's changelog cannot say which tool made a change. A log
 of this skill's own successful writes at least lets a change be ruled in or out as jtk's.
@@ -45,13 +45,13 @@ class JournalFileTest(unittest.TestCase):
         project = make_project()
         write = journal.journal(project, "create", now=lambda: "2026-10-05T12:00:00Z")
         write({"action": "transition", "key": "PLATE-700", "to": "Done"})
-        [line] = (project / ".jira-kanban" / "jira-writes.jsonl").read_text(encoding="utf-8").splitlines()
+        [line] = (project / ".jira-team-kit" / "jira-writes.jsonl").read_text(encoding="utf-8").splitlines()
         self.assertEqual(json.loads(line), {"ts": "2026-10-05T12:00:00Z", "tool": "jira-kanban", "command": "create",
                                             "action": "transition", "key": "PLATE-700", "to": "Done"})
 
     def test_a_journal_that_cannot_write_never_breaks_the_command(self):
         project = make_project()
-        (project / ".jira-kanban").write_text("not a directory", encoding="utf-8")
+        (project / ".jira-team-kit").write_text("not a directory", encoding="utf-8")
         journal.journal(project, "push")({"action": "update", "key": "PLATE-700", "fields": {}})
 
 

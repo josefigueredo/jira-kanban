@@ -20,7 +20,7 @@ class TeeTest(unittest.TestCase):
     def test_a_write_goes_to_the_project_log_as_before_and_to_the_common_one(self):
         write = journal.journal(self.project, "create", now=lambda: "T1", also=state.log_write)
         write({"action": "update", "key": "PLATE-1", "fields": {"summary": "x"}})
-        self.assertEqual(lines(self.project / ".jira-kanban" / "jira-writes.jsonl"),
+        self.assertEqual(lines(self.project / ".jira-team-kit" / "jira-writes.jsonl"),
                          [{"ts": "T1", "tool": "jira-kanban", "command": "create", "action": "update",
                            "key": "PLATE-1", "fields": {"summary": "x"}}])
         [common] = lines(self.base / "writes.jsonl")
@@ -44,12 +44,12 @@ class TeeTest(unittest.TestCase):
             raise RuntimeError("boom")
 
         journal.journal(self.project, "push", also=broken)({"action": "update", "key": "PLATE-1", "fields": {}})
-        self.assertEqual(len(lines(self.project / ".jira-kanban" / "jira-writes.jsonl")), 1)
+        self.assertEqual(len(lines(self.project / ".jira-team-kit" / "jira-writes.jsonl")), 1)
 
     def test_a_state_folder_that_cannot_be_written_never_breaks_the_write(self):
         (self.base / "writes.jsonl").mkdir()  # a directory where the file should be
         journal.journal(self.project, "push", also=state.log_write)({"action": "update", "key": "PLATE-1", "fields": {}})
-        self.assertEqual(len(lines(self.project / ".jira-kanban" / "jira-writes.jsonl")), 1)
+        self.assertEqual(len(lines(self.project / ".jira-team-kit" / "jira-writes.jsonl")), 1)
 
 
 class ClientTest(unittest.TestCase):
@@ -65,7 +65,7 @@ class ClientTest(unittest.TestCase):
 
     def test_the_legacy_commands_write_to_both_logs(self):
         self.journal_of("assign")({"action": "assign", "key": "PLATE-2", "accountId": "acc-ana"})
-        self.assertEqual(len(lines(self.project / ".jira-kanban" / "jira-writes.jsonl")), 1)
+        self.assertEqual(len(lines(self.project / ".jira-team-kit" / "jira-writes.jsonl")), 1)
         [common] = lines(self.base / "writes.jsonl")
         self.assertEqual((common["command"], common["key"], common["accountId"]), ("assign", "PLATE-2", "acc-ana"))
 

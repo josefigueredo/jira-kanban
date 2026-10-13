@@ -15,7 +15,7 @@ import shutil
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from . import config, description, evidence, kanban, people, spec
+from . import config, description, evidence, home, kanban, people, spec
 
 KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]+-\d+$")
 FIELDS = ("summary", "status", "description")
@@ -109,7 +109,7 @@ def _fields(conv: dict, me: Optional[str], kind: str, summary: str, description:
 
 def _progress_path(project: Path, epic_spec: dict, conv: dict) -> Path:
     digest = hashlib.sha256(json.dumps([conv["project"], epic_spec], sort_keys=True).encode()).hexdigest()[:16]
-    return project / ".jira-kanban" / f".create-progress-{digest}.json"
+    return home.data_dir(project) / f".create-progress-{digest}.json"
 
 
 def attach_evidence(ops: List[dict], repo: Path) -> None:
@@ -130,7 +130,7 @@ def attach_evidence(ops: List[dict], repo: Path) -> None:
 def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign_open: Optional[bool] = None) -> dict:
     if not conv.get("project"):
         raise ValueError("no Jira project configured: ask the user which one, then pass --jira-project KEY or set "
-                         "\"project\" in ./.jira-kanban/conventions.json (the skill never assumes one)")
+                         "\"project\" in ./.jira-team-kit/conventions.json (the skill never assumes one)")
     findings = spec.validate(epic_spec, conv)
     if findings:
         raise ValueError("\n".join(findings))

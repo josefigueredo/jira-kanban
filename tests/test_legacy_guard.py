@@ -126,7 +126,7 @@ class CreateTest(unittest.TestCase):
     def test_without_approval_nothing_is_created_and_no_local_folder_appears(self):
         code, _, err = run(self.args("--apply", "--assign-open"), self.jira, Asked(approve=False))
         self.assertEqual((code, self.jira.writes), (3, []))
-        self.assertFalse((self.project / ".jira-kanban" / "PLATE-600").exists())
+        self.assertFalse((self.project / ".jira-team-kit" / "PLATE-600").exists())
         self.assertIn("nothing was written", err)
 
 
@@ -139,7 +139,7 @@ class PushTest(unittest.TestCase):
             cli.main(["pull", self.key, "--project", str(self.project)], client=lambda p: self.jira)
 
     def edit(self):
-        task = self.project / ".jira-kanban" / self.key / "tasks/PLATE-603/task.md"
+        task = self.project / ".jira-team-kit" / self.key / "tasks/PLATE-603/task.md"
         task.write_text(task.read_text(encoding="utf-8").replace("status: Backlog", "status: Done"), encoding="utf-8")
 
     def test_apply_asks_for_changes_plus_new_issues_and_nothing_else_is_asked_in_a_dry_run(self):
@@ -167,7 +167,7 @@ class PushTest(unittest.TestCase):
             seen.append(Path(argv[4]).read_text(encoding="utf-8"))
             return types.SimpleNamespace(returncode=0, stdout="approved")
 
-        new = self.project / ".jira-kanban" / self.key / "tasks" / "_new-docs" / "task.md"
+        new = self.project / ".jira-team-kit" / self.key / "tasks" / "_new-docs" / "task.md"
         new.parent.mkdir(parents=True)
         new.write_text("# [FE] Docs & más\n\nPor qué: no hay guía.\n\nQué: un README.\n\nHecho cuando: se publica.\n",
                        encoding="utf-8")

@@ -14,7 +14,7 @@ class CreateTest(unittest.TestCase):
         result = sync.create(jira, project, GOOD, CONVENTIONS, apply=False)
         self.assertEqual(jira.writes, [])
         self.assertEqual(len(result["ops"]), 4)
-        self.assertFalse((project / ".jira-kanban").exists())
+        self.assertFalse((project / ".jira-team-kit").exists())
 
     def test_apply_creates_parents_first_assigns_me_and_writes_the_kanban(self):
         jira, project = FakeJira(), make_project()
@@ -72,7 +72,7 @@ class CreateTest(unittest.TestCase):
         self.assertEqual(len(summaries), len(set(summaries)))
         self.assertEqual(result["epic"], "PLATE-600")
         self.assertEqual(len([w for w in broken.writes if w[0] == "create"]), 4)
-        self.assertEqual(list((project / ".jira-kanban").glob(".create-progress-*.json")), [])
+        self.assertEqual(list((project / ".jira-team-kit").glob(".create-progress-*.json")), [])
 
     def test_done_items_are_moved_to_done_children_before_parents(self):
         done = described({"epic": {"summary": "e"}, "items": [

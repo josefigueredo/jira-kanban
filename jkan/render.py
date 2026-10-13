@@ -155,7 +155,7 @@ def render_load(head_text: str, name: str, numbers: dict, mine_name: Optional[st
         room = (f"tiene espacio para {verdict['room']} más" if verdict["room"] > 0 else "sin espacio")
         line = f"**{name}:** WIP {numbers['in_progress']}/{verdict['wip_limit']} → {room}"
     else:
-        line = ("_Sin veredicto: no hay `wip_limit` en .jira-kanban/conventions.json y Jira no tiene estimaciones en "
+        line = ("_Sin veredicto: no hay `wip_limit` en .jira-team-kit/conventions.json y Jira no tiene estimaciones en "
                 "PLATE. Lo de arriba es lo medido; el umbral lo pone el equipo._")
     return "\n\n".join([head_text, grid, line])
 

@@ -18,7 +18,7 @@ class PushCheckTest(unittest.TestCase):
         self.jira, self.project = FakeJira(), make_project()
         self.key = epic_with_children(self.jira)
         sync.pull(self.jira, self.project, self.key)
-        self.epic = self.project / ".jira-kanban" / self.key
+        self.epic = self.project / ".jira-team-kit" / self.key
         self.task = self.epic / "tasks/PLATE-603/task.md"
 
     def set_description(self, path, text):

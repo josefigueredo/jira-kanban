@@ -208,7 +208,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
     sub = parser.add_subparsers(dest="cmd", required=True)
     for name in ("create", "pull", "push", "show", "board"):
         p = sub.add_parser(name)
-        p.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
+        p.add_argument("--project", default=".", help="project root that holds ./.jira-team-kit (default: cwd)")
         if name == "create":
             p.add_argument("--spec", help="epic spec JSON (see SKILL.md); not with --check")
             p.add_argument("--check", action="store_true",
@@ -226,14 +226,14 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
                                help="leave unassigned the issues that are not complete locally")
     who = sub.add_parser("who", help="find a person in Jira by name, email or account id (read only)")
     who.add_argument("name", help="a name (accents and small typos are fine), an email or an accountId")
-    who.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
+    who.add_argument("--project", default=".", help="project root that holds ./.jira-team-kit (default: cwd)")
     who.add_argument("--jira-project", help="only people assignable in this Jira project, e.g. PLATE")
     who.add_argument("--json", action="store_true", help="machine-readable output")
     give = sub.add_parser("assign", help="assign an issue (and with --tree everything under it) to a person")
     give.add_argument("key", help="issue key, e.g. PLATE-639")
     give.add_argument("who", help="the person: a name, email or accountId (run jtk who first if unsure)")
     give.add_argument("--tree", action="store_true", help="also assign every issue under it")
-    give.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
+    give.add_argument("--project", default=".", help="project root that holds ./.jira-team-kit (default: cwd)")
     give.add_argument("--apply", action="store_true", help="write to Jira (default: dry run)")
     for name, text in (("done", "what you (or --person) moved to In Progress or Done in a period"),
                        ("next", "what you can do now: open work by priority, what is due, what is unowned in your epics"),
@@ -243,7 +243,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
         r = sub.add_parser(name, help=text + " (read only)")
         r.add_argument("--person", help="a teammate: name, email or accountId (default: you)")
         r.add_argument("--jira-project", help="only this Jira project, e.g. PLATE")
-        r.add_argument("--project", default=".", help="project root that holds ./.jira-kanban (default: cwd)")
+        r.add_argument("--project", default=".", help="project root that holds ./.jira-team-kit (default: cwd)")
         r.add_argument("--json", action="store_true", help="machine-readable output")
         if name in ("done", "next", "blocked"):
             r.add_argument("--view", help="only the boards of this saved view (see jtk team setup)")
@@ -328,7 +328,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
             if not args.apply:
                 print(f"dry run: nothing created; --apply creates {len(result['ops'])} issues in {conv['project']}")
             else:
-                print(f"created {result['epic']}; local kanban in .jira-kanban/{result['epic']}/")
+                print(f"created {result['epic']}; local kanban in .jira-team-kit/{result['epic']}/")
             errors = result.get("errors") or []
             for error in errors:
                 sys.stderr.write(f"{error['key']}: not moved to {error['to']} ({error['reason']})\n")

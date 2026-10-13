@@ -26,8 +26,8 @@ class TransitionFailureTest(unittest.TestCase):
         self.assertIn("HTTP 400", result["errors"][0]["reason"])
         self.assertEqual(result["errors"][1], {"key": "PLATE-603", "to": "in progress",
                                                "reason": "no transition into that category"})
-        self.assertTrue((project / ".jira-kanban" / "PLATE-600" / "epic.md").is_file())
-        self.assertEqual(list((project / ".jira-kanban").glob(".create-progress-*.json")), [])
+        self.assertTrue((project / ".jira-team-kit" / "PLATE-600" / "epic.md").is_file())
+        self.assertEqual(list((project / ".jira-team-kit").glob(".create-progress-*.json")), [])
 
     def test_cli_reports_the_failed_moves_and_how_to_finish_them_with_push(self):
         jira, project = FakeJira(refuse_moves={"PLATE-604": "raise"}), make_project()

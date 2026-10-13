@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from typing import Dict, Mapping, Optional, Tuple
 
+from . import home
+
 SKILL_DIR = Path(__file__).resolve().parent.parent
 KEYS = {"base_url": ("IC_JIRA_BASE_URL", "JIRA_BASE_URL"),
         "email": ("IC_JIRA_USER_EMAIL", "JIRA_EMAIL"),
@@ -40,9 +42,9 @@ def credentials(project: Path, environ: Optional[Mapping[str, str]] = None) -> O
 
 
 def load_conventions(project: Optional[Path] = None) -> dict:
-    """The skill's conventions.json, overridden key by key by the project's ./.jira-kanban/conventions.json."""
+    """The skill's conventions.json, overridden key by key by the project's ./.jira-team-kit/conventions.json."""
     conv = json.loads((SKILL_DIR / "conventions.json").read_text(encoding="utf-8"))
-    override = (project / ".jira-kanban" / "conventions.json") if project else None
+    override = (home.data_dir(project) / "conventions.json") if project else None
     if override and override.is_file():
         conv.update(json.loads(override.read_text(encoding="utf-8")))
     return conv
