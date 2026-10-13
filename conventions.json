@@ -30,7 +30,7 @@
   "blocked_link": "is blocked by",
   "timezone": "America/Argentina/Buenos_Aires",
   "notes": [
-    "There is no default Jira project: create needs --jira-project KEY or \"project\" in ./.jira-kanban/conventions.json; pull and push take it from the epic key.",
+    "There is no default Jira project: create needs --jira-project KEY or \"project\" in ./.jira-team-kit/conventions.json; pull and push take it from the epic key.",
     "The area goes as a [AREA] title prefix; components are not used (PLATE is shared and classified as api/mcp/mfe).",
     "PLATE has no story points field on its edit screen: estimates are not sent.",
     "Jira levels: Epic (1) > Story (migrated) | Tarea | Error (0, siblings) > Subtarea (-1).",

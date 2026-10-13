@@ -113,7 +113,7 @@ Al correr ese comando se abre una ventana con el detalle exacto:
 
 ## 4. Ver cómo viene y sincronizar con Jira
 
-Al crear, la épica queda como carpetas y archivos en `./.jira-kanban/` de tu proyecto. Para verla:
+Al crear, la épica queda como carpetas y archivos en `./.jira-team-kit/` de tu proyecto. Para verla:
 
 > Mostrame cómo viene la épica DEMO-1
 

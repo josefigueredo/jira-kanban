@@ -46,7 +46,7 @@ def preflight(project: Path, conv: dict, branch: Optional[str] = None, flag: Opt
     if flag:
         rows.append(("jira project", flag, "--jira-project"))
     elif conv.get("project"):
-        rows.append(("jira project", conv["project"], ".jira-kanban/conventions.json"))
+        rows.append(("jira project", conv["project"], ".jira-team-kit/conventions.json"))
     else:
         rows.append(("jira project", "none", "ask the person which project and pass --jira-project KEY"))
     where: dict = {}

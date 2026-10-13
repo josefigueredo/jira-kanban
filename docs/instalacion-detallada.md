@@ -240,11 +240,11 @@ jtk create --spec spec.json --jira-project DEMO --apply --no-assign-open
 - **`--assign-open` o `--no-assign-open` es obligatorio** si hay issues sin terminar: elegís si te los asignás. Sin
   eso, `--apply` se niega antes de llamar a Jira.
 - Si Jira rechaza un issue a mitad de camino, conserva lo creado y **el mismo comando retoma sin duplicar**.
-- Cada escritura queda en `./.jira-kanban/jira-writes.jsonl`.
+- Cada escritura queda en `./.jira-team-kit/jira-writes.jsonl`.
 
 ### 5.5 El kanban local
 
-Al terminar, `create` escribe una carpeta por issue en `./.jira-kanban/<ÉPICA>/`. Para verlo:
+Al terminar, `create` escribe una carpeta por issue en `./.jira-team-kit/<ÉPICA>/`. Para verlo:
 
 ```bash
 jtk show DEMO-1      # el árbol
@@ -259,7 +259,7 @@ jtk board DEMO-1     # agrupado: Bloqueado · Por hacer · En progreso · Hecho
 
 ```bash
 jtk pull DEMO-1              # trae la épica y sus hijos de Jira al kanban local
-# editá un status, un # título o un cuerpo en .jira-kanban/DEMO-1/…
+# editá un status, un # título o un cuerpo en .jira-team-kit/DEMO-1/…
 jtk push DEMO-1              # dry run: lista lo que cambiaría
 jtk push DEMO-1 --apply      # lo escribe (con la ventana de aprobación)
 ```

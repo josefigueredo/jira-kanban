@@ -1,4 +1,4 @@
-"""The local kanban: one folder per Jira issue under ./.jira-kanban/<EPIC>/, following Jira's levels.
+"""The local kanban: one folder per Jira issue under ./.jira-team-kit/<EPIC>/, following Jira's levels.
 
 <EPIC>/epic.md · stories/<KEY>/story.md · tasks/<KEY>/task.md · <story or task>/subtasks/<KEY>/subtask.md
 Stories and tasks are siblings under the epic, as in Jira; subtasks hang from either.
@@ -8,16 +8,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict
 
-from . import template
+from . import home, template
 
-ROOT = ".jira-kanban"
+
 FRONT = ("key", "kind", "issuetype", "status", "category", "blocked", "parent", "url")  # no sync time: a pull with nothing new
                                                                                      # leaves every file byte-identical
 FOLDER = {"story": "stories", "task": "tasks"}
 
 
 def epic_dir(project: Path, key: str) -> Path:
-    return project / ROOT / key
+    return home.data_dir(project) / key
 
 
 def item_file(epic: Path, kind: str, key: str) -> Path:

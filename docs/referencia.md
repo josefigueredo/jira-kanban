@@ -3,7 +3,7 @@
 > Esta es la referencia completa. Para empezar, la [instalación](instalacion.md) (o la [detallada, con comandos](instalacion-detallada.md)); para ver qué hace, el [showcase](showcase.md); el [índice](../README.md) tiene las dos.
 
 Una skill para Claude Code, Codex y Cursor que crea una épica de Jira a partir de lo que se está trabajando y la mantiene
-espejada, en los dos sentidos, como un kanban local en `./.jira-kanban/` del proyecto.
+espejada, en los dos sentidos, como un kanban local en `./.jira-team-kit/` del proyecto.
 
 Le decís al agente *"creame una épica para esto que estuvimos trabajando"*. El agente arma la épica con sus historias,
 tareas y subtareas, te muestra una vista previa navegable con estética de Jira, espera tu "sí" y crea todo en Jira. Después
@@ -40,7 +40,7 @@ leer, buscar, crear, editar, transicionar y comentar). Se pisan solo en el CRUD 
 | | `jira-team-kit` (`jtk`) | MCP de Atlassian |
 |---|---|---|
 | Escribir en Jira | Dry run por defecto; `--apply` abre una ventana de macOS que solo una persona puede aprobar | Lo hace el agente directo, sin ventana |
-| Registro | `./.jira-kanban/jira-writes.jsonl` con cada escritura | Sin registro local |
+| Registro | `./.jira-team-kit/jira-writes.jsonl` con cada escritura | Sin registro local |
 | Kanban local | Espejo en dos sentidos (`pull` / `push`) | No |
 | Forma de los issues | Plantillas (por qué, qué, hecho cuando) y evidencia | La que invente el agente |
 | Reportes de equipo | `standup`, `em`, métricas, perfiles de board, planes de cambios | No |
@@ -57,7 +57,7 @@ de la ventana de `jtk`, pero no bloquea las herramientas de un MCP.
 
 Todos aceptan `--project DIR` (por defecto, el directorio actual). **Ninguno escribe en Jira sin `--apply`**, y el
 `--apply` lo corrés vos: en Claude Code un hook se lo bloquea al agente, que te pasa el comando listo. Cada escritura
-queda en `./.jira-kanban/jira-writes.jsonl` (hora, comando, issue y cambio).
+queda en `./.jira-team-kit/jira-writes.jsonl` (hora, comando, issue y cambio).
 
 | Comando | Qué hace |
 |---|---|
@@ -169,7 +169,7 @@ zona del equipo. Para otro rango, `--since` y `--until` en `YYYY-MM-DD`.
 
 Todos aceptan `--person "NOMBRE"` (si el nombre es ambiguo lista a los candidatos y no elige), `--jira-project KEY` y
 `--json`. PLATE no tiene story points, así que la velocidad se mide en issues; `jtk load` solo da un veredicto si
-`wip_limit` está en `./.jira-kanban/conventions.json`. Límites: Jira guarda solo el último cambio de estado (un issue
+`wip_limit` está en `./.jira-team-kit/conventions.json`. Límites: Jira guarda solo el último cambio de estado (un issue
 que pasó por «en curso» y luego a Done figura con la fecha de Done) y «hecho» significa asignado a la persona.
 
 ## Reportes de equipo
@@ -222,7 +222,7 @@ Qué protege y qué no: frena el error (un nombre equivocado, un plan equivocado
 respuesta la da un clic humano. Un agente no puede hacer clic sin permisos de accesibilidad del sistema: **si le diste ese
 permiso a Cursor o a Terminal, esa defensa se debilita**. No protege de un agente malicioso con control total de la máquina.
 
-Antes de cada escritura, `apply` vuelve a leer el issue: si alguien lo movió o reasignó después de planificar, lo saltea y lo informa. Reaplicar un plan es seguro (saltea lo ya hecho). Cada escritura queda en `~/.local/state/jtk/writes.jsonl`, también las de `jtk create|push|assign --apply` (el registro de cada proyecto, `.jira-kanban/jira-writes.jsonl`, sigue como antes). Las líneas de un plan llevan `plan`; las de los comandos viejos, no.
+Antes de cada escritura, `apply` vuelve a leer el issue: si alguien lo movió o reasignó después de planificar, lo saltea y lo informa. Reaplicar un plan es seguro (saltea lo ya hecho). Cada escritura queda en `~/.local/state/jtk/writes.jsonl`, también las de `jtk create|push|assign --apply` (el registro de cada proyecto, `.jira-team-kit/jira-writes.jsonl`, sigue como antes). Las líneas de un plan llevan `plan`; las de los comandos viejos, no.
 
 La skill `jira-em-ops` (solo con `./install.sh --with-write`) prepara los planes y corre `apply` solo cuando la persona lo pidió; la aprobación es el clic en la ventana. Si cancelás, no reintenta.
 
@@ -236,7 +236,7 @@ Los parches los aplica la persona, uno encima del otro y en este orden, siempre 
 
 El comando se llama `jtk` y el nombre viejo no se conserva. El orden importa, porque el hook tiene que reconocer `jtk` **antes** de que el comando exista donde un agente lo pueda correr: desde que `jtk.py` está en el árbol de este repo, un `jtk apply` mandado por un pseudo-terminal no lo frena un hook que solo conoce `jk`. Por eso el parche va primero, y se puede aplicar ya mismo: sigue bloqueando `jk`. Mientras no mergees e instales, `jk` sigue andando; desde el checkout de la rama deja de andar porque `jk.py` ya no existe.
 
-1. Aplicar el parche del hook (sección anterior), antes de mergear; `tools/check-guardrails.sh` tiene que dar 44/44. Después, mergear esta rama.
+1. Aplicar el parche del hook (sección anterior), antes de mergear; `tools/check-guardrails.sh` tiene que dar 56/56. Después, mergear esta rama.
 2. Correr `./install.sh` (con `--with-write` si lo usás). Borra `~/.local/bin/jk` solo si era el enlace de este repo, linkea `jtk` y **imprime** los `mv` de tus datos sin ejecutarlos.
 3. Correr esos `mv` vos: `~/.config/jk` pasa a `~/.config/jtk` (perfiles y views) y `~/.local/state/jk` a `~/.local/state/jtk` (planes y registro de escrituras).
 
@@ -266,12 +266,17 @@ persona tiene que decidir. Un reporte de un proyecto sin perfil usa la categorí
 ## Kanban local
 
 ```
-.jira-kanban/<EPIC>/epic.md
-.jira-kanban/<EPIC>/stories/<KEY>/story.md
-.jira-kanban/<EPIC>/tasks/<KEY>/task.md
-.jira-kanban/<EPIC>/<stories|tasks>/<KEY>/subtasks/<KEY>/subtask.md
-.jira-kanban/<EPIC>/.sync.json        # lo último que se leyó de Jira y cuándo; push compara contra esto
+.jira-team-kit/<EPIC>/epic.md
+.jira-team-kit/<EPIC>/stories/<KEY>/story.md
+.jira-team-kit/<EPIC>/tasks/<KEY>/task.md
+.jira-team-kit/<EPIC>/<stories|tasks>/<KEY>/subtasks/<KEY>/subtask.md
+.jira-team-kit/<EPIC>/.sync.json        # lo último que se leyó de Jira y cuándo; push compara contra esto
 ```
+
+Hasta el cambio de `jk` a `jtk` la carpeta se llamaba `.jira-kanban/`. Si tu proyecto todavía la tiene, la primera vez que
+cualquier comando de `jtk` busca los datos la renombra a `.jira-team-kit/` sin tocar su contenido. Si existen las dos, usa la
+nueva y deja la vieja como está; si no puede renombrarla (permisos, disco de solo lectura), sigue usando la vieja. Si la
+tenías versionada en git, el renombre se ve como un borrado más una carpeta nueva: commitealo vos.
 
 Cada `.md` tiene un front matter (`key`, `kind`, `issuetype`, `status`, `category`, `blocked`, `parent`, `url`),
 el título como `# …` y la descripción debajo.
@@ -294,8 +299,8 @@ la bandera.
 ## Convenciones
 
 `conventions.json` no define proyecto: `create` lo pide con `--jira-project` o con `"project"` en el
-`./.jira-kanban/conventions.json` del proyecto, y `pull`/`push` lo toman de la key de la épica. Define los tipos de issue, las áreas, las prioridades, `blocked_statuses` y si se
-asigna. Un proyecto puede pisar cualquier clave con su propio `./.jira-kanban/conventions.json`.
+`./.jira-team-kit/conventions.json` del proyecto, y `pull`/`push` lo toman de la key de la épica. Define los tipos de issue, las áreas, las prioridades, `blocked_statuses` y si se
+asigna. Un proyecto puede pisar cualquier clave con su propio `./.jira-team-kit/conventions.json`.
 
 ## Desarrollo
 
@@ -313,4 +318,5 @@ python3 -m unittest discover -s tests          # con Jira falso: nunca sale a la
 | `jkan/preview.py` | La vista previa HTML |
 | `jkan/jira.py` | Cliente de Jira Cloud (v2 para issues, v3 para búsqueda y transiciones) |
 | `jkan/config.py` | Credenciales y convenciones |
+| `jkan/home.py` | Dónde guarda `jtk` sus datos en el proyecto (`.jira-team-kit/`) y la mudanza de un `.jira-kanban/` viejo |
 | `jkan/cli.py` | La línea de comandos |

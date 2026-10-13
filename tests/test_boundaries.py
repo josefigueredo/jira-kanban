@@ -9,7 +9,7 @@ import unittest
 from helpers import ROOT
 
 PACKAGE = ROOT / "jkan"
-CORE = {"jira", "config", "journal", "people", "guard", "state", "approval"}
+CORE = {"jira", "config", "journal", "people", "guard", "state", "approval", "home"}
 READ = {"window", "queries", "standup", "stats", "render", "roles", "board_profile", "board_cli", "views", "team",
         "team_render", "team_cli", "check", "update"}
 WRITE = {"sync", "spec", "description", "evidence", "kanban", "template", "facts", "preview", "plan", "applier", "plan_cli"}
