@@ -4,6 +4,7 @@ import contextlib
 import functools
 import io
 import json
+import sys
 import types
 import unittest
 from pathlib import Path
@@ -175,7 +176,9 @@ class PushTest(unittest.TestCase):
             def isatty(self):
                 return False
 
-        window = approval.DialogApprover(runner=runner, platform="darwin")
+        # available() also checks that the osascript file is executable; /usr/bin/osascript exists only on macOS and
+        # the runner is fake, so point it at any executable that exists everywhere (CI runs on Linux)
+        window = approval.DialogApprover(runner=runner, platform="darwin", osascript=sys.executable)
         confirm = functools.partial(guard.confirm, streams=(NoTty(),) * 3, dialog=window)
         code, _, _ = run(self.args("--apply", "--assign-open"), self.jira, confirm)
         self.assertEqual(code, 0)
