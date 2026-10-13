@@ -21,7 +21,7 @@ class TeeTest(unittest.TestCase):
         write = journal.journal(self.project, "create", now=lambda: "T1", also=state.log_write)
         write({"action": "update", "key": "PLATE-1", "fields": {"summary": "x"}})
         self.assertEqual(lines(self.project / ".jira-team-kit" / "jira-writes.jsonl"),
-                         [{"ts": "T1", "tool": "jira-kanban", "command": "create", "action": "update",
+                         [{"ts": "T1", "tool": "jtk", "command": "create", "action": "update",
                            "key": "PLATE-1", "fields": {"summary": "x"}}])
         [common] = lines(self.base / "writes.jsonl")
         self.assertEqual((common["tool"], common["command"], common["action"], common["key"], common["result"]),
