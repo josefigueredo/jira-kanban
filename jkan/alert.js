@@ -7,6 +7,47 @@ ObjC.import('Cocoa');
 ObjC.import('WebKit');
 
 let result = 'cancelled';
+// Approve is enabled only once the page has loaded: a blank window must never be approvable (a person approved one,
+// 2026-10-14). The load is asynchronous, so a navigation delegate decides; a failure reloads once, then only Cancelar
+// is left. The web view holds its delegate weakly, so these globals keep it alive.
+let ok = null;
+let page = null;
+let pageView = null;
+let pageDelegate = null;
+let retries = 0;
+
+function reloadOnce(why) {
+  if (retries < 1 && pageView && page) {
+    retries += 1;
+    pageView.loadHTMLStringBaseURL(page, $.NSURL.URLWithString('about:blank'));
+  } else {
+    console.log('jtk: the approval page did not load (' + why + '); Apruebo stays disabled');
+  }
+}
+
+ObjC.registerSubclass({
+  name: 'JtkPageDelegate',
+  superclass: 'NSObject',
+  protocols: ['WKNavigationDelegate'],
+  methods: {
+    'webView:didFinishNavigation:': {
+      types: ['void', ['id', 'id']],
+      implementation: function (view, navigation) { if (ok) { ok.enabled = true; } },
+    },
+    'webView:didFailNavigation:withError:': {
+      types: ['void', ['id', 'id', 'id']],
+      implementation: function (view, navigation, error) { reloadOnce('navigation failed'); },
+    },
+    'webView:didFailProvisionalNavigation:withError:': {
+      types: ['void', ['id', 'id', 'id']],
+      implementation: function (view, navigation, error) { reloadOnce('provisional navigation failed'); },
+    },
+    'webViewWebContentProcessDidTerminate:': {
+      types: ['void', ['id']],
+      implementation: function (view) { if (ok) { ok.enabled = false; } reloadOnce('web content process ended'); },
+    },
+  },
+});
 
 ObjC.registerSubclass({
   name: 'JtkApprovalHandler',
@@ -30,6 +71,9 @@ ObjC.registerSubclass({
 
 function run(argv) {
   const html = $.NSString.stringWithContentsOfFileEncodingError(argv[0], $.NSUTF8StringEncoding, null);
+  if (!html) {  // an unreadable page file never opens an empty window
+    return 'cancelled';
+  }
   const width = 520;
   const bar = 58;  // the button bar under the page
   const height = Number(argv[3]);
@@ -52,7 +96,10 @@ function run(argv) {
   config.defaultWebpagePreferences.allowsContentJavaScript = false;
   const web = $.WKWebView.alloc.initWithFrameConfiguration($.NSMakeRect(0, bar, width, height), config);
   web.setValueForKey($.NSNumber.numberWithBool(false), 'drawsBackground');  // the window's own background shows through
-  web.loadHTMLStringBaseURL(html, $.NSURL.URLWithString('about:blank'));
+  page = html;
+  pageView = web;
+  pageDelegate = $.JtkPageDelegate.alloc.init;
+  web.navigationDelegate = pageDelegate;
 
   const cancel = $.NSButton.alloc.initWithFrame($.NSMakeRect(width - 24 - 130 - 10 - 90, 15, 90, 28));
   cancel.title = 'Cancelar';
@@ -61,12 +108,14 @@ function run(argv) {
   cancel.action = 'cancel:';
   cancel.keyEquivalent = '\u001b';
 
-  const ok = $.NSButton.alloc.initWithFrame($.NSMakeRect(width - 24 - 130, 15, 130, 28));
+  ok = $.NSButton.alloc.initWithFrame($.NSMakeRect(width - 24 - 130, 15, 130, 28));
   ok.title = argv[2];
   ok.bezelStyle = $.NSBezelStyleRounded;
   ok.target = handler;
   ok.action = 'approve:';
   ok.keyEquivalent = '';
+  ok.enabled = false;  // until the page has loaded
+  web.loadHTMLStringBaseURL(html, $.NSURL.URLWithString('about:blank'));
 
   panel.contentView.addSubview(web);
   panel.contentView.addSubview(cancel);

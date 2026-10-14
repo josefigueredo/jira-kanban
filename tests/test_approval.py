@@ -230,6 +230,23 @@ class AlertScriptTest(unittest.TestCase):
     def test_the_height_comes_from_python_and_the_page_scrolls_past_it(self):
         self.assertIn("Number(argv[3])", self.js)
 
+    def test_approve_stays_disabled_until_the_page_has_loaded(self):
+        # A person approved a closing window whose body was blank (2026-10-14): the page load is asynchronous and
+        # nothing waited for it. Approve now starts disabled and only a finished load enables it.
+        self.assertIn("ok.enabled = false", self.js)
+        self.assertEqual(self.js.count("ok.enabled = true"), 1)
+        finish = self.js.index("'webView:didFinishNavigation:'")
+        self.assertLess(finish, self.js.index("ok.enabled = true"))
+        self.assertLess(self.js.index("ok.enabled = true"), self.js.index("'webView:didFailNavigation:withError:'"))
+        self.assertIn("web.navigationDelegate = ", self.js)
+
+    def test_a_failed_load_retries_once_and_never_enables_approve(self):
+        for hook in ("'webView:didFailNavigation:withError:'", "'webView:didFailProvisionalNavigation:withError:'",
+                     "'webViewWebContentProcessDidTerminate:'"):
+            self.assertIn(hook, self.js)
+        self.assertIn("if (!html)", self.js)  # an unreadable page file never opens an empty window
+        self.assertIn("retries < 1", self.js)
+
 
 if __name__ == "__main__":
     unittest.main()
