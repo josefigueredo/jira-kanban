@@ -184,6 +184,12 @@ class FakeJira:
             raise JiraError(f"GET /rest/api/3/group/member: HTTP 404 no group {name}")
         return self.groups[name]
 
+    def set_parent(self, key: str, parent: str) -> None:
+        if key in self.fail_writes:
+            raise FailingJira(f"HTTP 400 on parent of {key}")
+        self.issues[key]["parent"] = parent
+        self.writes.append(("parent", key, parent))
+
     def update(self, key: str, fields: dict) -> None:
         for name in ("summary", "description"):
             if name in fields:

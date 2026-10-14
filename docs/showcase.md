@@ -200,6 +200,7 @@ persona**.
 | 1 | `jtk plan assign plataforma --unassigned --person "Ana"` | Arma un plan y lo guarda con las claves, el estado de origen y el de destino. Solo lee Jira |
 | 1 | `jtk plan move plataforma --role todo --to active` | Plan para mover issues al estado que cumple ese rol |
 | 1 | `jtk plan comment plataforma KEY-1 KEY-2 --text "…"` | Plan para dejar el mismo comentario |
+| 1 | `jtk plan parent plataforma KEY-1 KEY-2 --to KEY-9` | Plan para mover issues a otra épica |
 | 2 | `jtk apply <ID>` | Aplica **exactamente** ese plan: abre la ventana con el detalle y **Apruebo n** |
 | — | `jtk plan revert <ID>` | Plan inverso de uno aplicado (no garantiza deshacer, y lo dice) |
 

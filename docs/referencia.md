@@ -207,6 +207,7 @@ Sirve para pasar de «7 sin asignar» a «asignados». Es en dos pasos, y el seg
 | `jtk plan move VIEW [KEY …] --to ROL` | Arma un plan para mover issues al estado que cumple ese rol. Solo lee Jira y guarda un archivo con las claves, el estado de origen, el de destino y la transición |
 | `jtk plan assign VIEW [KEY …] --person "Ana"` | Plan para reasignar. La persona nunca se adivina: si hay dos, lista las dos |
 | `jtk plan comment VIEW [KEY …] --text "…"` | Plan para dejar el mismo comentario |
+| `jtk plan parent VIEW [KEY …] --to ÉPICA` | Plan para mover issues a otra épica. El destino tiene que ser una épica; las subtareas y las que ya están ahí quedan afuera, con el motivo. `apply` relee el padre y deja quieta una issue que alguien movió después del plan; `revert` la devuelve a su épica anterior |
 | `jtk plan revert ID` | Plan inverso de uno aplicado; no garantiza deshacer y lo dice |
 | `jtk apply ID` | Aplica **exactamente** ese plan. Abre una ventana con el detalle y dos botones, **Cancelar** y **Apruebo <n>**; sin terminal y sin ventana, no escribe |
 

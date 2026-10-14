@@ -13,7 +13,7 @@ from . import applier, guard, people, plan, roles, state, team, team_cli
 from .jira import JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
-VERBS = ("move", "assign", "comment", "revert")
+VERBS = ("move", "assign", "comment", "parent", "revert")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -39,6 +39,9 @@ def _parser() -> argparse.ArgumentParser:
     note = sub.add_parser("comment", help="plan the same plain-text comment on issues (reads Jira, writes a file)")
     selecting(note)
     note.add_argument("--text", required=True)
+    home = sub.add_parser("parent", help="plan moving issues to another epic (reads Jira, writes a file)")
+    selecting(home)
+    home.add_argument("--to", required=True, metavar="EPIC", help="the epic the issues should hang from, e.g. PLATE-682")
     undo = sub.add_parser("revert", help="plan the inverse of an applied plan (it does not guarantee undoing)")
     undo.add_argument("id")
     undo.add_argument("--allow-close", action="store_true", help="needed when the inverse closes issues")
@@ -75,6 +78,8 @@ def _plan(args, jira, conv: dict, today) -> int:
         body = plan.move(client, view, selection, profiles, args.to, args.to_status, args.allow_close)
     elif args.verb == "assign":
         body = plan.assign(view, selection, people.resolve_in(client, args.person, view["boards"]))
+    elif args.verb == "parent":
+        body = plan.parent(client, view, selection, args.to.strip().upper())
     else:
         body = plan.comment(view, selection, args.text)
     return _announce(state.save_plan(body))

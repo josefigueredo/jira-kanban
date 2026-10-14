@@ -163,6 +163,36 @@ def comment(view: dict, selection: List[dict], text: str, now: Optional[Callable
     return _envelope("comment", view, {"text": clean}, [{"key": i["key"], "title": i.get("summary") or ""} for i in selection], [], now)
 
 
+def _is_epic(issuetype: str) -> bool:
+    return (issuetype or "").strip().lower() in ("epic", "épica")
+
+
+def parent(jira, view: dict, selection: List[dict], target_key: str, now: Optional[Callable[[], str]] = None) -> dict:
+    """Move issues under another epic. Reads each issue's parent now, so apply can tell whether someone moved it since."""
+    target = jira.get(target_key)
+    if not _is_epic(target.get("issuetype", "")):
+        raise Refused(f"{target_key} is a {target.get('issuetype') or 'issue'}, not an epic: only an epic can hold tasks and stories")
+    items, skipped = [], []
+    for issue in selection:
+        current = jira.get(issue["key"])
+        if "sub" in (current.get("issuetype") or "").lower():
+            skipped.append({"key": issue["key"], "why": "a subtask hangs from a task, not from an epic"})
+        elif current.get("parent") == target_key:
+            skipped.append({"key": issue["key"], "why": "already there"})
+        else:
+            items.append({"key": issue["key"], "title": issue.get("summary") or current.get("summary") or "",
+                          "from": {"key": current["parent"]} if current.get("parent") else None,
+                          "to": {"key": target_key}})
+    if not items:
+        raise Refused("nothing to move: " + _why(skipped))
+    options = {"to": {"key": target_key, "title": target.get("summary") or ""}}
+    return _envelope("parent", view, options, items, skipped, now)
+
+
+def _epic(where: Optional[dict]) -> str:
+    return where["key"] if where else "no epic"
+
+
 def _status_role(profiles: Dict[str, dict], key: str, status_id: str) -> Optional[str]:
     profile = profiles.get(roles.project_of(key)) or {"statuses": []}
     return next((s["role"] for s in profile["statuses"] if s["id"] == status_id), None)
@@ -182,6 +212,14 @@ def revert(jira, original: dict, profiles: Dict[str, dict], now: Optional[Callab
         key = entry["key"]
         if original["kind"] == "comment":
             skipped.append({"key": key, "why": "comments are not reverted"})
+            continue
+        if original["kind"] == "parent":
+            if jira.get(key).get("parent") != (entry["a"] or {}).get("key"):
+                skipped.append({"key": key, "why": "changed"})
+            elif entry["de"] is None:
+                skipped.append({"key": key, "why": "it had no epic before, and an issue cannot be moved to none"})
+            else:
+                items.append({"key": key, "title": titles.get(key, ""), "from": dict(entry["a"]), "to": dict(entry["de"])})
             continue
         snap = jira.snapshot(key)
         if original["kind"] == "assign":
@@ -224,6 +262,8 @@ def describe(plan: dict, only: Optional[List[str]] = None) -> str:
         rows = [f"  {i['key']}: {i['from']['name']} -> {i['to']['name']}" for i in items]
     elif plan["kind"] == "assign":
         rows = [f"  {i['key']}: {_who(i['from'])} -> {_who(i['to'])}" for i in items]
+    elif plan["kind"] == "parent":
+        rows = [f"  {i['key']}: {_epic(i['from'])} -> {_epic(i['to'])}" for i in items]
     else:
         rows = [f"  {i['key']}" for i in items] + [f"  Comment: {plan['options']['text']}"]
     lines = [head] + rows
@@ -242,6 +282,8 @@ def _change(plan: dict, item: dict) -> str:
         return f"{item['from']['name']} -> {item['to']['name']}"
     if plan["kind"] == "assign":
         return f"{_who(item['from'])} -> {_who(item['to'])}"
+    if plan["kind"] == "parent":
+        return f"{_epic(item['from'])} -> {_epic(item['to'])}"
     return f"Comentario: {plan['options']['text']}"
 
 
@@ -251,6 +293,10 @@ def _heading(plan: dict, items: List[dict]) -> Tuple[str, List[Tuple[str, str]]]
     if plan["kind"] == "move":
         closes = sum(1 for i in items if i["to"].get("role") in CLOSING)
         return "Cambiar estado", badges + ([(f"cierra {closes}", "danger")] if closes else [])
+    if plan["kind"] == "parent":
+        target = plan["options"].get("to") or (items[0]["to"] if items else {"key": "?"})
+        title = target.get("title") or ""
+        return f"Mover a la épica {target['key']}", badges + ([(title, "")] if title else [])
     return ("Reasignar" if plan["kind"] == "assign" else "Comentar"), badges
 
 

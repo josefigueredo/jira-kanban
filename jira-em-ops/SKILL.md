@@ -14,6 +14,7 @@ person clicks **Apruebo <n>** there. With no click, nothing is written.
 jtk plan move    VIEW [KEY …] [--unassigned] [--older-than D] [--role R] --to ROLE [--to-status ID] [--allow-close] [--max N]
 jtk plan assign  VIEW [KEY …] [--unassigned] [--older-than D] [--role R] --person "<name>" [--max N]
 jtk plan comment VIEW [KEY …] [--unassigned] [--older-than D] [--role R] --text "<text>" [--max N]
+jtk plan parent  VIEW [KEY …] [--unassigned] [--older-than D] [--role R] --to EPIC [--max N]
 jtk plan revert  PLAN_ID
 ```
 
@@ -22,6 +23,7 @@ jtk plan revert  PLAN_ID
 | move these tickets to in progress / blocked / done | `jtk plan move VIEW KEY … --to active\|blocked\|delivered` (closing also needs `--allow-close`) |
 | assign what nobody owns (to Ana) | `jtk plan assign VIEW --unassigned --person "Ana"` |
 | comment the same text on these tickets | `jtk plan comment VIEW KEY … --text "…"` |
+| move these tickets to another epic | `jtk plan parent VIEW KEY … --to EPIC` (the target must be an epic; subtasks are left out) |
 | undo what I applied | `jtk plan revert PLAN_ID` (it does not guarantee undoing) |
 | which tickets are those (before planning) | `jtk team status VIEW --list` or `jtk team desk VIEW --list`, with `--unassigned`, `--older-than DAYS`, `--role ROLE` |
 
