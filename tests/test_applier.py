@@ -70,8 +70,9 @@ class MoveTest(Base):
         saved = self.saved_move(["TEAM-1", "TEAM-2"], role="todo")
         self.apply(saved)
         summary = self.approve.calls[0][1]
-        self.assertEqual(summary.rows, [("TEAM-1", "Summary of TEAM-1", "Backlog -> En curso"),
-                                        ("TEAM-2", "Summary of TEAM-2", "Backlog -> En curso")])
+        move = "Acción: cambiar de estado\nEstado: Backlog -> En curso"
+        self.assertEqual(summary.rows, [("TEAM-1", "Summary of TEAM-1", move), ("TEAM-2", "Summary of TEAM-2", move)])
+        self.assertEqual(summary.transitions, 2)
 
     def test_without_approval_nothing_is_written_and_nothing_is_logged(self):
         saved = self.saved_move(["TEAM-1"], role="todo")
