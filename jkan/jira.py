@@ -235,6 +235,11 @@ class Jira:
         query = urllib.parse.urlencode({"groupname": name, "maxResults": 1})
         return int(self._send("GET", f"/rest/api/3/group/member?{query}").get("total", 0))
 
+    def set_parent(self, key: str, parent: str) -> None:
+        """Move an issue under another parent (a task or story to another epic)."""
+        self._send("PUT", f"/rest/api/2/issue/{key}", {"fields": {"parent": {"key": parent}}})
+        self._journal({"action": "parent", "key": key, "parent": parent})
+
     def update(self, key: str, fields: dict) -> None:
         self._send("PUT", f"/rest/api/2/issue/{key}", {"fields": fields})
         self._journal({"action": "update", "key": key, "fields": fields})

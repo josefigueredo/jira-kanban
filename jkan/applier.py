@@ -34,12 +34,24 @@ def _assign(jira, item: dict) -> str:
     return "applied"
 
 
+def _parent(jira, item: dict) -> str:
+    current = jira.get(item["key"]).get("parent")
+    if current == item["to"]["key"]:
+        return "already there"
+    if current != (item["from"]["key"] if item["from"] else None):
+        return "changed"
+    jira.set_parent(item["key"], item["to"]["key"])
+    return "applied"
+
+
 def _one(jira, plan: dict, item: dict) -> str:
     try:
         if plan["kind"] == "move":
             return _move(jira, item)
         if plan["kind"] == "assign":
             return _assign(jira, item)
+        if plan["kind"] == "parent":
+            return _parent(jira, item)
         jira.add_comment(item["key"], plan["options"]["text"])
         return "applied"
     except Exception as exc:  # noqa: BLE001 — one issue never stops the rest; the reason goes to the table and the log
