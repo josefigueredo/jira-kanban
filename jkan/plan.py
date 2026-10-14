@@ -4,7 +4,7 @@ is resolved here, once; apply never evaluates the query again."""
 from __future__ import annotations
 
 import re
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 from . import approval, board_profile, roles, state, team
 
@@ -237,22 +237,21 @@ def describe(plan: dict, only: Optional[List[str]] = None) -> str:
 
 
 def _change(plan: dict, item: dict) -> str:
-    """The row's change for the approval window, naming the action: a person must read that a status changes."""
+    """The row's change: «from -> to» renders as the origin and a pill with the destination."""
     if plan["kind"] == "move":
-        return f"Acción: cambiar de estado\nEstado: {item['from']['name']} -> {item['to']['name']}"
+        return f"{item['from']['name']} -> {item['to']['name']}"
     if plan["kind"] == "assign":
-        return f"Acción: reasignar\nAsignado: {_who(item['from'])} -> {_who(item['to'])}"
-    return f"Acción: comentar\nComentario: {plan['options']['text']}"
+        return f"{_who(item['from'])} -> {_who(item['to'])}"
+    return f"Comentario: {plan['options']['text']}"
 
 
-def _heading(plan: dict, items: List[dict]) -> str:
-    n = len(items)
+def _heading(plan: dict, items: List[dict]) -> Tuple[str, List[Tuple[str, str]]]:
+    """The verb, and the counts as badges («2 issues», «cierra 1» in red)."""
+    badges = [(approval.plural(len(items), "issue", "issues"), "")]
     if plan["kind"] == "move":
         closes = sum(1 for i in items if i["to"].get("role") in CLOSING)
-        return f"Cambiar el estado de {n} issue(s)" + (f" · cierra {closes}" if closes else "")
-    if plan["kind"] == "assign":
-        return f"Reasignar {n} issue(s)"
-    return f"Comentar en {n} issue(s)"
+        return "Cambiar estado", badges + ([(f"cierra {closes}", "danger")] if closes else [])
+    return ("Reasignar" if plan["kind"] == "assign" else "Comentar"), badges
 
 
 def summary(plan: dict, only: Optional[List[str]] = None) -> approval.Summary:
@@ -262,4 +261,5 @@ def summary(plan: dict, only: Optional[List[str]] = None) -> approval.Summary:
     rows = [(i["key"], i.get("title", ""), _change(plan, i)) for i in items]
     left_out = [(s["key"], s["why"]) for s in plan.get("skipped", [])]
     transitions = len(items) if plan["kind"] == "move" else 0
-    return approval.Summary(describe(plan, only), _heading(plan, items), rows, left_out, transitions=transitions)
+    heading, badges = _heading(plan, items)
+    return approval.Summary(describe(plan, only), heading, rows, left_out, transitions=transitions, badges=badges)

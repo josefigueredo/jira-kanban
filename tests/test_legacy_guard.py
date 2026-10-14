@@ -111,17 +111,17 @@ class CreateTest(unittest.TestCase):
         self.jira.users.append({"id": "acc-me", "name": "Ana Gómez", "email": "ana@x.com"})
         asked = Asked()
         run(self.args("--apply", "--assign-open"), self.jira, asked)
-        rows = asked.calls[0][1].rows
-        self.assertEqual(rows[0][0], "Epic")
-        for key, _name, change in rows:
+        summary = asked.calls[0][1]
+        self.assertEqual(summary.rows[0][0], "Epic")
+        for key, _name, change in summary.rows:
             self.assertNotIn("items[", key)  # a spec path means nothing to the person approving
-            self.assertEqual(change, "Acción: Crear\nAsignado a: Ana Gómez")  # the person's name, not «vos»
+            self.assertEqual(change, "")  # only created: nothing beyond the type and the title
+        self.assertIn(("asignado a Ana Gómez", ""), summary.badges)  # the person's name, not «vos», said once
 
     def test_what_nobody_gets_says_sin_asignar(self):
         asked = Asked()
         run(self.args("--apply", "--no-assign-open"), self.jira, asked)
-        changes = {r[2] for r in asked.calls[0][1].rows}
-        self.assertEqual(changes, {"Acción: Crear\nAsignado a: Sin asignar"})
+        self.assertIn(("asignado a Sin asignar", ""), asked.calls[0][1].badges)
 
     def test_without_approval_nothing_is_created_and_no_local_folder_appears(self):
         code, _, err = run(self.args("--apply", "--assign-open"), self.jira, Asked(approve=False))

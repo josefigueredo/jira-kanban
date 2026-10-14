@@ -51,8 +51,8 @@ class HtmlTest(unittest.TestCase):
 
     def test_the_page_carries_its_own_header_so_the_window_is_just_this_page_and_two_buttons(self):
         html = approval.render_html(SUMMARY, 2)
-        self.assertIn("jtk quiere escribir en Jira", html)
         self.assertIn("<h1>Plan abc · move · 2 issue(s)</h1>", html)
+        self.assertNotIn("jtk quiere escribir", html)  # the title bar says jtk · Jira; the page does not repeat it
 
     def test_each_task_is_a_card_with_its_key_chip_and_the_change_as_from_arrow_to(self):
         html = approval.render_html(SUMMARY, 2)
@@ -77,11 +77,13 @@ class HtmlTest(unittest.TestCase):
         self.assertNotIn(" k-", body)
         self.assertNotIn("onload", body)
 
-    def test_a_change_of_several_lines_is_one_line_each_with_its_label_muted(self):
-        summary = approval.Summary("T", "Crear", [("Epic", "x", "Acción: Crear\nAsignado a: Ana <Gómez>")])
+    def test_a_change_of_several_lines_puts_labels_and_values_in_two_columns(self):
+        summary = approval.Summary("T", "Crear", [("Epic", "x", "Tamaño: 5 B\nAsignado a: Ana <Gómez>")])
         html = approval.render_html(summary, 1)
-        self.assertIn('<div class="lines"><div class="line"><span class="from">Acción:</span> Crear</div>', html)
-        self.assertIn('<div class="line"><span class="from">Asignado a:</span> Ana &lt;Gómez&gt;</div>', html)
+        self.assertIn('<div class="lines"><span class="lbl">Tamaño</span><span class="val">5 B</span>'
+                      '<span class="lbl">Asignado a</span><span class="val">Ana &lt;Gómez&gt;</span></div>', html)
+        css = html.split("</style>")[0]
+        self.assertIn(".lines{display:grid;grid-template-columns:max-content 1fr", css)
 
     def test_the_window_is_taller_for_cards_with_a_second_line(self):
         one = approval.Summary("T", "Crear", [("Epic", "x", "crear")] * 3)
@@ -95,8 +97,8 @@ class HtmlTest(unittest.TestCase):
         self.assertNotIn('class="from"', html)
 
     def test_the_footer_says_which_button_and_how_long_the_window_waits(self):
-        html = approval.render_html(SUMMARY, 2)
-        self.assertIn("Apruebo 2", html)
+        html = approval.render_html(SUMMARY, 2)  # the native button already reads «Apruebo 2»
+        self.assertIn("Escape cancela", html)
         self.assertIn(f"{approval.TIMEOUT} s", html)
 
     def test_the_page_has_no_script_and_no_external_resource(self):

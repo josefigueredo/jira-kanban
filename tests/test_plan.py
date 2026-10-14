@@ -212,8 +212,8 @@ class DescribeTest(Base):
 
     def test_the_summary_for_the_window_has_a_row_per_change_and_the_left_out(self):
         summary = plan.summary(self.BODY)
-        self.assertEqual(str(summary), "Cambia el estado de 2 issue(s)\n" + plan.describe(self.BODY))
-        move = "Acción: cambiar de estado\nEstado: Backlog -> En curso"
+        self.assertEqual(str(summary), "Cambia el estado de 2 issues\n" + plan.describe(self.BODY))
+        move = "Backlog -> En curso"
         self.assertEqual(summary.rows, [("TEAM-1", "Uno", move), ("TEAM-2", "Dos", move)])
         self.assertEqual(summary.left_out, [("TEAM-3", "already there")])
 
@@ -227,9 +227,9 @@ class DescribeTest(Base):
     def test_an_assign_and_a_comment_summarise_too(self):
         who = {"id": "acc-ana", "name": "Ana Gómez"}
         assign = dict(self.BODY, kind="assign", items=[{"key": "TEAM-1", "title": "Uno", "from": None, "to": who}], skipped=[])
-        self.assertEqual(plan.summary(assign).rows, [("TEAM-1", "Uno", "Acción: reasignar\nAsignado: unassigned -> Ana Gómez")])
+        self.assertEqual(plan.summary(assign).rows, [("TEAM-1", "Uno", "unassigned -> Ana Gómez")])
         comment = dict(self.BODY, kind="comment", options={"text": "hola"}, items=[{"key": "TEAM-1", "title": "Uno"}], skipped=[])
-        self.assertEqual(plan.summary(comment).rows, [("TEAM-1", "Uno", "Acción: comentar\nComentario: hola")])
+        self.assertEqual(plan.summary(comment).rows, [("TEAM-1", "Uno", "Comentario: hola")])
 
     def test_the_summary_names_every_issue_what_changes_and_what_was_left_out(self):
         self.put("TEAM-1", "todo")
