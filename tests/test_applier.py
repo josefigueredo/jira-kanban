@@ -70,7 +70,7 @@ class MoveTest(Base):
         saved = self.saved_move(["TEAM-1", "TEAM-2"], role="todo")
         self.apply(saved)
         summary = self.approve.calls[0][1]
-        move = "Acción: cambiar de estado\nEstado: Backlog -> En curso"
+        move = "Backlog -> En curso"
         self.assertEqual(summary.rows, [("TEAM-1", "Summary of TEAM-1", move), ("TEAM-2", "Summary of TEAM-2", move)])
         self.assertEqual(summary.transitions, 2)
 

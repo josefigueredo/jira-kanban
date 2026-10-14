@@ -108,13 +108,15 @@ class ThreeViewsAgreeTest(unittest.TestCase):
         console = [r[2] for r in self.console()[1:]]
         self.assertEqual(console, ["Backlog", "Done", "En progreso", "Backlog"])
         self.assertEqual(self.html_statuses(), console)
-        actions = [r[2].splitlines()[0] for r in self.window_rows()]
-        self.assertEqual(actions, ["Acción: Crear", "Acción: Crear y mover a Done", "Acción: Crear y mover a En progreso", "Acción: Crear"])
+        # The window shows a destination only for what moves; what is only created stays where Jira puts it.
+        self.assertEqual([r[2] for r in self.window_rows()], ["", "-> Done", "-> En progreso", ""])
 
-    def test_the_window_stays_two_lines_a_card(self):
-        for _type, _name, change in self.window_rows():
-            self.assertEqual(len(change.splitlines()), 2)
-            self.assertTrue(change.splitlines()[1].startswith("Asignado a: "))
+    def test_the_window_stays_one_line_a_card_and_names_the_owner_once(self):
+        asked = Asked()
+        run_guarded(self.base + ["--apply", "--assign-open"], FakeJira(), asked)
+        summary = asked.calls[0][1]
+        self.assertTrue(all(len(change.splitlines()) <= 1 for _t, _n, change in summary.rows))
+        self.assertEqual([b for b in summary.badges if b[0].startswith("asignado a ")], [("asignado a vos", "")])
 
     def test_the_approval_text_counts_the_moves_not_only_the_creations(self):
         asked = Asked()

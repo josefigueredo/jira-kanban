@@ -104,8 +104,8 @@ def human_size(n: int) -> str:
 
 
 def change(upload: Upload) -> str:
-    """The approval row's change, one labelled line each (the window renders «Label: value» lines)."""
-    return (f"Acción: subir adjunto\nTamaño: {human_size(len(upload.data))} · sha256 {upload.sha256[:12]}\n"
+    """The approval row's change: size with sha256, and the sanitizing; the heading already says it uploads."""
+    return (f"Tamaño: {human_size(len(upload.data))} · sha256 {upload.sha256[:12]}\n"
             f"Sanitizado: {describe(upload.sanitized, upload.redactions, upload.binary)}")
 
 

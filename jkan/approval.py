@@ -17,6 +17,7 @@ from typing import Callable, List, Optional, Sequence, Tuple
 ALERT_JS = Path(__file__).resolve().parent / "alert.js"
 OSASCRIPT = "/usr/bin/osascript"
 TIMEOUT = 100  # seconds; Cursor cuts a tool call at 120 s idle
+WINDOW_TITLE = "jtk · Jira"  # fixed: the page says what is approved, the title bar does not repeat it
 _CSS = """
 :root{color-scheme:light dark;--fg:#1d1d1f;--muted:#6e6e73;--card:rgba(0,0,0,.045);--line:rgba(0,0,0,.08);
  --chip-bg:rgba(0,0,0,.07);--to-bg:rgba(0,113,227,.12);--to-fg:#0058b0;--out:#9a5b00;--out-bg:rgba(255,159,10,.14)}
@@ -48,8 +49,14 @@ h1{font-size:19px;line-height:1.25;font-weight:650;margin:4px 0 16px}
 .out li{background:var(--out-bg);border-radius:10px;padding:8px 12px;display:flex;gap:8px;align-items:baseline}
 .out .why{color:var(--muted);font-size:12px}
 .foot{margin:16px 0 0;color:var(--muted);font-size:11.5px}
-.state{margin:8px 0 0;display:inline-block;background:var(--out-bg);color:var(--out);border-radius:8px;padding:5px 10px;
- font-weight:650;font-size:13px}
+.lines{display:grid;grid-template-columns:max-content 1fr;column-gap:12px;row-gap:2px;width:100%}
+.lbl{color:var(--muted)}
+.val{overflow-wrap:anywhere}
+.badges{display:flex;flex-wrap:wrap;gap:6px;margin:-8px 0 14px}
+.badge{font-size:11.5px;font-weight:600;border-radius:999px;padding:2px 9px;background:var(--chip-bg);color:var(--muted)}
+.badge.state{background:var(--out-bg);color:var(--out)}
+.badge.danger{background:rgba(255,59,48,.13);color:#d70015}
+@media (prefers-color-scheme:dark){.badge.danger{background:rgba(255,69,58,.2);color:#ff6961}}
 """
 
 
@@ -65,17 +72,33 @@ class Summary(str):
     window both lead with «Cambia el estado de N issue(s)», whatever the writer's rows say."""
 
     def __new__(cls, text: str, heading: str = "", rows: Sequence[Tuple[str, str, str]] = (),
-                left_out: Sequence[Tuple[str, str]] = (), kinds: Sequence[str] = (), transitions: int = 0):
+                left_out: Sequence[Tuple[str, str]] = (), kinds: Sequence[str] = (), transitions: int = 0,
+                badges: Sequence[Tuple[str, str]] = ()):
         notice = state_notice(transitions)
         obj = super().__new__(cls, f"{notice}\n{text}" if notice else text)
         obj.heading, obj.rows, obj.left_out = heading, [tuple(r) for r in rows], [tuple(r) for r in left_out]
         obj.kinds = list(kinds)
         obj.transitions = int(transitions or 0)
+        obj.badges = [tuple(b) for b in badges]  # (text, tone): tone "" (neutral), "danger" or "state"
         return obj
 
 
+def plural(n: int, one: str, many: str) -> str:
+    return f"{n} {one if n == 1 else many}"
+
+
 def state_notice(transitions: int) -> str:
-    return f"Cambia el estado de {transitions} issue(s)" if transitions else ""
+    return f"Cambia el estado de {plural(transitions, 'issue', 'issues')}" if transitions else ""
+
+
+def _badges(summary) -> List[Tuple[str, str]]:
+    """The writer's badges, plus the status-change one whenever the write moves issues, unless the heading already is
+    that verb («Cambiar estado»): a person must always see that a status changes, and see it once."""
+    badges = list(getattr(summary, "badges", []))
+    transitions = getattr(summary, "transitions", 0)
+    if transitions and not _heading(summary).startswith("Cambiar estado"):
+        badges.append(("⇄ " + plural(transitions, "cambio de estado", "cambios de estado"), "state"))
+    return badges
 
 
 def rows_of(summary) -> List[Tuple[str, str, str]]:
@@ -92,7 +115,8 @@ _KEY_LINE = 40   # characters of a key chip that fit on a line (monospace 11.5 p
 def _change(text: str) -> str:
     """«A -> B» as origin, arrow and a destination pill; «-> B» as the pill alone; anything else as plain text."""
     if "\n" in text:  # one labelled line each, «Label: value»
-        lines = "".join(f'<div class="line"><span class="from">{escape(label)}:</span> {escape(value)}</div>'
+        # Two columns, so every value starts at the same place and reads at a glance.
+        lines = "".join(f'<span class="lbl">{escape(label)}</span><span class="val">{escape(value)}</span>'
                         for label, _, value in (line.partition(": ") for line in text.splitlines()))
         return f'<div class="lines">{lines}</div>'
     if "->" not in text:
@@ -113,11 +137,13 @@ def render_html(summary, n: int) -> str:
     # No rule hides the scrollbar: macOS shows it only when the page overflows its window, which is exactly when a
     # person must be able to scroll (a height estimate can fall short; it must never hide what is being approved).
     out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{_CSS}</style></head><body>',
-           '<div class="eyebrow">jtk quiere escribir en Jira</div>']
-    notice = state_notice(getattr(summary, "transitions", 0))
-    if notice:
-        out.append(f'<div class="state">{escape(notice)}</div>')
-    out += [f"<h1>{escape(heading)}</h1>", '<ul class="cards">']
+           f"<h1>{escape(heading)}</h1>"]
+    badges = _badges(summary)
+    if badges:
+        out.append('<div class="badges">' + "".join(
+            f'<span class="badge{" " + tone if tone in ("danger", "state") else ""}">{escape(text)}</span>'
+            for text, tone in badges) + "</div>")
+    out.append('<ul class="cards">')
     rows = rows_of(summary)
     if not rows:  # a writer with no rows: show the text it has
         out += [f'<li class="card"><div class="top"><span class="name">{escape(line)}</span></div></li>'
@@ -126,16 +152,16 @@ def render_html(summary, n: int) -> str:
     for i, (key, name, change) in enumerate(rows):
         title = f'<span class="name">{escape(name)}</span>' if name else ""
         kind = kinds[i] if i < len(kinds) and kinds[i] in KINDS else ""  # only a known type becomes a class
+        chg = f'<div class="chg">{_change(change)}</div>' if change else ""  # nothing to add beyond the title
         out.append(f'<li class="card"><div class="top"><span class="key{" k-" + kind if kind else ""}">{escape(key)}</span>{title}</div>'
-                   f'<div class="chg">{_change(change)}</div></li>')
+                   f'{chg}</li>')
     out.append("</ul>")
     left_out = list(getattr(summary, "left_out", []))
     if left_out:
         out.append('<div class="out-h">Quedan afuera</div><ul class="out">')
         out += [f'<li><span class="key">{escape(k)}</span><span class="why">{escape(why)}</span></li>' for k, why in left_out]
         out.append("</ul>")
-    out.append(f'<p class="foot">Aprobás con un clic en Apruebo {n}. Escape o Cancelar no escriben nada. '
-               f"Se cancela sola a los {TIMEOUT} s.</p></body></html>")
+    out.append(f'<p class="foot">Escape cancela · se cancela sola a los {TIMEOUT} s</p></body></html>')
     return "\n".join(out)
 
 
@@ -146,8 +172,8 @@ def window_height(summary) -> int:
     height += sum(20 * (max(len(name) - 1, 0) // _LINE) for _key, name, _change in rows)
     height += sum(18 * (max(len(key) - 1, 0) // _KEY_LINE) for key, _name, _change in rows)  # a long key wraps
     height += sum(18 * change.count("\n") for _key, _name, change in rows)  # a change of several lines is taller
-    if getattr(summary, "transitions", 0):
-        height += 40
+    if _badges(summary):
+        height += 26
     if not rows:
         height += 40 * max(len(str(summary).splitlines()), 1)
     left_out = list(getattr(summary, "left_out", []))
@@ -178,8 +204,7 @@ class DialogApprover:
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as handle:
                 handle.write(render_html(summary, n))
-            title = getattr(summary, "heading", "") or "jtk quiere escribir en Jira"
-            argv = [self._osascript, "-l", "JavaScript", str(ALERT_JS), path, title, f"Apruebo {n}", str(window_height(summary))]
+            argv = [self._osascript, "-l", "JavaScript", str(ALERT_JS), path, WINDOW_TITLE, f"Apruebo {n}", str(window_height(summary))]
             try:
                 done = self._run(argv)
             except subprocess.TimeoutExpired:

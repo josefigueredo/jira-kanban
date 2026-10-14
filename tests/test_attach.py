@@ -94,7 +94,7 @@ class AttachCommandTest(unittest.TestCase):
         [(key, name, change)] = summary.rows
         self.assertEqual((key, name), ("PLATE-603", "guia.html"))
         uploaded = self.jira.files["PLATE-603"]["guia.html"]
-        self.assertIn("Acción: subir adjunto", change)
+        self.assertNotIn("Acción", change)  # the heading already says it uploads
         self.assertIn(f"sha256 {hashlib.sha256(uploaded).hexdigest()[:12]}", change)
         self.assertIn("Sanitizado: sí — 1 ruta local, 1 token", change)
         self.assertIn("Sanitizado: sí — 1 ruta local, 1 token", str(summary))  # the terminal says the same

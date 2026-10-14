@@ -25,36 +25,49 @@ MOVE = {"id": "x" * 12, "version": 1, "kind": "move", "view": "plataforma", "cre
 
 
 class NoticeTest(unittest.TestCase):
-    def test_a_summary_with_transitions_leads_with_the_notice_in_both_places(self):
-        summary = approval.Summary("push 2 write(s)", "Subir cambios", [("A-1", "x", "y")], transitions=2)
-        self.assertEqual(str(summary).splitlines()[0], "Cambia el estado de 2 issue(s)")
+    def test_transitions_show_as_one_badge_and_lead_the_terminal_text(self):
+        summary = approval.Summary("push 2 write(s)", "Subir cambios a PLATE-1", [("A-1", "x", "y")], transitions=2)
+        self.assertEqual(str(summary).splitlines()[0], "Cambia el estado de 2 issues")
         html = approval.render_html(summary, 2)
-        self.assertIn('<div class="state">Cambia el estado de 2 issue(s)</div>', html)
-        self.assertLess(html.index('class="state"'), html.index("<h1>"))
-        self.assertGreater(approval.window_height(summary),
-                           approval.window_height(approval.Summary("push 2 write(s)", "Subir cambios", [("A-1", "x", "y")])))
+        self.assertEqual(html.count("cambios de estado"), 1)
+        self.assertIn('<span class="badge state">⇄ 2 cambios de estado</span>', html)
+        self.assertLess(html.index("<h1>"), html.index('class="badge state"'))
+
+    def test_a_heading_that_already_says_it_gets_no_repeated_badge(self):
+        summary = approval.Summary("move", "Cambiar estado", [("A-1", "x", "a -> b")], transitions=1,
+                                   badges=[("1 issue", ""), ("cierra 1", "danger")])
+        html = approval.render_html(summary, 1)
+        self.assertNotIn("badge state", html)
+        self.assertIn('<span class="badge danger">cierra 1</span>', html)
+        self.assertEqual(html.count("Cambia"), 1)  # the h1 only
 
     def test_without_transitions_there_is_no_notice(self):
         summary = approval.Summary("assign 1", "Asignar a Ana", [("A-1", "x", "-> Ana")])
-        self.assertNotIn("Cambia el estado", str(summary) + approval.render_html(summary, 1))
+        self.assertNotIn("estado", str(summary) + approval.render_html(summary, 1))
+
+    def test_the_window_title_is_fixed_and_short(self):
+        self.assertEqual(approval.WINDOW_TITLE, "jtk · Jira")
 
 
 class PlanApplyTest(unittest.TestCase):
-    def test_a_move_plan_says_it_changes_status_and_how_many_it_closes(self):
+    def test_a_move_plan_reads_as_a_verb_badges_and_a_status_pill(self):
         summary = plan.summary(MOVE)
         self.assertEqual(summary.transitions, 2)
-        self.assertEqual(summary.heading, "Cambiar el estado de 2 issue(s) · cierra 1")
-        self.assertEqual(summary.rows[0], ("TEAM-1", "Uno", "Acción: cambiar de estado\nEstado: Backlog -> Done"))
-        self.assertTrue(str(summary).startswith("Cambia el estado de 2 issue(s)\n"))
+        self.assertEqual(summary.heading, "Cambiar estado")
+        self.assertEqual(summary.badges, [("2 issues", ""), ("cierra 1", "danger")])
+        self.assertEqual(summary.rows[0], ("TEAM-1", "Uno", "Backlog -> Done"))
+        self.assertTrue(str(summary).startswith("Cambia el estado de 2 issues\n"))
+        html = approval.render_html(summary, 2)
+        self.assertIn('<span class="to">Done</span>', html)
 
-    def test_assign_and_comment_plans_name_their_action_and_move_nothing(self):
+    def test_assign_and_comment_plans_name_their_verb_and_move_nothing(self):
         assign = dict(MOVE, kind="assign", options={"person": None},
                       items=[{"key": "TEAM-1", "title": "Uno", "from": None, "to": {"id": "a", "name": "Ana"}}])
         comment = dict(MOVE, kind="comment", options={"text": "hola"}, items=[{"key": "TEAM-1", "title": "Uno"}])
-        self.assertEqual((plan.summary(assign).heading, plan.summary(assign).transitions), ("Reasignar 1 issue(s)", 0))
-        self.assertEqual(plan.summary(assign).rows[0][2], "Acción: reasignar\nAsignado: unassigned -> Ana")
-        self.assertEqual((plan.summary(comment).heading, plan.summary(comment).transitions), ("Comentar en 1 issue(s)", 0))
-        self.assertEqual(plan.summary(comment).rows[0][2], "Acción: comentar\nComentario: hola")
+        self.assertEqual((plan.summary(assign).heading, plan.summary(assign).transitions), ("Reasignar", 0))
+        self.assertEqual(plan.summary(assign).rows[0][2], "unassigned -> Ana")
+        self.assertEqual((plan.summary(comment).heading, plan.summary(comment).transitions), ("Comentar", 0))
+        self.assertEqual(plan.summary(comment).rows[0][2], "Comentario: hola")
 
 
 class WritersTest(unittest.TestCase):
@@ -70,12 +83,12 @@ class WritersTest(unittest.TestCase):
         run_guarded(["create", "--spec", str(path), "--project", str(self.project), "--jira-project", "PLATE",
                      "--apply", "--assign-open"], self.jira, asked)
         summary = asked.calls[0][1]
-        moved = sum(1 for r in summary.rows if "mover a" in r[2])
+        moved = sum(1 for r in summary.rows if r[2].startswith("-> "))
         self.assertGreater(moved, 0)
-        self.assertEqual(summary.transitions, moved)
-        self.assertIn(f"y cambiar el estado de {moved}", summary.heading)
+        self.assertEqual((summary.heading, summary.transitions), ("Crear en PLATE", moved))
+        self.assertIn("badge state", approval.render_html(summary, len(summary.rows)))
 
-    def test_push_says_which_rows_change_status(self):
+    def test_push_shows_a_status_change_as_a_pill(self):
         key = epic_with_children(self.jira)
         sync.pull(self.jira, self.project, key)
         set_status(kanban.epic_dir(self.project, key) / "tasks/PLATE-603/task.md", "Done")
@@ -83,7 +96,7 @@ class WritersTest(unittest.TestCase):
         run_guarded(["push", key, "--project", str(self.project), "--apply", "--assign-open"], self.jira, asked)
         summary = asked.calls[0][1]
         self.assertEqual(summary.transitions, 1)
-        self.assertIn(("PLATE-603", "", "Acción: cambiar de estado\nEstado: Backlog -> Done"), summary.rows)
+        self.assertIn(("PLATE-603", "", "Backlog -> Done"), summary.rows)
 
 
 if __name__ == "__main__":

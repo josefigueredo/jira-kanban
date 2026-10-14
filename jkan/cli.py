@@ -100,7 +100,7 @@ def _assign(jira, key: str, who: str, tree: bool, apply: bool, confirm: Callable
         if pending:
             text = f"assign {len(pending)} issue(s) to {person['name']}"
             rows = [(i["key"], i["summary"], f"-> {person['name']}") for i in pending]
-            code = _approve(confirm, len(pending), approval.Summary(text, f"Asignar a {person['name']}", rows), argv)
+            code = _approve(confirm, len(pending), approval.Summary(text, f"Asignar a {person['name']}", rows, badges=[(approval.plural(len(pending), "issue", "issues"), "")]), argv)
             if code is not None:
                 return code
     result = sync.assign(jira, key, person, tree=tree, apply=apply)
@@ -156,7 +156,7 @@ def _attach(jira, project: Path, conv: dict, key: str, files: List[str], sanitiz
         return OK
     rows = [(key, u.name, attach.change(u)) for u in send]
     left_out = [(u.name, f"ya adjunto en {key} (mismo nombre y tamaño)") for u in already]
-    heading = f"Subir {len(send)} adjunto(s) a {key}: {issue['summary']}"
+    heading = f"Subir {approval.plural(len(send), 'adjunto', 'adjuntos')} a {key}"
     summary = approval.Summary("\n".join([f"upload {len(send)} attachment(s) to {key}", *lines[1:]]), heading, rows,
                                left_out, kinds=[kinds.get(issue["issuetype"], "")] * len(send))
     code = _approve(confirm, len(send), summary, argv)
@@ -172,6 +172,24 @@ def _attach(jira, project: Path, conv: dict, key: str, files: List[str], sanitiz
             sys.stderr.write(f"jtk: {upload.name}: {exc}\n")
     print(f"uploaded {len(send) - failed} file(s) to {key}")
     return FINDINGS if failed else OK
+
+
+def _create_rows(planned: List[dict], conv: dict, mine: str):
+    """The approval's rows for a create: what moves shows only its destination pill («-> Done»); who gets the issues
+    goes once as a badge when it is the same person for all, else on each row."""
+    owners = {facts.assignee(op, mine) for op in planned}
+    badges = [(approval.plural(len(planned), "issue", "issues"), "")]
+    if len(owners) == 1:
+        badges.append((f"asignado a {next(iter(owners))}", ""))
+    rows = []
+    for op in planned:
+        moves = op.get("done") or op.get("started")
+        if len(owners) == 1:
+            change = f"-> {facts.status(op, conv)}" if moves else ""
+        else:
+            change = (f"Estado: {facts.status(op, conv)}\n" if moves else "") + f"Asignado a: {facts.assignee(op, mine)}"
+        rows.append((conv["issue_types"][op["kind"]], op["summary"], change))
+    return rows, badges
 
 
 REPORTS = ("done", "next", "blocked", "load", "stats")
@@ -369,9 +387,8 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
                     mine = ""
                     if any(op["assignee"].startswith("me") for op in planned):
                         mine = (jira.user(jira.myself()) or {}).get("name") or "vos"
-                    rows = [(conv["issue_types"][op["kind"]], op["summary"],
-                             f"Acción: {facts.action(op, conv)}\nAsignado a: {facts.assignee(op, mine)}") for op in planned]
-                    code = _approve(confirm, len(planned), approval.Summary(text, f"Crear en {conv['project']}" + (f" y cambiar el estado de {moves}" if moves else ""), rows, kinds=[op["kind"] for op in planned], transitions=moves), argv)
+                    rows, badges = _create_rows(planned, conv, mine)
+                    code = _approve(confirm, len(planned), approval.Summary(text, f"Crear en {conv['project']}", rows, kinds=[op["kind"] for op in planned], transitions=moves, badges=badges), argv)
                     if code is not None:
                         return code
                 result = sync.create(jira, project, epic_spec, conv, apply=args.apply, assign_open=args.assign_open)
@@ -408,14 +425,14 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
             if args.apply:
                 planned = sync.push(jira, project, args.epic, apply=False, conv=conv, assign_open=args.assign_open)
                 n = len(planned["changes"]) + len(planned["new"])
-                rows = [(c["key"], "", f"Acción: cambiar de estado\nEstado: {_short(c['from'])} -> {_short(c['to'])}"
-                         if c["field"] == "status" else f"{c['field']}: {_short(c['from'])} -> {_short(c['to'])}")
-                        for c in planned["changes"]]
+                rows = [(c["key"], "", f"{_short(c['from'])} -> {_short(c['to'])}" if c["field"] == "status"
+                         else f"{c['field']}: {_short(c['from'])} -> {_short(c['to'])}") for c in planned["changes"]]
                 moves = sum(1 for c in planned["changes"] if c["field"] == "status")
                 rows += [(conv["issue_types"][n_["kind"]], n_["summary"], f"Crear bajo {n_['parent']}") for n_ in planned["new"]]
                 kinds = [""] * len(planned["changes"]) + [n_["kind"] for n_ in planned["new"]]
                 code = _approve(confirm, n, approval.Summary(f"push {n} write(s) to {args.epic}", f"Subir cambios a {args.epic}", rows,
-                                                             kinds=kinds, transitions=moves), argv)
+                                                             kinds=kinds, transitions=moves,
+                                                             badges=[(approval.plural(n, "cambio", "cambios"), "")]), argv)
                 if code is not None:
                     return code
             result = sync.push(jira, project, args.epic, apply=args.apply, conv=conv, assign_open=args.assign_open)
