@@ -96,7 +96,9 @@ class WritersTest(unittest.TestCase):
         run_guarded(["push", key, "--project", str(self.project), "--apply", "--assign-open"], self.jira, asked)
         summary = asked.calls[0][1]
         self.assertEqual(summary.transitions, 1)
-        self.assertIn(("PLATE-603", "", "Backlog -> Done"), summary.rows)
+        [row] = [r for r in summary.rows if r[0] == "PLATE-603"]
+        self.assertEqual(row[2], "Backlog -> Done")
+        self.assertTrue(row[1])  # the issue's title
 
 
 if __name__ == "__main__":
