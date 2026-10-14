@@ -66,6 +66,12 @@ class MoveTest(Base):
         self.assertEqual((len(self.approve.calls), n, command), (1, 2, f"jtk apply {saved['id']}"))
         self.assertIn("TEAM-1: Backlog -> En curso", summary)
 
+    def test_the_approval_window_links_each_issue_it_will_change(self):
+        saved = self.saved_move(["TEAM-1", "TEAM-2"], role="todo")
+        self.apply(saved)
+        self.assertEqual(self.approve.calls[0][1].links,
+                         [self.jira.browse_url("TEAM-1"), self.jira.browse_url("TEAM-2")])
+
     def test_the_approval_window_gets_a_row_per_pending_change(self):
         saved = self.saved_move(["TEAM-1", "TEAM-2"], role="todo")
         self.apply(saved)

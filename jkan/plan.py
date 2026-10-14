@@ -254,7 +254,8 @@ def _heading(plan: dict, items: List[dict]) -> Tuple[str, List[Tuple[str, str]]]
     return ("Reasignar" if plan["kind"] == "assign" else "Comentar"), badges
 
 
-def summary(plan: dict, only: Optional[List[str]] = None) -> approval.Summary:
+def summary(plan: dict, only: Optional[List[str]] = None,
+            browse: Optional[Callable[[str], str]] = None) -> approval.Summary:
     """`describe` for the terminal, plus a row per change (key, title, change) and what was left out, for the approval
     window. Built from the saved plan, never from what an agent says."""
     items = [i for i in plan["items"] if only is None or i["key"] in only]
@@ -262,4 +263,6 @@ def summary(plan: dict, only: Optional[List[str]] = None) -> approval.Summary:
     left_out = [(s["key"], s["why"]) for s in plan.get("skipped", [])]
     transitions = len(items) if plan["kind"] == "move" else 0
     heading, badges = _heading(plan, items)
-    return approval.Summary(describe(plan, only), heading, rows, left_out, transitions=transitions, badges=badges)
+    links = [browse(i["key"]) if browse else "" for i in items]
+    return approval.Summary(describe(plan, only), heading, rows, left_out, transitions=transitions, badges=badges,
+                            links=links)

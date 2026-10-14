@@ -28,8 +28,20 @@ function reloadOnce(why) {
 ObjC.registerSubclass({
   name: 'JtkPageDelegate',
   superclass: 'NSObject',
-  protocols: ['WKNavigationDelegate'],
+  protocols: ['WKNavigationDelegate', 'WKUIDelegate'],
   methods: {
+    // A link (target="_blank") opens in the browser and never navigates this window: the page that was approved
+    // stays on screen, and Apruebo is untouched. Only https links open; returning nil creates no new view.
+    'webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:': {
+      types: ['id', ['id', 'id', 'id', 'id']],
+      implementation: function (view, configuration, action, features) {
+        const url = action.request.URL;
+        if (url && !url.isNil() && url.scheme.js === 'https') {
+          $.NSWorkspace.sharedWorkspace.openURL(url);
+        }
+        return $();
+      },
+    },
     'webView:didFinishNavigation:': {
       types: ['void', ['id', 'id']],
       implementation: function (view, navigation) { if (ok) { ok.enabled = true; } },
@@ -100,6 +112,7 @@ function run(argv) {
   pageView = web;
   pageDelegate = $.JtkPageDelegate.alloc.init;
   web.navigationDelegate = pageDelegate;
+  web.UIDelegate = pageDelegate;
 
   const cancel = $.NSButton.alloc.initWithFrame($.NSMakeRect(width - 24 - 130 - 10 - 90, 15, 90, 28));
   cancel.title = 'Cancelar';

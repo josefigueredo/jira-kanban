@@ -277,7 +277,8 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
                 # only an edited description is checked: a card mirrored with free text can still move or be renamed
                 invalid += [{"key": entry["key"], "field": field, "problem": p} for p in description.check(entry[field])]
             else:
-                changes.append({"key": entry["key"], "field": field, "from": base[field], "to": entry[field]})
+                changes.append({"key": entry["key"], "field": field, "from": base[field], "to": entry[field],
+                                "title": entry["summary"]})
     asks = assignment(new, assign_open, bool(conv.get("assign_to_me")))
     result = {"changes": changes, "conflicts": conflicts, "new": new, "invalid": invalid, "errors": []}
     if not apply:

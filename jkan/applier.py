@@ -62,7 +62,8 @@ def run(jira, plan: dict, confirm: Callable, command: str,
         message = "error: the log cannot be written, so nothing was done (check the state folder)"
         return [{"key": i["key"], "result": results.get(i["key"], message)} for i in plan["items"]], 2
     if pending:
-        confirm(len(pending), plan_mod.summary(plan, [i["key"] for i in pending]), command)
+        confirm(len(pending), plan_mod.summary(plan, [i["key"] for i in pending],
+                                               browse=getattr(jira, "browse_url", None)), command)
         for item in pending:
             result = _one(jira, plan, item)
             if result == "applied" or result.startswith("error"):

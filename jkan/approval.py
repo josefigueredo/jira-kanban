@@ -39,6 +39,8 @@ h1{font-size:19px;line-height:1.25;font-weight:650;margin:4px 0 16px}
 .k-story{--k:#63BA3C;background:rgba(99,186,60,.2)}
 .k-task,.k-subtask{--k:#4BADE8;background:rgba(75,173,232,.2)}
 .name{font-weight:500;overflow-wrap:anywhere}
+a.name{color:var(--to-fg);text-decoration:none;cursor:pointer}a.name:hover{text-decoration:underline}
+a.name::after{content:" 🔗";font-size:11px}
 .chg{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;overflow-wrap:anywhere}
 .from{color:var(--muted)}
 .arrow{color:var(--muted)}
@@ -73,13 +75,14 @@ class Summary(str):
 
     def __new__(cls, text: str, heading: str = "", rows: Sequence[Tuple[str, str, str]] = (),
                 left_out: Sequence[Tuple[str, str]] = (), kinds: Sequence[str] = (), transitions: int = 0,
-                badges: Sequence[Tuple[str, str]] = ()):
+                badges: Sequence[Tuple[str, str]] = (), links: Sequence[str] = ()):
         notice = state_notice(transitions)
         obj = super().__new__(cls, f"{notice}\n{text}" if notice else text)
         obj.heading, obj.rows, obj.left_out = heading, [tuple(r) for r in rows], [tuple(r) for r in left_out]
         obj.kinds = list(kinds)
         obj.transitions = int(transitions or 0)
         obj.badges = [tuple(b) for b in badges]  # (text, tone): tone "" (neutral), "danger" or "state"
+        obj.links = list(links)  # per row: the issue's URL, so a person can open it before approving; "" for none
         return obj
 
 
@@ -149,8 +152,13 @@ def render_html(summary, n: int) -> str:
         out += [f'<li class="card"><div class="top"><span class="name">{escape(line)}</span></div></li>'
                 for line in str(summary).splitlines()]
     kinds = list(getattr(summary, "kinds", []))
+    links = list(getattr(summary, "links", []))
     for i, (key, name, change) in enumerate(rows):
-        title = f'<span class="name">{escape(name)}</span>' if name else ""
+        link = links[i] if i < len(links) else ""
+        if name and link.startswith("https://"):  # opens in the browser (alert.js), never inside this window
+            title = f'<a class="name" href="{escape(link)}" target="_blank">{escape(name)}</a>'
+        else:
+            title = f'<span class="name">{escape(name)}</span>' if name else ""
         kind = kinds[i] if i < len(kinds) and kinds[i] in KINDS else ""  # only a known type becomes a class
         chg = f'<div class="chg">{_change(change)}</div>' if change else ""  # nothing to add beyond the title
         out.append(f'<li class="card"><div class="top"><span class="key{" k-" + kind if kind else ""}">{escape(key)}</span>{title}</div>'
