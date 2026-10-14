@@ -52,6 +52,19 @@ jtk <create|pull|push|show|board> ... --project .
 - Reassigning what exists: `jtk assign KEY "<person>" [--tree]` is a dry run; hand the user the same command with
   `--apply`.
 
+## Attachments
+
+- `jtk attach KEY FILE... ` uploads files as attachments to any issue (epic, story, task, subtask). It is a dry run that
+  prints, per file, its size, sha256 and whether it was sanitized; with `--apply` the approval says the same.
+- Sanitizing is on by default and is done once: the bytes approved are the bytes uploaded, and the original file is not
+  touched. It replaces the configured Jira token, known token formats (Atlassian, GitHub, New Relic, AWS, Slack,
+  Bearer), private key blocks and home-directory paths (`/Users/…` becomes `~`); it keeps names and emails. Report the
+  counts it prints, never claim more than them: "sanitized" means those kinds were checked, not that the file is safe.
+- Anything that is not UTF-8 text (images, PDF) is refused unless the user asks for `--no-sanitize`; the approval then
+  says it was not sanitized. A file with the same name and size already attached is left out.
+- Use it when a deliverable has no URL to cite as `evidence` (a generated guide, a report): create the item open, attach,
+  then close it with `jtk plan move … --to delivered --allow-close` and `jtk apply`.
+
 ## Updates
 
 Run `jtk update --check` once per conversation, before the first other `jtk` command. It reads the remote only (no Jira, cached for 12 hours) and prints one row; act on its State:

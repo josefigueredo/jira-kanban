@@ -257,6 +257,28 @@ class FakeJira:
             raise FailingJira(f"HTTP 400 on comment of {key}")
         self.writes.append(("comment", key, text))
 
+    # Attachments: filename -> bytes per issue; attachment_meta is what GET /rest/api/3/attachment/meta answers.
+    attachment_meta = {"enabled": True, "uploadLimit": 1073741824}
+
+    def attachment_limit(self) -> int:
+        if not self.attachment_meta.get("enabled"):
+            raise FailingJira("attachments are disabled in this Jira")
+        return int(self.attachment_meta["uploadLimit"])
+
+    def attachments(self, key: str) -> dict:
+        issue = self.get(key)
+        files = getattr(self, "files", {}).get(key, {})
+        return {"key": key, "summary": issue["summary"], "issuetype": issue["issuetype"],
+                "attachments": [{"filename": name, "size": len(data)} for name, data in files.items()]}
+
+    def attach(self, key: str, filename: str, data: bytes, record: Optional[dict] = None) -> dict:
+        if key in self.fail_writes:
+            raise FailingJira(f"HTTP 400 on attach to {key}")
+        self.files = getattr(self, "files", {})
+        self.files.setdefault(key, {})[filename] = data
+        self.writes.append(("attach", key, filename))
+        return {"filename": filename, "size": len(data)}
+
 
 def epic_with_children(jira: FakeJira) -> str:
     """PLATE-600 epic, one story with one subtask, one task without subtasks."""

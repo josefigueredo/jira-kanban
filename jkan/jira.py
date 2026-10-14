@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
+import mimetypes
+import uuid
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -290,6 +293,44 @@ class Jira:
     def add_comment(self, key: str, text: str) -> None:
         self._send("POST", f"/rest/api/2/issue/{key}/comment", {"body": text})
         self._journal({"action": "comment", "key": key})
+
+    def attachment_limit(self) -> int:
+        """The largest file Jira accepts, in bytes. Read only; raises when attachments are disabled."""
+        meta = self._send("GET", "/rest/api/3/attachment/meta")
+        if not meta.get("enabled"):
+            raise JiraError("attachments are disabled in this Jira")
+        return int(meta.get("uploadLimit") or 0)
+
+    def attachments(self, key: str) -> dict:
+        """The issue's title, type and current attachments (name and size). Read only."""
+        data = self._send("GET", f"/rest/api/3/issue/{key}?fields=attachment,issuetype,summary")
+        fields = data.get("fields") or {}
+        return {"key": data.get("key", key), "summary": fields.get("summary", ""),
+                "issuetype": (fields.get("issuetype") or {}).get("name", ""),
+                "attachments": [{"filename": a.get("filename"), "size": a.get("size")}
+                                for a in fields.get("attachment") or []]}
+
+    def attach(self, key: str, filename: str, data: bytes, record: Optional[dict] = None) -> dict:
+        """Upload `data` as one attachment (multipart, field «file»). Journals what went, never the content."""
+        boundary = "jtk-" + uuid.uuid4().hex
+        safe = filename.replace('"', "").replace("\r", "").replace("\n", "")
+        mime = mimetypes.guess_type(safe)[0] or "application/octet-stream"
+        body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"{safe}\"\r\n"
+                f"Content-Type: {mime}\r\n\r\n").encode("utf-8") + data + f"\r\n--{boundary}--\r\n".encode()
+        request = urllib.request.Request(self.base + f"/rest/api/3/issue/{key}/attachments", data=body, method="POST",
+                                         headers={"Authorization": f"Basic {self._auth}", "Accept": "application/json",
+                                                  "X-Atlassian-Token": "no-check",
+                                                  "Content-Type": f"multipart/form-data; boundary={boundary}"})
+        try:
+            with self._open(request, timeout=max(self._timeout, 120)) as response:
+                raw = response.read()
+        except urllib.error.HTTPError as exc:
+            raise JiraError(f"POST attachments of {key}: HTTP {exc.code} {exc.read()[:300].decode(errors='replace')}") from exc
+        answer = json.loads(raw) if raw else []
+        first = answer[0] if isinstance(answer, list) and answer else {}
+        self._journal({"action": "attach", "key": key, "file": filename, "bytes": len(data),
+                       "sha256": hashlib.sha256(data).hexdigest(), **(record or {})})
+        return {k: first.get(k) for k in ("id", "filename", "size")}
 
     def snapshot(self, key: str) -> dict:
         """The status id and the owner now, which is all apply rereads before a write. Read only."""
