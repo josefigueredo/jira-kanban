@@ -1,4 +1,4 @@
-"""jtk: create [--check] | pull | push | show | board | who | assign | done | next | blocked | load | stats | board setup|set|show|check|survey | team … | plan … | apply | update [--check]. Every Jira write is a dry run unless --apply is passed; the reports only read."""
+"""jtk: create [--check] | pull | push | show | board | who | assign | attach | done | next | blocked | load | stats | board setup|set|show|check|survey | team … | plan … | apply | update [--check]. Every Jira write is a dry run unless --apply is passed; the reports only read."""
 from __future__ import annotations
 
 import argparse
@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Callable, List, Optional
 
-from . import (approval, board_cli, board_profile, check, config, facts, guard, journal, kanban, people, plan_cli, preview, render, roles, standup,
+from . import (approval, attach, board_cli, board_profile, check, config, facts, guard, journal, kanban, people, plan_cli, preview, render, roles, standup,
                state, stats, sync, team_cli, update, views, window)
 from .jira import Jira, JiraError
 
@@ -118,6 +118,60 @@ def _assign(jira, key: str, who: str, tree: bool, apply: bool, confirm: Callable
     else:
         print(f"assigned {changing - len(result['errors'])} issue(s) to {person['name']}")
     return FINDINGS if result["errors"] else OK
+
+
+def _attach(jira, project: Path, conv: dict, key: str, files: List[str], sanitize_on: bool, apply: bool,
+            confirm: Callable, argv: List[str]) -> int:
+    missing = [f for f in files if not Path(f).is_file()]
+    if missing:
+        sys.stderr.write("jtk: not a file: " + ", ".join(missing) + "\n")
+        return CANNOT
+    creds = config.credentials(project)
+    secrets = [creds[2]] if creds else []
+    try:
+        uploads = [attach.prepare(Path(f), sanitize_on, secrets) for f in files]
+    except ValueError as exc:
+        sys.stderr.write(f"jtk: {exc}\n")
+        return FINDINGS
+    limit = jira.attachment_limit()
+    too_big = [u for u in uploads if limit and len(u.data) > limit]
+    if too_big:
+        sys.stderr.write("jtk: over Jira's upload limit of " + attach.human_size(limit) + ": "
+                         + ", ".join(f"{u.name} ({attach.human_size(len(u.data))})" for u in too_big) + "\n")
+        return FINDINGS
+    issue = jira.attachments(key)
+    send, already = attach.split_duplicates(uploads, issue["attachments"])
+    kinds = {name: kind for kind, name in (conv.get("issue_types") or {}).items()}
+    lines = [f"{key} [{issue['issuetype']}] {issue['summary']}"]
+    for upload in send:
+        lines.append(f"  {upload.name}\n" + "\n".join("    " + line for line in attach.change(upload).splitlines()))
+    for upload in already:
+        lines.append(f"  {upload.name}: already attached (same name and size); left out")
+    print("\n".join(lines))
+    if not send:
+        print(f"nothing to upload: every file is already attached to {key}")
+        return OK
+    if not apply:
+        print(f"dry run: nothing written; --apply uploads {len(send)} file(s) to {key}")
+        return OK
+    rows = [(key, u.name, attach.change(u)) for u in send]
+    left_out = [(u.name, f"ya adjunto en {key} (mismo nombre y tamaño)") for u in already]
+    heading = f"Subir {len(send)} adjunto(s) a {key}: {issue['summary']}"
+    summary = approval.Summary("\n".join([f"upload {len(send)} attachment(s) to {key}", *lines[1:]]), heading, rows,
+                               left_out, kinds=[kinds.get(issue["issuetype"], "")] * len(send))
+    code = _approve(confirm, len(send), summary, argv)
+    if code is not None:
+        return code
+    failed = 0
+    for upload in send:
+        try:
+            jira.attach(key, upload.name, upload.data,
+                        record={"sanitized": upload.sanitized, "redactions": dict(upload.redactions)})
+        except JiraError as exc:
+            failed += 1
+            sys.stderr.write(f"jtk: {upload.name}: {exc}\n")
+    print(f"uploaded {len(send) - failed} file(s) to {key}")
+    return FINDINGS if failed else OK
 
 
 REPORTS = ("done", "next", "blocked", "load", "stats")
@@ -235,6 +289,13 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
     give.add_argument("--tree", action="store_true", help="also assign every issue under it")
     give.add_argument("--project", default=".", help="project root that holds ./.jira-team-kit (default: cwd)")
     give.add_argument("--apply", action="store_true", help="write to Jira (default: dry run)")
+    att = sub.add_parser("attach", help="upload files as attachments to an issue (sanitized unless --no-sanitize)")
+    att.add_argument("key", help="issue key: an epic, story, task or subtask, e.g. PLATE-706")
+    att.add_argument("files", nargs="+", help="files to upload")
+    att.add_argument("--no-sanitize", dest="sanitize", action="store_false",
+                     help="upload the files as they are; required for anything that is not UTF-8 text")
+    att.add_argument("--project", default=".", help="project root that holds ./.jira-team-kit (default: cwd)")
+    att.add_argument("--apply", action="store_true", help="write to Jira (default: dry run)")
     for name, text in (("done", "what you (or --person) moved to In Progress or Done in a period"),
                        ("next", "what you can do now: open work by priority, what is due, what is unowned in your epics"),
                        ("blocked", "what is blocked: by link, by flag or by a blocked status"),
@@ -294,6 +355,8 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
             return _who(jira, args.name, conv.get("project"), args.json)
         if args.cmd == "assign":
             return _assign(jira, args.key, args.who, args.tree, args.apply, confirm, argv)
+        if args.cmd == "attach":
+            return _attach(jira, project, conv, args.key, args.files, args.sanitize, args.apply, confirm, argv)
         if args.cmd in REPORTS:
             return _report(jira, args, conv, (today or (lambda: window.today_in(conv.get("timezone"))))())
         if args.cmd == "create":
