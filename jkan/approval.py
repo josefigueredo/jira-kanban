@@ -48,6 +48,8 @@ h1{font-size:19px;line-height:1.25;font-weight:650;margin:4px 0 16px}
 .out li{background:var(--out-bg);border-radius:10px;padding:8px 12px;display:flex;gap:8px;align-items:baseline}
 .out .why{color:var(--muted);font-size:12px}
 .foot{margin:16px 0 0;color:var(--muted);font-size:11.5px}
+.state{margin:8px 0 0;display:inline-block;background:var(--out-bg);color:var(--out);border-radius:8px;padding:5px 10px;
+ font-weight:650;font-size:13px}
 """
 
 
@@ -58,14 +60,22 @@ class Unavailable(Exception):
 class Summary(str):
     """The text the terminal shows, plus the heading and rows the window shows. A plain string works everywhere a
     Summary does. (`heading`, not `title`: str already has a title() method.) `kinds` optionally says the issue type
-    (epic, story, task, subtask) of each row, so its chip takes Jira's color for it; anything else stays neutral.)"""
+    (epic, story, task, subtask) of each row, so its chip takes Jira's color for it; anything else stays neutral.)
+    `transitions` is how many issues the write moves to another status: when there is any, the terminal text and the
+    window both lead with «Cambia el estado de N issue(s)», whatever the writer's rows say."""
 
     def __new__(cls, text: str, heading: str = "", rows: Sequence[Tuple[str, str, str]] = (),
-                left_out: Sequence[Tuple[str, str]] = (), kinds: Sequence[str] = ()):
-        obj = super().__new__(cls, text)
+                left_out: Sequence[Tuple[str, str]] = (), kinds: Sequence[str] = (), transitions: int = 0):
+        notice = state_notice(transitions)
+        obj = super().__new__(cls, f"{notice}\n{text}" if notice else text)
         obj.heading, obj.rows, obj.left_out = heading, [tuple(r) for r in rows], [tuple(r) for r in left_out]
         obj.kinds = list(kinds)
+        obj.transitions = int(transitions or 0)
         return obj
+
+
+def state_notice(transitions: int) -> str:
+    return f"Cambia el estado de {transitions} issue(s)" if transitions else ""
 
 
 def rows_of(summary) -> List[Tuple[str, str, str]]:
@@ -103,7 +113,11 @@ def render_html(summary, n: int) -> str:
     # No rule hides the scrollbar: macOS shows it only when the page overflows its window, which is exactly when a
     # person must be able to scroll (a height estimate can fall short; it must never hide what is being approved).
     out = [f'<!doctype html><html><head><meta charset="utf-8"><style>{_CSS}</style></head><body>',
-           '<div class="eyebrow">jtk quiere escribir en Jira</div>', f"<h1>{escape(heading)}</h1>", '<ul class="cards">']
+           '<div class="eyebrow">jtk quiere escribir en Jira</div>']
+    notice = state_notice(getattr(summary, "transitions", 0))
+    if notice:
+        out.append(f'<div class="state">{escape(notice)}</div>')
+    out += [f"<h1>{escape(heading)}</h1>", '<ul class="cards">']
     rows = rows_of(summary)
     if not rows:  # a writer with no rows: show the text it has
         out += [f'<li class="card"><div class="top"><span class="name">{escape(line)}</span></div></li>'
@@ -132,6 +146,8 @@ def window_height(summary) -> int:
     height += sum(20 * (max(len(name) - 1, 0) // _LINE) for _key, name, _change in rows)
     height += sum(18 * (max(len(key) - 1, 0) // _KEY_LINE) for key, _name, _change in rows)  # a long key wraps
     height += sum(18 * change.count("\n") for _key, _name, change in rows)  # a change of several lines is taller
+    if getattr(summary, "transitions", 0):
+        height += 40
     if not rows:
         height += 40 * max(len(str(summary).splitlines()), 1)
     left_out = list(getattr(summary, "left_out", []))

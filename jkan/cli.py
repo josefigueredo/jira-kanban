@@ -371,7 +371,7 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
                         mine = (jira.user(jira.myself()) or {}).get("name") or "vos"
                     rows = [(conv["issue_types"][op["kind"]], op["summary"],
                              f"Acción: {facts.action(op, conv)}\nAsignado a: {facts.assignee(op, mine)}") for op in planned]
-                    code = _approve(confirm, len(planned), approval.Summary(text, f"Crear en {conv['project']}", rows, kinds=[op["kind"] for op in planned]), argv)
+                    code = _approve(confirm, len(planned), approval.Summary(text, f"Crear en {conv['project']}" + (f" y cambiar el estado de {moves}" if moves else ""), rows, kinds=[op["kind"] for op in planned], transitions=moves), argv)
                     if code is not None:
                         return code
                 result = sync.create(jira, project, epic_spec, conv, apply=args.apply, assign_open=args.assign_open)
@@ -408,11 +408,14 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
             if args.apply:
                 planned = sync.push(jira, project, args.epic, apply=False, conv=conv, assign_open=args.assign_open)
                 n = len(planned["changes"]) + len(planned["new"])
-                rows = [(c["key"], "", f"{c['field']}: {_short(c['from'])} -> {_short(c['to'])}") for c in planned["changes"]]
+                rows = [(c["key"], "", f"Acción: cambiar de estado\nEstado: {_short(c['from'])} -> {_short(c['to'])}"
+                         if c["field"] == "status" else f"{c['field']}: {_short(c['from'])} -> {_short(c['to'])}")
+                        for c in planned["changes"]]
+                moves = sum(1 for c in planned["changes"] if c["field"] == "status")
                 rows += [(conv["issue_types"][n_["kind"]], n_["summary"], f"Crear bajo {n_['parent']}") for n_ in planned["new"]]
                 kinds = [""] * len(planned["changes"]) + [n_["kind"] for n_ in planned["new"]]
                 code = _approve(confirm, n, approval.Summary(f"push {n} write(s) to {args.epic}", f"Subir cambios a {args.epic}", rows,
-                                                             kinds=kinds), argv)
+                                                             kinds=kinds, transitions=moves), argv)
                 if code is not None:
                     return code
             result = sync.push(jira, project, args.epic, apply=args.apply, conv=conv, assign_open=args.assign_open)
