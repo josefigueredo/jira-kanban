@@ -37,6 +37,7 @@ completo está en el [showcase](docs/showcase.md#1-crear-una-épica-desde-la-con
 | **Instalarlo y probarlo, desde Cursor** | [Instalación y primer uso](docs/instalacion.md) | Todo con prompts, sin comandos: instalar, credenciales de Jira, tu primera épica, reportes y cambios en lote, con maquetas de Cursor |
 | **Instalarlo comando por comando** | [Instalación detallada](docs/instalacion-detallada.md) | Requisitos, `./install.sh`, credenciales, y el mismo recorrido corriendo cada comando de `jtk`, con capturas de la terminal |
 | **Ver todo lo que hace** | [Showcase](docs/showcase.md) | Cada skill en un escenario real: qué le decís al agente, qué comandos corre, qué ves en pantalla |
+| **Verla en el taller de skills** | [Episodio del taller](https://probable-fishstick-eoym1rp.pages.github.io/) | El episodio que se dio en el taller de team, publicado en GitHub Pages (sitio privado: entrás con tu cuenta de la organización). El guion vive en [`workshop/`](workshop/) |
 | **Consultar un comando o un flag** | [Referencia](docs/referencia.md) | Todos los comandos, el formato del spec, asignación, perfiles de board, kanban local, comparación con el MCP de Atlassian |
 
 ## En tres comandos
