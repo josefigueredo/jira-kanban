@@ -222,6 +222,11 @@ class AlertScriptTest(unittest.TestCase):
     def test_the_approve_button_has_no_key_equivalent_so_it_takes_a_click(self):
         self.assertIn("ok.keyEquivalent = ''", self.js)
 
+    def test_the_approve_button_never_takes_keyboard_focus(self):
+        # With Full Keyboard Access on, Tab moves focus to a button and Space presses it: one Tab+Space approved
+        # approval-window's window on 2026-10-23. A button that refuses first responder is reached only by a click.
+        self.assertIn("ok.refusesFirstResponder = true", self.js)
+
     def test_the_result_is_cancelled_unless_the_approve_button_sets_it(self):
         self.assertIn("let result = 'cancelled'", self.js)
         self.assertEqual(self.js.count("result = 'approved'"), 1)
@@ -244,7 +249,8 @@ class AlertScriptTest(unittest.TestCase):
         for hook in ("'webView:didFailNavigation:withError:'", "'webView:didFailProvisionalNavigation:withError:'",
                      "'webViewWebContentProcessDidTerminate:'"):
             self.assertIn(hook, self.js)
-        self.assertIn("if (!html)", self.js)  # an unreadable page file never opens an empty window
+        # an unreadable page file never opens an empty window; JXA wraps nil in an object, so `!html` alone is never true
+        self.assertIn("if (!html || html.isNil())", self.js)
         self.assertIn("retries < 1", self.js)
 
 
