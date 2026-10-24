@@ -1,6 +1,6 @@
 ---
 name: jira-team-kit
-description: Use when the user asks to create a Jira epic for the work being discussed ("creame una épica para esto"), to mirror an existing epic as a local kanban, or to sync local kanban edits (status, titles, new subtasks) back to Jira. Not for epics that a WayOfWork flow registers through Product Brain's export: there Product Brain creates the epic. Jira always goes through jtk, never an Atlassian MCP.
+description: Use when the user asks to create a Jira epic for the work being discussed ("creame una épica para esto"), to mirror an existing epic as a local kanban, or to sync local kanban edits (status, titles, new subtasks) back to Jira. Not for epics that a WayOfWork flow registers through Product Brain's export — there Product Brain creates the epic. Jira always goes through jtk, never an Atlassian MCP.
 compatibility: Requires the jtk CLI on PATH (install.sh links it into ~/.local/bin), python3 3.9+ with the standard library only, and Jira credentials (JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN).
 ---
 
