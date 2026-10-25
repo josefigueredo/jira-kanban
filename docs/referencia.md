@@ -191,7 +191,7 @@ sin confirmar corre y lo avisa en la primera línea.
 | `jtk team desk VIEW [--weeks N]` | Boards `helpdesk`: antigüedad de lo abierto, sin asignar, esperando y tiempo de resolución. Sin SLA |
 | `jtk team rollup VIEW VIEW …` | Una fila por view: abiertos, bloqueados, estancados, entregados y lead time p85 |
 
-`status` y `desk` aceptan además `--list`: lista los issues que el reporte contó, del más viejo al más nuevo, para pasar de «7 sin asignar» a cuáles son. Se acota con `--unassigned`, `--older-than DÍAS` y `--role todo|active|blocked|waiting|none` (solo junto a `--list`). En `desk`, `--older-than` no cuenta lo que espera a un tercero, igual que los tramos de antigüedad.
+`status` y `desk` aceptan además `--list`: lista los issues que el reporte contó, del más viejo al más nuevo, para pasar de «7 sin asignar» a cuáles son. Se acota con `--unassigned`, `--older-than DÍAS`, `--role todo|active|blocked|waiting|none` y `--reported-by-me` (los que reportaste vos), solo junto a `--list`. En `desk`, `--older-than` no cuenta lo que espera a un tercero, igual que los tramos de antigüedad.
 
 Todos aceptan `--json` y `--all`. Cada reporte abre con el view, los boards, el equipo, la ventana y el estado de los
 perfiles; muestra el `n` de cada número; corta las tablas en 20 filas con un `… y N más`; avisa si la búsqueda llegó a su
@@ -211,7 +211,7 @@ Sirve para pasar de «7 sin asignar» a «asignados». Es en dos pasos, y el seg
 | `jtk plan revert ID` | Plan inverso de uno aplicado; no garantiza deshacer y lo dice |
 | `jtk apply ID` | Aplica **exactamente** ese plan. Abre una ventana con el detalle y dos botones, **Cancelar** y **Apruebo <n>**; sin terminal y sin ventana, no escribe |
 
-Las claves pueden ir solas o combinadas con `--unassigned`, `--older-than DÍAS` y `--role ROL` (los mismos filtros que `--list`). Un plan lleva hasta 25 issues (`--max`, hasta 200); mover a `delivered` o `dropped` exige `--allow-close`.
+Las claves pueden ir solas o combinadas con `--unassigned`, `--older-than DÍAS`, `--role ROL` y `--reported-by-me` (los mismos filtros que `--list`). Un plan lleva hasta 25 issues (`--max`, hasta 200); mover a `delivered` o `dropped` exige `--allow-close`.
 
 **La aprobación es de una persona, con un clic.** En macOS, `jtk apply` y los `--apply` de `create`, `push` y `assign`
 abren una ventana nativa con el detalle: una fila por issue (clave, título y qué cambia), lo que quedó afuera y dos botones,

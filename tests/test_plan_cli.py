@@ -81,6 +81,17 @@ class PlanTest(Base):
         self.assertEqual([i["key"] for i in saved["items"]], ["TEAM-1"])
         self.assertEqual(saved["options"]["person"]["id"], "acc-ana")
 
+    def test_reported_by_me_picks_the_open_issues_the_user_reported(self):
+        mine = {"id": "acc-me", "name": "Yo"}
+        a = self.put("TEAM-1", "todo", reporter=mine)
+        b = self.put("TEAM-2", "todo", reporter=fx.ANA)
+        c = self.put("TEAM-3", "todo", fx.ANA, reporter=mine)
+        self.serve(open_=[a, b, c])
+        code, out, _ = run(["plan", "assign", "plataforma", "--reported-by-me", "--unassigned", "--person", "Ana Gómez"],
+                           self.jira)
+        self.assertEqual(code, 0)
+        self.assertEqual([i["key"] for i in state.load_plan(plan_id(out))["items"]], ["TEAM-1"])
+
     def test_a_comment_plan(self):
         self.put("TEAM-1", "todo")
         self.serve()

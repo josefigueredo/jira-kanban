@@ -8,7 +8,7 @@ import argparse
 import datetime as _dt
 import sys
 from collections import namedtuple
-from typing import Callable, List
+from typing import Callable, List, Optional
 
 from . import board_profile, people, render, roles, team, team_render, views, window
 from .jira import JiraError
@@ -111,12 +111,17 @@ def _link(jira) -> Callable[[str], str]:
     return lambda key: f"[{key}]({jira.browse_url(key)})"
 
 
+def _reporter(args, jira) -> Optional[str]:
+    return jira.myself() if args.reported_by_me else None
+
+
 def _status(args, jira, view, profiles, conv, today) -> Result:
     issues, cut = team.gather_open(jira, view, profiles, conv)
     report = team.status_report(issues, view, profiles)
     body = team_render.render_status(report, args.all)
     if args.list:
-        report["issues"] = team.list_issues(issues, view["boards"], today, args.unassigned, args.older_than, args.role)
+        report["issues"] = team.list_issues(issues, view["boards"], today, args.unassigned, args.older_than, args.role,
+                                            reporter=_reporter(args, jira))
         body += "\n\n" + team_render.render_issues(report["issues"], args.all, _link(jira))
     return Result("Estado del equipo", None, report, body, issues, cut)
 
@@ -170,7 +175,8 @@ def _desk(args, jira, view, profiles, conv, today) -> Result:
     body = team_render.render_desk(report, args.all)
     if args.list:
         report["issues"] = team.list_issues(issues, team.desk_boards(view, profiles), today, args.unassigned,
-                                            args.older_than, args.role, ("todo", "active", "blocked"))
+                                            args.older_than, args.role, ("todo", "active", "blocked"),
+                                            reporter=_reporter(args, jira))
         body += "\n\n" + team_render.render_issues(report["issues"], args.all, _link(jira))
     return Result("Mesa de ayuda", (first, today), report, body, issues + delivered, cut1 or cut2)
 
@@ -261,6 +267,7 @@ def run(argv: List[str], jira: Callable[[], object], conv: dict, today: Callable
             p.add_argument("--unassigned", action="store_true", help="with --list: only issues with no owner")
             p.add_argument("--older-than", type=int, metavar="DAYS", help="with --list: only issues created DAYS ago or before")
             p.add_argument("--role", choices=team.COUNTED + ("none",), help="with --list: only issues in this role")
+            p.add_argument("--reported-by-me", action="store_true", help="with --list: only issues you reported")
         if verb in ("flow", "desk"):
             p.add_argument("--weeks", type=int, default=4, help="how many weeks, 1 to 52 (default 4)")
         if verb == "digest":
@@ -272,8 +279,9 @@ def run(argv: List[str], jira: Callable[[], object], conv: dict, today: Callable
     roll.add_argument("--all", action="store_true")
     roll.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
-    if not getattr(args, "list", True) and (args.unassigned or args.older_than is not None or args.role):
-        parser.error("--unassigned, --older-than and --role narrow the list: add --list")
+    if not getattr(args, "list", True) and (args.unassigned or args.older_than is not None or args.role
+                                            or args.reported_by_me):
+        parser.error("--unassigned, --older-than, --role and --reported-by-me narrow the list: add --list")
     try:
         if args.verb == "setup":
             return _setup(args, jira)

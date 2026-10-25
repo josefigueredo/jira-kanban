@@ -189,9 +189,10 @@ def desk_report(open_issues: List[dict], delivered: List[dict], view: dict, prof
 
 def list_issues(open_issues: List[dict], boards: List[str], today: _dt.date, unassigned: bool = False,
                 older_than: Optional[int] = None, role: Optional[str] = None,
-                age_roles: Optional[tuple] = None) -> List[dict]:
+                age_roles: Optional[tuple] = None, reporter: Optional[str] = None) -> List[dict]:
     """The issues behind a count: what status and desk counted on `boards`, oldest first, narrowed by the filters. With
-    `age_roles`, older_than only looks at those roles (the desk does not age what waits for a third party)."""
+    `age_roles`, older_than only looks at those roles (the desk does not age what waits for a third party). `reporter`
+    is an accountId: only the issues that person reported."""
     if role is not None and role not in COUNTED + ("none",):
         raise ValueError(f"role must be one of {', '.join(COUNTED + ('none',))}, not {role!r}")
     if older_than is not None and older_than < 0:
@@ -203,6 +204,8 @@ def list_issues(open_issues: List[dict], boards: List[str], today: _dt.date, una
         bucket, age = _bucket(issue), _days_since(issue.get("created"), today)
         owner = issue["assignee"]["name"] if issue["assignee"] else None
         if (unassigned and owner) or (role is not None and bucket != role):
+            continue
+        if reporter is not None and (issue.get("reporter") or {}).get("id") != reporter:
             continue
         if older_than is not None and (age is None or age < older_than or (age_roles and bucket not in age_roles)):
             continue

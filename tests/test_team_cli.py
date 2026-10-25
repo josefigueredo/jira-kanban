@@ -387,8 +387,21 @@ class ListFlagTest(unittest.TestCase):
         self.assertEqual(run(["status", "plataforma", "--list", "--all"], self.jira)[1].count("/browse/"), 25)
         self.assertEqual(len(json.loads(run(["status", "plataforma", "--list", "--json"], self.jira)[1])["report"]["issues"]), 25)
 
+    def test_reported_by_me_keeps_what_the_user_reported(self):
+        mine = {"id": "acc-me", "name": "Yo"}
+        self.jira.search_answer = fx.answers(open_=[
+            fx.at("TEAM-1", "todo", assignee=None, reporter=mine, created="2026-09-01"),
+            fx.at("TEAM-2", "todo", assignee=None, reporter=fx.ANA, created="2026-10-06"),
+            fx.at("DESK-1", "todo", assignee=fx.BETO, reporter=mine, created="2026-08-01")])
+        _, out, _ = run(["status", "plataforma", "--list", "--reported-by-me"], self.jira)
+        self.assertEqual(out.count("/browse/"), 2)
+        self.assertNotIn("TEAM-2", out.split("### Issues")[1])
+        _, out, _ = run(["status", "plataforma", "--list", "--reported-by-me", "--unassigned"], self.jira)
+        self.assertEqual(out.count("/browse/"), 1)
+        self.assertIn("TEAM-1", out)
+
     def test_a_filter_without_list_is_refused_instead_of_ignored(self):
-        for flag in (["--unassigned"], ["--older-than", "3"], ["--role", "todo"]):
+        for flag in (["--unassigned"], ["--older-than", "3"], ["--role", "todo"], ["--reported-by-me"]):
             with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
                 run(["status", "plataforma"] + flag, self.jira)
 

@@ -12,6 +12,7 @@ RAW = {"key": "PLATE-9", "fields": {
     "status": {"name": "PROCESANDO", "statusCategory": {"key": "indeterminate"}},
     "parent": {"key": "PLATE-1", "fields": {"summary": "Épica", "issuetype": {"name": "Epic"}}},
     "assignee": {"accountId": "acc-me", "displayName": "Yo"}, "priority": {"name": "High"},
+    "reporter": {"accountId": "acc-ana", "displayName": "Ana Gómez"},
     "duedate": "2026-10-10", "created": "2026-10-01T09:00:00.000-0300", "resolutiondate": None,
     "statuscategorychangedate": "2026-10-07T14:03:00.000-0300", "customfield_10023": [{"value": "Impediment"}],
     "labels": ["backend", "ai"], "components": [{"name": "Plataforma"}, {"name": "Datos"}],
@@ -30,7 +31,8 @@ class SearchTest(unittest.TestCase):
         self.assertEqual(found[0], {
             "key": "PLATE-9", "summary": "[BE] Algo", "issuetype": "Tarea", "status": "PROCESANDO", "status_id": "",
             "category": "in_progress", "parent": {"key": "PLATE-1", "summary": "Épica", "issuetype": "Epic"},
-            "assignee": {"id": "acc-me", "name": "Yo"}, "priority": "High", "duedate": "2026-10-10",
+            "assignee": {"id": "acc-me", "name": "Yo"}, "reporter": {"id": "acc-ana", "name": "Ana Gómez"},
+            "priority": "High", "duedate": "2026-10-10",
             "created": "2026-10-01", "resolved": None, "changed": "2026-10-07", "updated": None, "flagged": True,
             "blocked_by": [{"key": "PLATE-5", "summary": "Esperar a Okta", "status": "Blocked",
                             "category": "in_progress", "assignee": "Ana Gómez"}],
@@ -41,6 +43,7 @@ class SearchTest(unittest.TestCase):
         self.assertIn("customfield_10023", posts[0][2]["fields"])
         self.assertIn("labels", posts[0][2]["fields"])
         self.assertIn("components", posts[0][2]["fields"])
+        self.assertIn("reporter", posts[0][2]["fields"])
         self.assertEqual(posts[1][2]["nextPageToken"], "n1")
 
     def test_search_survives_an_issue_with_nothing_optional(self):
@@ -51,6 +54,7 @@ class SearchTest(unittest.TestCase):
         issue = jira.search("x")[0]
         self.assertIsNone(issue["parent"])
         self.assertIsNone(issue["assignee"])
+        self.assertIsNone(issue["reporter"])
         self.assertEqual(issue["priority"], "")
         self.assertFalse(issue["flagged"])
         self.assertEqual((issue["labels"], issue["components"]), ([], []))

@@ -22,7 +22,7 @@ jtk team rollup VIEW [VIEW ...]
 | how fast do we deliver, lead time | `jtk team flow VIEW [--weeks N]` |
 | summary of the week / of a period | `jtk team digest VIEW --since D [--until D]` |
 | how is the help desk (age, unowned, resolution time) | `jtk team desk VIEW [--weeks N]` |
-| *which* ones: the unowned, the oldest, the ones in a role (after a count from status or desk) | `jtk team status\|desk VIEW --list [--unassigned] [--older-than DAYS] [--role ROLE]` |
+| *which* ones: the unowned, the oldest, the ones in a role (after a count from status or desk) | `jtk team status\|desk VIEW --list [--unassigned] [--older-than DAYS] [--role ROLE] [--reported-by-me]` |
 | several teams side by side (a Sr EM) | `jtk team rollup VIEW VIEW ...` |
 | what did <person> do / can do / is blocked on, inside my boards | `jtk done\|next\|blocked --person "<name>" --view VIEW` |
 
@@ -48,7 +48,7 @@ jtk team rollup VIEW [VIEW ...]
 5. **Another person inside the view.** Pass `--person "<name>"`. If the command exits 1 listing candidates, show them
    (name and email) and ask which one; never pick.
 6. **From a number to its issues.** When the user asks «which ones?» about a count of `status` or `desk`, add `--list`
-   (and `--unassigned`, `--older-than DAYS`, `--role todo|active|blocked|waiting|none` to narrow it). The list is
+   (and `--unassigned`, `--older-than DAYS`, `--role todo|active|blocked|waiting|none`, `--reported-by-me` to narrow it). The list is
    what the report counted, oldest first, so without filters it has as many rows as the number. Never answer «which
    ones» from memory or by searching Jira on your own.
 7. **Load verdicts.** `jtk team status` gives a verdict only for boards with a WIP limit (`jtk board limit KEY N`); the

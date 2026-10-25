@@ -26,6 +26,7 @@ def _parser() -> argparse.ArgumentParser:
         p.add_argument("--unassigned", action="store_true", help="select the open issues nobody owns")
         p.add_argument("--older-than", type=int, metavar="DAYS", help="select open issues created DAYS ago or before")
         p.add_argument("--role", choices=team.COUNTED + ("none",), help="select open issues in this role")
+        p.add_argument("--reported-by-me", action="store_true", help="select the open issues you reported")
         p.add_argument("--max", type=int, help=f"most issues a plan may hold (default {plan.DEFAULT_MAX}, up to {plan.LIMIT_MAX})")
 
     move = sub.add_parser("move", help="plan moving issues to the status that plays a role (reads Jira, writes a file)")
@@ -64,7 +65,7 @@ def _plan(args, jira, conv: dict, today) -> int:
     view, profiles = team_cli.context(args.view)
     limit = plan.check_max(args.max)
     client = jira()
-    filtering = args.unassigned or args.older_than is not None or args.role is not None
+    filtering = args.unassigned or args.older_than is not None or args.role is not None or args.reported_by_me
     open_issues = []
     if filtering:
         open_issues, truncated = team.gather_open(client, view, profiles, conv)
@@ -72,7 +73,8 @@ def _plan(args, jira, conv: dict, today) -> int:
             raise plan.Refused(f"the search hit the cap of {team.CAP} issues, so the filters would miss some: "
                                f"name the issues by key")
     selection = plan.select(client, view, profiles, conv, open_issues, today, args.keys, args.unassigned,
-                            args.older_than, args.role, limit)
+                            args.older_than, args.role, limit,
+                            reporter=client.myself() if args.reported_by_me else None)
     plan.check_profiles(selection, profiles)
     if args.verb == "move":
         body = plan.move(client, view, selection, profiles, args.to, args.to_status, args.allow_close)

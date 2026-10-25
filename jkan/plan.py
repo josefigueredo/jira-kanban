@@ -28,11 +28,13 @@ def check_max(value: Optional[int]) -> int:
 
 
 def select(jira, view: dict, profiles: Dict[str, dict], conv: dict, open_issues: List[dict], today, keys: List[str],
-           unassigned: bool, older_than: Optional[int], role: Optional[str], limit: int) -> List[dict]:
-    """The issues the plan is about: what the filters pick out of the open issues, then the explicit keys, each once."""
-    filtering = unassigned or older_than is not None or role is not None
+           unassigned: bool, older_than: Optional[int], role: Optional[str], limit: int,
+           reporter: Optional[str] = None) -> List[dict]:
+    """The issues the plan is about: what the filters pick out of the open issues, then the explicit keys, each once.
+    `reporter` is an accountId: only the issues that person reported."""
+    filtering = unassigned or older_than is not None or role is not None or reporter is not None
     if not keys and not filtering:
-        raise Refused("say which issues: pass keys or at least one of --unassigned, --older-than, --role")
+        raise Refused("say which issues: pass keys or at least one of --unassigned, --older-than, --role, --reported-by-me")
     for key in keys:
         if not KEY.fullmatch(key):
             raise Refused(f"{key!r} is not an issue key")
@@ -41,7 +43,8 @@ def select(jira, view: dict, profiles: Dict[str, dict], conv: dict, open_issues:
     chosen: Dict[str, dict] = {}
     if filtering:
         by_key = {i["key"]: i for i in open_issues}
-        for row in team.list_issues(open_issues, view["boards"], today, unassigned, older_than, role):
+        for row in team.list_issues(open_issues, view["boards"], today, unassigned, older_than, role,
+                                    reporter=reporter):
             chosen[row["key"]] = by_key[row["key"]]
     missing = [k for k in dict.fromkeys(keys) if k not in chosen]
     if missing:

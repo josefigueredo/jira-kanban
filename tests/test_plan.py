@@ -31,9 +31,9 @@ class Base(unittest.TestCase):
             return [self.issues[k] for k in wanted if k in self.issues]
         self.jira.search_answer = answer
 
-    def select(self, keys=(), open_issues=(), unassigned=False, older_than=None, role=None, limit=25):
+    def select(self, keys=(), open_issues=(), unassigned=False, older_than=None, role=None, limit=25, reporter=None):
         return plan.select(self.jira, self.view, self.profiles, CONVENTIONS, list(open_issues), TODAY, list(keys),
-                           unassigned, older_than, role, limit)
+                           unassigned, older_than, role, limit, reporter=reporter)
 
 
 class SelectTest(Base):
@@ -51,6 +51,14 @@ class SelectTest(Base):
         got = self.select(open_issues=[a, b, c], unassigned=True)
         self.assertEqual([i["key"] for i in got], ["TEAM-2", "TEAM-1"])
         self.assertEqual(self.jira.jqls, [])  # nothing needed fetching
+
+    def test_reporter_alone_is_a_filter_and_combines_with_the_others(self):
+        a = self.put("TEAM-1", "todo", reporter=fx.ANA)
+        b = self.put("TEAM-2", "todo", reporter=fx.BETO)
+        c = self.put("TEAM-3", "todo", assignee=fx.BETO, reporter=fx.ANA)
+        self.assertEqual([i["key"] for i in self.select(open_issues=[a, b, c], reporter="acc-ana")], ["TEAM-1", "TEAM-3"])
+        self.assertEqual([i["key"] for i in self.select(open_issues=[a, b, c], unassigned=True, reporter="acc-ana")],
+                         ["TEAM-1"])
 
     def test_keys_and_filters_add_up_without_repeating_an_issue(self):
         a = self.put("TEAM-1", "todo")

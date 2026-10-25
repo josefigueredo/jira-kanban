@@ -13,7 +13,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 ISSUE_FIELDS = "summary,description,issuetype,status,parent"
 CATEGORY = {"new": "todo", "indeterminate": "in_progress", "done": "done"}  # Jira's fixed status categories
-STANDUP_FIELDS = ["summary", "issuetype", "status", "parent", "assignee", "priority", "duedate", "created",
+STANDUP_FIELDS = ["summary", "issuetype", "status", "parent", "assignee", "reporter", "priority", "duedate", "created",
                   "resolutiondate", "statuscategorychangedate", "issuelinks", "updated", "labels", "components"]
 BLOCKED_LINK = "is blocked by"
 
@@ -191,6 +191,7 @@ class Jira:
     def _report_issue(self, raw: dict, flag: Optional[str], wanted: str) -> dict:
         f = raw["fields"]
         parent, owner, status = f.get("parent"), f.get("assignee"), f.get("status") or {}
+        author = f.get("reporter")
         parent_fields = (parent or {}).get("fields") or {}
         return {"key": raw["key"], "summary": f.get("summary") or "",
                 "issuetype": (f.get("issuetype") or {}).get("name", ""),
@@ -198,6 +199,7 @@ class Jira:
                 "parent": {"key": parent["key"], "summary": parent_fields.get("summary") or "",
                            "issuetype": (parent_fields.get("issuetype") or {}).get("name", "")} if parent else None,
                 "assignee": {"id": owner["accountId"], "name": owner.get("displayName") or ""} if owner else None,
+                "reporter": {"id": author["accountId"], "name": author.get("displayName") or ""} if author else None,
                 "priority": (f.get("priority") or {}).get("name", ""), "duedate": f.get("duedate"),
                 "created": _day(f.get("created")), "resolved": _day(f.get("resolutiondate")),
                 "changed": _day(f.get("statuscategorychangedate")), "updated": _day(f.get("updated")),

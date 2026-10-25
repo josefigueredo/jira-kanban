@@ -78,6 +78,16 @@ class FiltersTest(unittest.TestCase):
         self.assertEqual(keys(team.list_issues(open_work(), ["TEAM", "DESK"], TODAY, role="blocked")), ["TEAM-2"])
         self.assertEqual(keys(team.list_issues(open_work(), ["TEAM", "DESK"], TODAY, role="none")), ["DESK-3"])
 
+    def test_reporter_keeps_only_what_that_person_reported(self):
+        issues = open_work()
+        for i in issues:
+            i["reporter"] = fx.ANA if i["key"] in ("TEAM-3", "DESK-2") else fx.BETO
+        issues.append(fx.at("TEAM-4", "todo", assignee=None, reporter=None))
+        self.assertEqual(sorted(keys(team.list_issues(issues, ["TEAM", "DESK"], TODAY, reporter="acc-ana"))),
+                         ["DESK-2", "TEAM-3"])
+        self.assertEqual(keys(team.list_issues(issues, ["TEAM", "DESK"], TODAY, unassigned=True, reporter="acc-ana")),
+                         ["TEAM-3"])
+
     def test_filters_add_up(self):
         rows = team.list_issues(open_work(), ["TEAM", "DESK"], TODAY, unassigned=True, older_than=18, role="todo")
         self.assertEqual(sorted(keys(rows)), ["DESK-1", "TEAM-3"])
