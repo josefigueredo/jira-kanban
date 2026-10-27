@@ -12,6 +12,10 @@
    {"type": "task", "area": "DEVOPS", "summary": "…", "why": "…", "what": "…", "done_when": "…", "started": true}]}
 ```
 
+To add items to an epic that already exists, leave `"epic"` out and pass `--epic KEY`: jtk reads that epic (also in
+the dry run), refuses a key that does not exist, is not an epic or is in another project, and creates the items under
+it without writing to the epic. A spec that has `"epic"` and `--epic` together is refused.
+
 | Field | Rule |
 |---|---|
 | `type` | `story` only when someone benefits ("Como … quiero … para …"); otherwise `task`. Both hang from the epic as siblings; `subtasks` hang from either. There is no fourth level. |

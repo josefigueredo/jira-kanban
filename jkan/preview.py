@@ -112,7 +112,8 @@ def _description_html(text: str) -> str:
 def render(ops: List[dict], conv: dict) -> str:
     types: Dict[str, str] = conv["issue_types"]
     project = conv["project"]
-    key = {op["ref"]: facts.placeholder(i) for i, op in enumerate(ops, 1)}
+    key = facts.names(ops)
+    new = [op for op in ops if not op.get("existing")]
     by_ref = {op["ref"]: op for op in ops}
     children: Dict[str, List[dict]] = {}
     for op in ops:
@@ -130,7 +131,7 @@ def render(ops: List[dict], conv: dict) -> str:
                     f'<span class="k">{key[op["ref"]]}</span></a>')  # el título no entra: queda en el tooltip
 
     pages = []
-    for n, op in enumerate(ops, 1):
+    for op in ops:
         chain, ref = [], op["parent"]
         while ref:
             chain.insert(0, by_ref[ref])
@@ -147,8 +148,12 @@ def render(ops: List[dict], conv: dict) -> str:
         labels = "".join(f'<span class="tag">{e(lb)}</span>' for lb in op.get("labels") or []) or '<span class="muted">Ninguno</span>'
         prio = op.get("priority") or ""
         who, av_cls = e(facts.assignee(op)), (" off" if facts.unassigned(op) else "")
-        order = (f"Se crea primero (paso 1 de {len(ops)}): el resto cuelga de esta épica." if not parent
-                 else f"Se crea en el paso {n} de {len(ops)}, después de {key[parent['ref']]}.")
+        if op.get("existing"):
+            order = "Ya existe en Jira: esta pasada la lee y no la cambia. Los issues nuevos cuelgan de ella."
+        else:
+            n = new.index(op) + 1
+            order = (f"Se crea primero (paso 1 de {len(new)}): el resto cuelga de esta épica." if not parent
+                     else f"Se crea en el paso {n} de {len(new)}, después de {key[parent['ref']]}.")
         pages.append(template.render(template.load("card.html"), {
             "key": key[op["ref"]], "crumbs_html": ' <span class="sep">/</span> '.join(crumbs), "summary": op["summary"],
             "description_html": _description_html(op.get("description") or ""), "children_html": table,
@@ -163,7 +168,7 @@ def render(ops: List[dict], conv: dict) -> str:
 <body>
 <header class="top"><span class="app">{GRID} Proyectos <span class="muted">/</span> {e(project)}</span>
   <span class="pill">Vista previa</span><span class="search">Buscar</span></header>
-<div class="banner"><b>Vista previa:</b> nada se creó en Jira. <code>jtk create --apply</code> crea estos {len(ops)} issues en
+<div class="banner"><b>Vista previa:</b> nada se creó en Jira. <code>jtk create --apply</code> crea estos {len(new)} issues en
   {e(project)}, en este orden, con claves reales en lugar de NUEVO-n.</div>
 <div class="shell">
   <aside class="side"><div class="proj"><div class="avatar-p">{e(project[:1])}</div><div><b>{e(project)}</b><span>Épica en preparación</span></div></div>

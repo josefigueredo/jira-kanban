@@ -24,7 +24,9 @@ jtk <create|pull|push|show|board> ... --project .
    - `jira project` = `none`: there is no default; ask the user which project and pass `--jira-project KEY` from here on.
    - `existing epic` = a key: it comes from a `**Jira Epic:** KEY` in `specs/*/spec.md` or from the branch. If one covers the
      work, ask before creating anything; to mirror it, run `jtk pull KEY`. A key the user gave in the conversation is not
-     in that row: check it yourself.
+     in that row: check it yourself. To add stories or tasks to an epic that already exists, draft the spec without
+     `"epic"` and pass `--epic KEY` in steps 3 and 4 (the project comes from the key): the epic is only read, never
+     created, moved or reassigned.
 2. **Draft the spec** (JSON, in the scratchpad) from the conversation. Read `references/spec.md` first: it has the
    format, the `why` / `what` / `done_when` every issue needs (prose a person can follow and correct; jtk renders them through `templates/description.md`), the optional `how` / `out_of_scope` / `assumptions` / `edge_cases` / `references` only when the conversation already has them, and when an item is a story or a task, finished (`done`, with its `evidence`: the commits, branch or URL), in progress (`started`) or open.
 3. **Preview:** `jtk create --spec <file> --jira-project KEY --html <scratchpad>/vista.html` (dry run). Show the tree and

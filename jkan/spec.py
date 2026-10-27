@@ -35,12 +35,18 @@ def _description_findings(ref: str, entry: dict) -> List[str]:
             if not str(entry.get(name) or "").strip()] + wrong
 
 
-def validate(spec: dict, conv: dict) -> List[str]:
+def validate(spec: dict, conv: dict, existing_epic: Optional[str] = None) -> List[str]:
+    """existing_epic: the items go under that epic, so the spec must not describe one of its own."""
     findings: List[str] = []
-    if not (spec.get("epic") or {}).get("summary", "").strip():
-        findings.append("epic: summary is required")
-    findings += _description_findings("epic", spec.get("epic") or {})
-    findings += _assignee_findings("epic", spec.get("epic") or {})
+    if existing_epic:
+        if "epic" in spec:
+            findings.append(f"epic: the spec describes an epic and --epic {existing_epic} names an existing one; "
+                            f"drop one of the two")
+    else:
+        if not (spec.get("epic") or {}).get("summary", "").strip():
+            findings.append("epic: summary is required")
+        findings += _description_findings("epic", spec.get("epic") or {})
+        findings += _assignee_findings("epic", spec.get("epic") or {})
     items = spec.get("items") or []
     if not items:
         findings.append("items: at least one story or task")
@@ -131,13 +137,21 @@ def _assignee_query(entry: dict, inherited: Optional[str] = None) -> Optional[st
     return value.strip() if isinstance(value, str) and value.strip() else inherited
 
 
-def plan(spec: dict, conv: dict) -> List[dict]:
-    """Create operations in dependency order: the epic, then each item followed by its subtasks."""
+def plan(spec: dict, conv: dict, existing_epic: Optional[dict] = None) -> List[dict]:
+    """Create operations in dependency order: the epic, then each item followed by its subtasks.
+
+    existing_epic is the epic as Jira returns it (sync.read_epic): its op stays first, so parents and every view keep
+    their shape, but it carries "existing" and the pass never creates, moves or assigns it."""
     default = conv.get("default_priority")
-    epic = spec["epic"]
-    ops = [{"ref": "epic", "kind": "epic", "parent": None, "summary": epic["summary"].strip(),
-            "description": _description(epic), "sections": sections(epic), "priority": epic.get("priority") or default,
-            "labels": list(epic.get("labels") or []), "assignee_query": _assignee_query(epic)}]
+    if existing_epic:
+        ops = [{"ref": "epic", "kind": "epic", "parent": None, "existing": existing_epic["key"],
+                "summary": existing_epic["summary"], "current_status": existing_epic["status"],
+                "description": existing_epic.get("description") or "", "sections": {}, "labels": []}]
+    else:
+        epic = spec["epic"]
+        ops = [{"ref": "epic", "kind": "epic", "parent": None, "summary": epic["summary"].strip(),
+                "description": _description(epic), "sections": sections(epic), "priority": epic.get("priority") or default,
+                "labels": list(epic.get("labels") or []), "assignee_query": _assignee_query(epic)}]
     for i, item in enumerate(spec["items"]):
         ref = f"items[{i}]"
         item_done = bool(item.get("done"))
@@ -157,5 +171,6 @@ def plan(spec: dict, conv: dict) -> List[dict]:
                         "started": bool(sub.get("started")),
                         "evidence": list(sub.get("evidence") or (item.get("evidence") if "done" not in sub else None)
                                          or [])})  # a started parent does not start its subtasks
-    ops[0]["done"] = all(op["done"] for op in ops[1:])  # the epic is complete only when everything under it is
+    if not existing_epic:
+        ops[0]["done"] = all(op["done"] for op in ops[1:])  # the epic is complete only when everything under it is
     return ops

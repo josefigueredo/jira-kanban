@@ -288,6 +288,8 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
                            help="before drafting: is there a wow plan, which Jira project applies, does an epic already exist (offline)")
             p.add_argument("--html", help="also write a standalone, navigable HTML preview to this path")
             p.add_argument("--jira-project", help="Jira project key for the new epic (no default: ask the user)")
+            p.add_argument("--epic", help="put the spec's items under this existing epic (e.g. PLATE-504) instead of "
+                                          "creating one; the spec then has no \"epic\" and the epic is only read")
         else:
             p.add_argument("epic", help="epic key, e.g. PLATE-504")
         if name in ("create", "push"):
@@ -345,6 +347,8 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
     conv = config.load_conventions(project)
     if getattr(args, "jira_project", None):
         conv["project"] = args.jira_project
+    elif getattr(args, "epic", None) and isinstance(args.epic, str) and args.cmd == "create":
+        conv["project"] = args.epic.rsplit("-", 1)[0]  # the epic's own project; read_epic still checks the key
     if getattr(args, "view", None):
         if getattr(args, "jira_project", None):
             parser.error("--view and --jira-project cannot be used together")
@@ -382,32 +386,41 @@ def main(argv: Optional[List[str]] = None, client: Callable = _client,
             epic_spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
             try:
                 if args.apply:  # a silent dry run says how many issues the person is about to approve
-                    planned = sync.create(jira, project, epic_spec, conv, apply=False, assign_open=args.assign_open)["ops"]
+                    planned = sync.create(jira, project, epic_spec, conv, apply=False, assign_open=args.assign_open,
+                                          epic_key=args.epic)["ops"]
+                    planned = [op for op in planned if not op.get("existing")]  # the window lists only what is written
                     moves = sum(1 for op in planned if op.get("done") or op.get("started"))
-                    text = f"create {len(planned)} issue(s) in {conv['project']}" + (f" and move {moves} of them to Done or in progress" if moves else "")
+                    under = f" under {args.epic}" if args.epic else ""
+                    text = f"create {len(planned)} issue(s) in {conv['project']}{under}" + (f" and move {moves} of them to Done or in progress" if moves else "")
                     mine = ""
                     if any(op["assignee"].startswith("me") for op in planned):
                         mine = (jira.user(jira.myself()) or {}).get("name") or "vos"
                     rows, badges = _create_rows(planned, conv, mine)
-                    code = _approve(confirm, len(planned), approval.Summary(text, f"Crear en {conv['project']}", rows, kinds=[op["kind"] for op in planned], transitions=moves, badges=badges), argv)
+                    code = _approve(confirm, len(planned), approval.Summary(text, f"Crear en {args.epic or conv['project']}", rows, kinds=[op["kind"] for op in planned], transitions=moves, badges=badges), argv)
                     if code is not None:
                         return code
-                result = sync.create(jira, project, epic_spec, conv, apply=args.apply, assign_open=args.assign_open)
+                result = sync.create(jira, project, epic_spec, conv, apply=args.apply, assign_open=args.assign_open,
+                                     epic_key=args.epic)
             except (ValueError, sync.NeedsDecision, sync.PartialCreate) as exc:
                 sys.stderr.write(f"{exc}\n")
                 return FINDINGS
             rows = [("Issue", "Tipo", "Estado", "Asignado", "Título")]
-            for position, op in enumerate(result["ops"], 1):
+            names = facts.names(result["ops"])
+            for op in result["ops"]:
                 indent = {"epic": "", "story": "  ", "task": "  ", "subtask": "    "}[op["kind"]]
                 key = result.get("keys", {}).get(op["ref"], "")
-                rows.append((indent + (key or facts.placeholder(position)), conv["issue_types"][op["kind"]], facts.status(op, conv),
+                rows.append((indent + (key or names[op["ref"]]), conv["issue_types"][op["kind"]], facts.status(op, conv),
                              facts.assignee(op), op["summary"]))
             print("\n".join(render.columns(rows)))
             if args.html:
                 Path(args.html).write_text(preview.render(result["ops"], conv), encoding="utf-8")
                 print(f"preview: {Path(args.html).resolve()}")
+            new = [op for op in result["ops"] if not op.get("existing")]
             if not args.apply:
-                print(f"dry run: nothing created; --apply creates {len(result['ops'])} issues in {conv['project']}")
+                under = f" under {args.epic}" if args.epic else ""
+                print(f"dry run: nothing created; --apply creates {len(new)} issues in {conv['project']}{under}")
+            elif args.epic:
+                print(f"added {len(new)} issue(s) to {result['epic']}; local kanban in .jira-team-kit/{result['epic']}/")
             else:
                 print(f"created {result['epic']}; local kanban in .jira-team-kit/{result['epic']}/")
             errors = result.get("errors") or []

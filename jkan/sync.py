@@ -107,9 +107,26 @@ def _fields(conv: dict, me: Optional[str], kind: str, summary: str, description:
     return fields
 
 
-def _progress_path(project: Path, epic_spec: dict, conv: dict) -> Path:
-    digest = hashlib.sha256(json.dumps([conv["project"], epic_spec], sort_keys=True).encode()).hexdigest()[:16]
+def _progress_path(project: Path, epic_spec: dict, conv: dict, epic_key: Optional[str] = None) -> Path:
+    parts = [conv["project"], epic_spec] + ([epic_key] if epic_key else [])
+    digest = hashlib.sha256(json.dumps(parts, sort_keys=True).encode()).hexdigest()[:16]
     return home.data_dir(project) / f".create-progress-{digest}.json"
+
+
+def read_epic(jira, key: str, conv: dict) -> dict:
+    """The epic that --epic names, read from Jira (also in the dry run): it must exist, be an epic and be in the project."""
+    if not KEY_RE.match(key or ""):
+        raise ValueError(f"--epic {key!r} is not an issue key like PLATE-504")
+    if key.rsplit("-", 1)[0] != conv["project"]:
+        raise ValueError(f"--epic {key} is not in {conv['project']}: the new issues would land in another project")
+    try:
+        issue = jira.get(key)
+    except Exception as exc:  # noqa: BLE001 — a missing issue and a refused read both stop here
+        raise ValueError(f"--epic {key}: could not read it from Jira ({exc or type(exc).__name__})") from exc
+    epic_type = conv["issue_types"]["epic"]
+    if (issue.get("issuetype") or "").lower() != epic_type.lower():
+        raise ValueError(f"--epic {key} is a {issue.get('issuetype')}, not an {epic_type}")
+    return issue
 
 
 def attach_evidence(ops: List[dict], repo: Path) -> None:
@@ -127,27 +144,36 @@ def attach_evidence(ops: List[dict], repo: Path) -> None:
         raise ValueError("\n".join(findings))
 
 
-def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign_open: Optional[bool] = None) -> dict:
+def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign_open: Optional[bool] = None,
+           epic_key: Optional[str] = None) -> dict:
+    """epic_key: put the spec's items under that existing epic instead of creating one. The epic is only read."""
     if not conv.get("project"):
         raise ValueError("no Jira project configured: ask the user which one, then pass --jira-project KEY or set "
                          "\"project\" in ./.jira-team-kit/conventions.json (the skill never assumes one)")
-    findings = spec.validate(epic_spec, conv)
+    findings = spec.validate(epic_spec, conv, epic_key)
     if findings:
         raise ValueError("\n".join(findings))
-    ops = spec.plan(epic_spec, conv)
-    attach_evidence(ops, project)
-    resolve_people(jira, ops, conv)
-    asks = assignment(ops, assign_open, bool(conv.get("assign_to_me")))
+    existing = read_epic(jira, epic_key, conv) if epic_key else None
+    ops = spec.plan(epic_spec, conv, existing)
+    new = [op for op in ops if not op.get("existing")]
+    attach_evidence(new, project)
+    resolve_people(jira, new, conv)
+    asks = assignment(new, assign_open, bool(conv.get("assign_to_me")))
+    for op in ops:
+        if op.get("existing"):
+            op["assignee"] = "existing"
     if not apply:
         return {"ops": ops}
     if asks:
         raise _decision_error(asks)
-    me = jira.myself() if any(op["assignee"] not in ("none", "person") for op in ops) else None
+    me = jira.myself() if any(op["assignee"] not in ("none", "person") for op in new) else None
     # Each created key is saved before the next create: a failure halfway never loses them, and the same spec run
     # again skips what already exists instead of duplicating it.
-    progress = _progress_path(project, epic_spec, conv)
+    progress = _progress_path(project, epic_spec, conv, epic_key)
     keys: Dict[str, str] = json.loads(progress.read_text(encoding="utf-8"))["keys"] if progress.is_file() else {}
-    for op in ops:
+    if existing:
+        keys["epic"] = existing["key"]
+    for op in new:
         if op["ref"] in keys:
             continue
         parent = keys[op["parent"]] if op["parent"] else None
@@ -167,9 +193,9 @@ def create(jira, project: Path, epic_spec: dict, conv: dict, apply: bool, assign
     # kanban is written. A finished item goes to Done, children before parents and the epic last (spec.plan marks it
     # done only when everything under it is), so a sub-task blocking condition never
     # stops a story; a started item is already being worked on, so it begins in progress, not in the backlog.
-    moves = [(op, "Done", jira.transition_done) for op in reversed(ops) if op.get("done")]
+    moves = [(op, "Done", jira.transition_done) for op in reversed(new) if op.get("done")]
     blocked = conv.get("blocked_statuses") or []
-    moves += [(op, "in progress", lambda key: jira.transition_start(key, blocked)) for op in ops if op.get("started")]
+    moves += [(op, "in progress", lambda key: jira.transition_start(key, blocked)) for op in new if op.get("started")]
     errors = []
     for op, target, move in moves:
         key = keys[op["ref"]]
