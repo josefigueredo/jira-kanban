@@ -44,6 +44,33 @@ def _parent(jira, item: dict) -> str:
     return "applied"
 
 
+def _link(jira, plan: dict, item: dict) -> str:
+    key = item["key"]
+    present = {b["key"] for b in jira.blockers(key)}
+    missing = [e["key"] for e in item["to"] if e["key"] not in present]
+    item["wrote"] = []  # what the log records, so revert removes only the links this plan wrote
+    if not missing:
+        return "already there"
+    for blocker in missing:
+        jira.link_blocks(plan["options"]["type"], blocker, key)
+        if blocker not in {b["key"] for b in jira.blockers(key)}:
+            for wrong in (b for b in jira.blockers(blocker) if b["key"] == key):
+                jira.unlink(wrong["link"])
+            return f"error: Jira made {blocker} -> {key} the other way round; that link was removed"
+        item["wrote"].append(blocker)
+    return "applied"
+
+
+def _unlink(jira, item: dict) -> str:
+    present = {b["key"]: b["link"] for b in jira.blockers(item["key"])}
+    gone = [present[e["key"]] for e in item["from"] if e["key"] in present]
+    if not gone:
+        return "already there"
+    for link_id in gone:
+        jira.unlink(link_id)
+    return "applied"
+
+
 def _one(jira, plan: dict, item: dict) -> str:
     try:
         if plan["kind"] == "move":
@@ -52,6 +79,10 @@ def _one(jira, plan: dict, item: dict) -> str:
             return _assign(jira, item)
         if plan["kind"] == "parent":
             return _parent(jira, item)
+        if plan["kind"] == "link":
+            return _link(jira, plan, item)
+        if plan["kind"] == "unlink":
+            return _unlink(jira, item)
         jira.add_comment(item["key"], plan["options"]["text"])
         return "applied"
     except Exception as exc:  # noqa: BLE001 — one issue never stops the rest; the reason goes to the table and the log
@@ -60,7 +91,11 @@ def _one(jira, plan: dict, item: dict) -> str:
 
 def _entry(plan: dict, item: dict, result: str) -> dict:
     base = {"command": "apply", "plan": plan["id"], "key": item["key"], "action": plan["kind"], "result": result}
-    return base if plan["kind"] == "comment" else dict(base, de=item["from"], a=item["to"])
+    if plan["kind"] == "comment":
+        return base
+    if plan["kind"] == "link":
+        return dict(base, de=None, a=[e for e in item["to"] if e["key"] in item.get("wrote", [])])
+    return dict(base, de=item["from"], a=item["to"])
 
 
 def run(jira, plan: dict, confirm: Callable, command: str,
@@ -74,7 +109,7 @@ def run(jira, plan: dict, confirm: Callable, command: str,
         message = "error: the log cannot be written, so nothing was done (check the state folder)"
         return [{"key": i["key"], "result": results.get(i["key"], message)} for i in plan["items"]], 2
     if pending:
-        confirm(len(pending), plan_mod.summary(plan, [i["key"] for i in pending],
+        confirm(plan_mod.writes(plan, pending), plan_mod.summary(plan, [i["key"] for i in pending],
                                                browse=getattr(jira, "browse_url", None)), command)
         for item in pending:
             result = _one(jira, plan, item)

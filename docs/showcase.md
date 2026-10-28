@@ -202,6 +202,7 @@ persona**.
 | 1 | `jtk plan comment plataforma KEY-1 KEY-2 --text "…"` | Plan para dejar el mismo comentario |
 | 1 | `jtk plan parent plataforma KEY-1 KEY-2 --to KEY-9` | Plan para mover issues a otra épica |
 | 2 | `jtk apply <ID>` | Aplica **exactamente** ese plan: abre la ventana con el detalle y **Apruebo n** |
+| 1 | `jtk plan link plataforma KEY-1:KEY-2 KEY-1:KEY-3` | Plan para decir qué issue bloquea a cuál |
 | — | `jtk plan revert <ID>` | Plan inverso de uno aplicado (no garantiza deshacer, y lo dice) |
 
 **Qué protege:** un plan lleva hasta 25 issues (`--max`, hasta 200); mover a `delivered` o `dropped` exige

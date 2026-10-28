@@ -242,6 +242,27 @@ class Jira:
         self._send("PUT", f"/rest/api/2/issue/{key}", {"fields": {"parent": {"key": parent}}})
         self._journal({"action": "parent", "key": key, "parent": parent})
 
+    def link_types(self) -> List[dict]:
+        """The issue link types of the site: name and how each end reads. Read only."""
+        found = self._send("GET", "/rest/api/2/issueLinkType").get("issueLinkTypes") or []
+        return [{"name": t.get("name", ""), "inward": t.get("inward", ""), "outward": t.get("outward", "")} for t in found]
+
+    def blockers(self, key: str, wanted: str = BLOCKED_LINK) -> List[dict]:
+        """The issues that block this one, with the id of each link. Read only; the same reading as the reports."""
+        links = self._send("GET", f"/rest/api/2/issue/{key}?fields=issuelinks")["fields"].get("issuelinks") or []
+        return [{"key": link["inwardIssue"]["key"], "link": str(link["id"])} for link in links
+                if link.get("inwardIssue") and ((link.get("type") or {}).get("inward") or "").lower() == wanted.lower()]
+
+    def link_blocks(self, type_name: str, blocker: str, blocked: str) -> None:
+        """Say that `blocker` blocks `blocked`. The applier rereads the link, since the ends are easy to get backwards."""
+        self._send("POST", "/rest/api/2/issueLink", {"type": {"name": type_name}, "outwardIssue": {"key": blocker},
+                                                     "inwardIssue": {"key": blocked}})
+        self._journal({"action": "link", "key": blocked, "blocker": blocker})
+
+    def unlink(self, link_id: str) -> None:
+        self._send("DELETE", f"/rest/api/2/issueLink/{link_id}")
+        self._journal({"action": "unlink", "link": link_id})
+
     def update(self, key: str, fields: dict) -> None:
         self._send("PUT", f"/rest/api/2/issue/{key}", {"fields": fields})
         self._journal({"action": "update", "key": key, "fields": fields})

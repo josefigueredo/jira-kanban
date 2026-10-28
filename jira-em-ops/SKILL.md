@@ -15,6 +15,7 @@ jtk plan move    VIEW [KEY …] [--unassigned] [--older-than D] [--role R] [--re
 jtk plan assign  VIEW [KEY …] [--unassigned] [--older-than D] [--role R] [--reported-by-me] --person "<name>" [--max N]
 jtk plan comment VIEW [KEY …] [--unassigned] [--older-than D] [--role R] [--reported-by-me] --text "<text>" [--max N]
 jtk plan parent  VIEW [KEY …] [--unassigned] [--older-than D] [--role R] [--reported-by-me] --to EPIC [--max N]
+jtk plan link    VIEW BLOCKER:BLOCKED … [--max N]
 jtk plan revert  PLAN_ID
 ```
 
@@ -25,6 +26,7 @@ jtk plan revert  PLAN_ID
 | assign me what I reported and nobody owns | `jtk plan assign VIEW --reported-by-me --unassigned --person "<me>"` |
 | comment the same text on these tickets | `jtk plan comment VIEW KEY … --text "…"` |
 | move these tickets to another epic | `jtk plan parent VIEW KEY … --to EPIC` (the target must be an epic; subtasks are left out) |
+| say which ticket blocks which | `jtk plan link VIEW KEY-1:KEY-2 …` (KEY-1 blocks KEY-2; both in the view's boards; an existing link or its opposite is left out, a loop is refused) |
 | undo what I applied | `jtk plan revert PLAN_ID` (it does not guarantee undoing) |
 | which tickets are those (before planning) | `jtk team status VIEW --list` or `jtk team desk VIEW --list`, with `--unassigned`, `--older-than DAYS`, `--role ROLE`, `--reported-by-me` |
 

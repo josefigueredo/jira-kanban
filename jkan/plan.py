@@ -1,4 +1,4 @@
-"""Plans: what `jtk plan move|assign|comment|revert` decides about a selection of issues, written as a file `jtk apply` runs
+"""Plans: what `jtk plan move|assign|comment|parent|link|revert` decides about a selection of issues, written as a file `jtk apply` runs
 exactly. Planning only reads Jira. Everything a write needs (the status it leaves and reaches, the transition id, the person)
 is resolved here, once; apply never evaluates the query again."""
 from __future__ import annotations
@@ -192,6 +192,86 @@ def parent(jira, view: dict, selection: List[dict], target_key: str, now: Option
     return _envelope("parent", view, options, items, skipped, now)
 
 
+BLOCKED_BY = "is blocked by"
+OPPOSITE = {"link": "unlink", "unlink": "link"}
+
+
+def _loop(pairs: List[Tuple[str, str]]) -> Optional[List[str]]:
+    """A chain of blockers that comes back to where it started, if the pairs make one."""
+    after: Dict[str, List[str]] = {}
+    for blocker, blocked in pairs:
+        after.setdefault(blocker, []).append(blocked)
+    done: set = set()
+
+    def walk(key: str, path: List[str]) -> Optional[List[str]]:
+        if key in path:
+            return path[path.index(key):] + [key]
+        if key in done:
+            return None
+        for nxt in after.get(key, []):
+            found = walk(nxt, path + [key])
+            if found:
+                return found
+        done.add(key)
+        return None
+
+    return next((found for found in (walk(k, []) for k in list(after)) if found), None)
+
+
+def link(jira, view: dict, pairs: List[Tuple[str, str]], now: Optional[Callable[[], str]] = None) -> dict:
+    """Say which issue blocks which: one item per blocked issue, with the blockers it does not have yet. Reads the links
+    now, so a link that exists (or its opposite) is left out and said."""
+    pairs = list(dict.fromkeys(pairs))
+    for blocker, blocked in pairs:
+        if blocker == blocked:
+            raise Refused(f"{blocker} cannot block itself")
+        for key in (blocker, blocked):
+            if not KEY.fullmatch(key):
+                raise Refused(f"{key!r} is not an issue key")
+            if roles.project_of(key) not in view["boards"]:
+                raise Refused(f"{key} is not in the boards of view {view['name']!r} ({', '.join(view['boards'])})")
+    loop = _loop(pairs)
+    if loop:
+        raise Refused(f"these links make a loop: {' blocks '.join(loop)}")
+    kind = next((t for t in jira.link_types() if t["inward"].lower() == BLOCKED_BY), None)
+    if not kind:
+        raise Refused(f"Jira has no link type that reads {BLOCKED_BY!r}")
+    titles = {k: jira.get(k).get("summary") or "" for k in dict.fromkeys(k for pair in pairs for k in pair)}
+    known: Dict[str, set] = {}
+
+    def blockers(key: str) -> set:
+        if key not in known:
+            known[key] = {b["key"] for b in jira.blockers(key)}
+        return known[key]
+
+    items: Dict[str, dict] = {}
+    skipped = []
+    for blocker, blocked in pairs:
+        if blocker in blockers(blocked):
+            skipped.append({"key": blocked, "why": f"already blocked by {blocker}"})
+        elif blocked in blockers(blocker):
+            skipped.append({"key": blocked, "why": f"{blocked} already blocks {blocker}: the opposite link exists"})
+        else:
+            item = items.setdefault(blocked, {"key": blocked, "title": titles[blocked], "from": None, "to": []})
+            item["to"].append({"key": blocker, "title": titles[blocker]})
+    if not items:
+        raise Refused("nothing to link: " + _why(skipped))
+    return _envelope("link", view, {"type": kind["name"]}, list(items.values()), skipped, now)
+
+
+def writes(plan: dict, items: List[dict]) -> int:
+    """How many writes the approval asks for: one per link for link plans, one per issue for the rest."""
+    if plan["kind"] == "link":
+        return sum(len(i["to"]) for i in items)
+    if plan["kind"] == "unlink":
+        return sum(len(i["from"]) for i in items)
+    return len(items)
+
+
+def _keys(ends: Optional[List[dict]]) -> str:
+    return ", ".join(e["key"] for e in ends or [])
+
+
 def _epic(where: Optional[dict]) -> str:
     return where["key"] if where else "no epic"
 
@@ -224,6 +304,18 @@ def revert(jira, original: dict, profiles: Dict[str, dict], now: Optional[Callab
             else:
                 items.append({"key": key, "title": titles.get(key, ""), "from": dict(entry["a"]), "to": dict(entry["de"])})
             continue
+        if original["kind"] in OPPOSITE:
+            now_blocking = {b["key"] for b in jira.blockers(key)}
+            ends = entry["a"] if original["kind"] == "link" else entry["de"]
+            present = [dict(e) for e in ends if e["key"] in now_blocking]
+            wanted = present if original["kind"] == "link" else [dict(e) for e in ends if e["key"] not in now_blocking]
+            if not wanted:
+                skipped.append({"key": key, "why": "changed"})
+            elif original["kind"] == "link":
+                items.append({"key": key, "title": titles.get(key, ""), "from": wanted, "to": None})
+            else:
+                items.append({"key": key, "title": titles.get(key, ""), "from": None, "to": wanted})
+            continue
         snap = jira.snapshot(key)
         if original["kind"] == "assign":
             if (snap["assignee"] or {}).get("id") != (entry["a"] or {}).get("id"):
@@ -245,10 +337,12 @@ def revert(jira, original: dict, profiles: Dict[str, dict], now: Optional[Callab
                       "transition": chosen["id"]})
     if not items:
         raise Refused("nothing to revert: " + _why(skipped))
-    if not allow_close and any(i.get("to") and i["to"].get("role") in CLOSING for i in items):
+    if not allow_close and any(isinstance(i.get("to"), dict) and i["to"].get("role") in CLOSING for i in items):
         raise Refused("reverting closes issues: add --allow-close")
     options = {"revert_of": original["id"]}
-    return _envelope(original["kind"], view, options, items, skipped, now)
+    if original["kind"] in OPPOSITE:
+        options["type"] = original["options"].get("type", "Blocks")
+    return _envelope(OPPOSITE.get(original["kind"], original["kind"]), view, options, items, skipped, now)
 
 
 def _who(person: Optional[dict]) -> str:
@@ -267,6 +361,10 @@ def describe(plan: dict, only: Optional[List[str]] = None) -> str:
         rows = [f"  {i['key']}: {_who(i['from'])} -> {_who(i['to'])}" for i in items]
     elif plan["kind"] == "parent":
         rows = [f"  {i['key']}: {_epic(i['from'])} -> {_epic(i['to'])}" for i in items]
+    elif plan["kind"] == "link":
+        rows = [f"  {i['key']}: blocked by {_keys(i['to'])}" for i in items]
+    elif plan["kind"] == "unlink":
+        rows = [f"  {i['key']}: no longer blocked by {_keys(i['from'])}" for i in items]
     else:
         rows = [f"  {i['key']}" for i in items] + [f"  Comment: {plan['options']['text']}"]
     lines = [head] + rows
@@ -287,6 +385,10 @@ def _change(plan: dict, item: dict) -> str:
         return f"{_who(item['from'])} -> {_who(item['to'])}"
     if plan["kind"] == "parent":
         return f"{_epic(item['from'])} -> {_epic(item['to'])}"
+    if plan["kind"] == "link":
+        return f"bloqueada por {_keys(item['to'])}"
+    if plan["kind"] == "unlink":
+        return f"deja de estar bloqueada por {_keys(item['from'])}"
     return f"Comentario: {plan['options']['text']}"
 
 
@@ -300,6 +402,10 @@ def _heading(plan: dict, items: List[dict]) -> Tuple[str, List[Tuple[str, str]]]
         target = plan["options"].get("to") or (items[0]["to"] if items else {"key": "?"})
         title = target.get("title") or ""
         return f"Mover a la épica {target['key']}", badges + ([(title, "")] if title else [])
+    if plan["kind"] in OPPOSITE:
+        ends = writes(plan, items)
+        verb = "Vincular dependencias" if plan["kind"] == "link" else "Quitar dependencias"
+        return verb, badges + [(approval.plural(ends, "vínculo", "vínculos"), "")]
     return ("Reasignar" if plan["kind"] == "assign" else "Comentar"), badges
 
 

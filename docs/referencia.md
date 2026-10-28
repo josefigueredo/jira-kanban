@@ -209,6 +209,7 @@ Sirve para pasar de «7 sin asignar» a «asignados». Es en dos pasos, y el seg
 | `jtk plan assign VIEW [KEY …] --person "Ana"` | Plan para reasignar. La persona nunca se adivina: si hay dos, lista las dos |
 | `jtk plan comment VIEW [KEY …] --text "…"` | Plan para dejar el mismo comentario |
 | `jtk plan parent VIEW [KEY …] --to ÉPICA` | Plan para mover issues a otra épica. El destino tiene que ser una épica; las subtareas y las que ya están ahí quedan afuera, con el motivo. `apply` relee el padre y deja quieta una issue que alguien movió después del plan; `revert` la devuelve a su épica anterior |
+| `jtk plan link VIEW BLOQUEA:BLOQUEADA …` | Plan para decir qué issue bloquea a cuál (`PLATE-1:PLATE-2`: PLATE-1 bloquea a PLATE-2). Las dos puntas tienen que estar en los tableros de la vista; un vínculo que ya existe, o su opuesto, queda afuera con el motivo, y un ciclo dentro del plan se rechaza. `apply` relee los vínculos antes de escribir y, si Jira lo creó al revés, lo borra y lo informa; `revert` quita los que escribió |
 | `jtk plan revert ID` | Plan inverso de uno aplicado; no garantiza deshacer y lo dice |
 | `jtk apply ID` | Aplica **exactamente** ese plan. Abre una ventana con el detalle y dos botones, **Cancelar** y **Apruebo <n>**; sin terminal y sin ventana, no escribe |
 

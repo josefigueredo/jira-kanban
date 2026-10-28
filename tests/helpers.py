@@ -109,6 +109,9 @@ class FakeJira:
         self.board: Dict[str, dict] = {}  # key -> {"status_id", "status", "assignee"}: what snapshot() sees
         self.workflow: Dict[str, List[dict]] = {}  # status id -> the transitions that leave it
         self.fail_writes: set = set()  # keys whose writes raise, like a Jira that rejects them
+        self.links: List[dict] = []  # {"id", "blocker", "blocked"}: the Blocks links
+        self.link_type_list = [{"name": "Blocks", "inward": "is blocked by", "outward": "blocks"}]
+        self.inverted = False  # True: a new link lands the other way round, like a Jira that reads the ends reversed
 
     def browse_url(self, key: str) -> str:
         return f"https://example.atlassian.net/browse/{key}"
@@ -189,6 +192,23 @@ class FakeJira:
             raise FailingJira(f"HTTP 400 on parent of {key}")
         self.issues[key]["parent"] = parent
         self.writes.append(("parent", key, parent))
+
+    def link_types(self) -> List[dict]:
+        return [dict(t) for t in self.link_type_list]
+
+    def blockers(self, key: str) -> List[dict]:
+        return [{"key": link["blocker"], "link": link["id"]} for link in self.links if link["blocked"] == key]
+
+    def link_blocks(self, type_name: str, blocker: str, blocked: str) -> None:
+        if blocked in self.fail_writes:
+            raise FailingJira(f"HTTP 400 on link of {blocked}")
+        ends = (blocked, blocker) if self.inverted else (blocker, blocked)
+        self.links.append({"id": str(900 + len(self.links)), "blocker": ends[0], "blocked": ends[1]})
+        self.writes.append(("link", blocker, blocked))
+
+    def unlink(self, link_id: str) -> None:
+        self.links = [link for link in self.links if link["id"] != link_id]
+        self.writes.append(("unlink", link_id))
 
     def update(self, key: str, fields: dict) -> None:
         for name in ("summary", "description"):

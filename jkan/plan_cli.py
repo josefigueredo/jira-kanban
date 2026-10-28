@@ -1,4 +1,4 @@
-"""jtk plan move|assign|comment|revert and jtk apply: guarded writes to Jira. A plan only reads Jira and saves a file; apply
+"""jtk plan move|assign|comment|parent|link|revert and jtk apply: guarded writes to Jira. A plan only reads Jira and saves a file; apply
 runs that file exactly, after a person at a terminal approved it (guard.py).
 
 Exit codes: 0 done, 1 refused or something changed or failed, 2 could not (Jira, disk, log), 3 a person has to do it
@@ -13,7 +13,8 @@ from . import applier, guard, people, plan, roles, state, team, team_cli
 from .jira import JiraError
 
 OK, FINDINGS, CANNOT = 0, 1, 2
-VERBS = ("move", "assign", "comment", "parent", "revert")
+VERBS = ("move", "assign", "comment", "parent", "link", "revert")
+LINKS = ("link", "unlink")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -43,6 +44,10 @@ def _parser() -> argparse.ArgumentParser:
     home = sub.add_parser("parent", help="plan moving issues to another epic (reads Jira, writes a file)")
     selecting(home)
     home.add_argument("--to", required=True, metavar="EPIC", help="the epic the issues should hang from, e.g. PLATE-682")
+    tie = sub.add_parser("link", help="plan which issue blocks which (reads Jira, writes a file)")
+    tie.add_argument("view")
+    tie.add_argument("pairs", nargs="+", metavar="BLOCKER:BLOCKED", help="e.g. PLATE-1:PLATE-2 (PLATE-1 blocks PLATE-2)")
+    tie.add_argument("--max", type=int, help=f"most links a plan may hold (default {plan.DEFAULT_MAX}, up to {plan.LIMIT_MAX})")
     undo = sub.add_parser("revert", help="plan the inverse of an applied plan (it does not guarantee undoing)")
     undo.add_argument("id")
     undo.add_argument("--allow-close", action="store_true", help="needed when the inverse closes issues")
@@ -57,6 +62,18 @@ def _announce(saved: dict) -> int:
     return OK
 
 
+def _pairs(raw: List[str], limit: int) -> List[tuple]:
+    pairs = []
+    for text in raw:
+        ends = text.strip().upper().split(":")
+        if len(ends) != 2 or not all(plan.KEY.fullmatch(e) for e in ends):
+            raise plan.Refused(f"{text!r} is not BLOCKER:BLOCKED, e.g. PLATE-1:PLATE-2")
+        pairs.append(tuple(ends))
+    if len(pairs) > limit:
+        raise plan.Refused(f"{len(pairs)} links; the limit is {limit} (raise it with --max, up to {plan.LIMIT_MAX})")
+    return pairs
+
+
 def _plan(args, jira, conv: dict, today) -> int:
     if args.verb == "revert":
         original = state.load_plan(args.id)
@@ -64,6 +81,8 @@ def _plan(args, jira, conv: dict, today) -> int:
         return _announce(state.save_plan(plan.revert(jira(), original, profiles, allow_close=args.allow_close)))
     view, profiles = team_cli.context(args.view)
     limit = plan.check_max(args.max)
+    if args.verb == "link":
+        return _announce(state.save_plan(plan.link(jira(), view, _pairs(args.pairs, limit))))
     client = jira()
     filtering = args.unassigned or args.older_than is not None or args.role is not None or args.reported_by_me
     open_issues = []
@@ -110,7 +129,8 @@ def run_apply(argv: List[str], jira: Callable[[], object], confirm: Callable) ->
         if outside:
             raise plan.Refused(f"{', '.join(outside)} is not in the boards of view {saved['view']!r} "
                                f"({', '.join(view['boards'])}) any more: plan again")
-        plan.check_profiles(saved["items"], profiles)
+        if saved["kind"] not in LINKS:  # a link changes no status, so the boards' roles do not matter
+            plan.check_profiles(saved["items"], profiles)
         outcomes, code = applier.run(jira(), saved, confirm, f"jtk apply {saved['id']}")
     except guard.NotApproved as exc:
         sys.stderr.write(f"jtk: {exc}\n")
