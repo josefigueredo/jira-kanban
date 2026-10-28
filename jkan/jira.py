@@ -254,9 +254,10 @@ class Jira:
                 if link.get("inwardIssue") and ((link.get("type") or {}).get("inward") or "").lower() == wanted.lower()]
 
     def link_blocks(self, type_name: str, blocker: str, blocked: str) -> None:
-        """Say that `blocker` blocks `blocked`. The applier rereads the link, since the ends are easy to get backwards."""
-        self._send("POST", "/rest/api/2/issueLink", {"type": {"name": type_name}, "outwardIssue": {"key": blocker},
-                                                     "inwardIssue": {"key": blocked}})
+        """Say that `blocker` blocks `blocked`. The blocker goes as inwardIssue, the same end `blockers` reads back on the
+        blocked issue (measured on Jira Cloud, 2026-10-28); the applier still rereads every link it writes."""
+        self._send("POST", "/rest/api/2/issueLink", {"type": {"name": type_name}, "inwardIssue": {"key": blocker},
+                                                     "outwardIssue": {"key": blocked}})
         self._journal({"action": "link", "key": blocked, "blocker": blocker})
 
     def unlink(self, link_id: str) -> None:

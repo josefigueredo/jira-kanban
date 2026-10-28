@@ -152,13 +152,14 @@ class RealJiraTest(unittest.TestCase):
         self.assertEqual(jira.blockers("PLATE-2"), [{"key": "PLATE-1", "link": "901"}])
         self.assertIn("fields=issuelinks", rec.calls[0][1])
 
-    def test_a_link_puts_the_blocker_outward_and_is_journaled(self):
+    def test_a_link_puts_the_blocker_inward_like_jira_reads_it_back_and_is_journaled(self):
+        # Measured on Jira Cloud on 2026-10-28: with the blocker as outwardIssue the link came out the other way round.
         log = []
         rec = Recorder({("POST", "/rest/api/2/issueLink"): {}})
         jira = jira_mod.Jira("https://example.atlassian.net", "me@x", "tok", opener=rec, journal=log.append)
         jira.link_blocks("Blocks", "PLATE-1", "PLATE-2")
         self.assertEqual(rec.calls[0], ("POST", "/rest/api/2/issueLink", {
-            "type": {"name": "Blocks"}, "outwardIssue": {"key": "PLATE-1"}, "inwardIssue": {"key": "PLATE-2"}}))
+            "type": {"name": "Blocks"}, "inwardIssue": {"key": "PLATE-1"}, "outwardIssue": {"key": "PLATE-2"}}))
         self.assertEqual(log, [{"action": "link", "key": "PLATE-2", "blocker": "PLATE-1"}])
 
     def test_unlink_deletes_the_link_by_id(self):
