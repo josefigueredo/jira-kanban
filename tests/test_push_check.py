@@ -67,5 +67,56 @@ class PushCheckTest(unittest.TestCase):
         self.assertTrue(any(w[0] == "create" and w[2]["description"] == GOOD for w in self.jira.writes))
 
 
+    def new_task_with_subtasks(self, task_text=None):
+        task = self.epic / "tasks/_new-after/task.md"
+        task.parent.mkdir(parents=True)
+        task.write_text(task_text or f"# [DBA] Después del corte\n\n{GOOD}\n", encoding="utf-8")
+        subs = []
+        for slug, title in (("_new-t1", "[DBA] 55. T+1"), ("_new-t7", "[DBA] 56. T+7")):
+            sub = task.parent / "subtasks" / slug / "subtask.md"
+            sub.parent.mkdir(parents=True)
+            sub.write_text(f"# {title}\n\n{GOOD}\n", encoding="utf-8")
+            subs.append(sub)
+        return task, subs
+
+    def test_a_new_task_and_its_new_subtasks_go_up_in_one_push_under_the_new_key(self):
+        task, subs = self.new_task_with_subtasks()
+        dry = sync.push(self.jira, self.project, self.key, apply=False, assign_open=False)
+        self.assertEqual(dry["conflicts"], [])
+        self.assertEqual([n["summary"] for n in dry["new"]], ["[DBA] Después del corte", "[DBA] 55. T+1", "[DBA] 56. T+7"])
+        code, out, _ = run(["push", self.key, "--project", str(self.project), "--apply", "--no-assign-open"], self.jira)
+        self.assertEqual(code, 0, out)
+        created = {w[2]["summary"]: w[1] for w in self.jira.writes if w[0] == "create"}
+        task_key = created["[DBA] Después del corte"]
+        self.assertEqual(self.jira.issues[task_key]["parent"], self.key)
+        for title in ("[DBA] 55. T+1", "[DBA] 56. T+7"):
+            self.assertEqual(self.jira.issues[created[title]]["parent"], task_key)
+        self.assertFalse(task.parent.exists())
+        self.assertTrue((self.epic / "tasks" / task_key / "subtasks" / created["[DBA] 55. T+1"] / "subtask.md").is_file())
+
+    def test_subtasks_of_a_new_task_that_is_not_valid_wait_for_it(self):
+        task, subs = self.new_task_with_subtasks(task_text="# [DBA] Después del corte\n\nPor qué: {{why}}\n")
+        result = sync.push(self.jira, self.project, self.key, apply=False, assign_open=False)
+        self.assertEqual({i["key"] for i in result["invalid"]}, {"_new-after"})
+        self.assertEqual(sorted(c["key"] for c in result["conflicts"]), ["_new-t1", "_new-t7"])
+        self.assertEqual(result["new"], [])
+        self.assertTrue(all(s.is_file() for s in subs))
+
+
+    def test_a_retry_after_a_failed_subtask_creates_the_rest_under_the_task_already_created(self):
+        self.new_task_with_subtasks()
+        self.jira.fail_on_create = 2  # the task goes up, the first subtask is rejected
+        with self.assertRaises(Exception):
+            sync.push(self.jira, self.project, self.key, apply=True, assign_open=False)
+        self.jira.fail_on_create = None
+        result = sync.push(self.jira, self.project, self.key, apply=True, assign_open=False)
+        self.assertEqual(result["conflicts"], [])
+        tasks = [k for k, i in self.jira.issues.items() if i["summary"] == "[DBA] Después del corte"]
+        self.assertEqual(len(tasks), 1)
+        subs = [i for i in self.jira.issues.values() if i["summary"] in ("[DBA] 55. T+1", "[DBA] 56. T+7")]
+        self.assertEqual(sorted(i["parent"] for i in subs), [tasks[0], tasks[0]])
+        self.assertFalse((self.epic / "tasks/_new-after").exists())
+
+
 if __name__ == "__main__":
     unittest.main()

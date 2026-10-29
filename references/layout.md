@@ -26,5 +26,8 @@ moves an issue.
 - **New subtask:** `…/subtasks/_new-<slug>/subtask.md` with a `# title` and the three sections, written over the lines
   of `templates/description.md` (`Por qué: {{why}}` becomes `Por qué: …`); a placeholder left as is stops the create.
   Push creates it under its folder's parent.
+- **New task or story with new subtasks:** `tasks/_new-<slug>/task.md` and its `subtasks/_new-<slug>/subtask.md` go
+  up in one push: the task first, then its subtasks under the key Jira gave it. If a subtask is rejected halfway, the
+  folder keeps that key in `.key` and the next push creates the rest under it, without a second task.
 - **Conflict:** the field also changed in Jira since the last pull. Push never overwrites it: pull, re-apply the local
   edit, push again.

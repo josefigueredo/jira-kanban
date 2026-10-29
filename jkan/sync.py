@@ -247,6 +247,9 @@ def pull(jira, project: Path, epic_key: str, conv: Optional[dict] = None) -> dic
     return {"epic": epic_key, "issues": len(written), "dir": str(epic)}
 
 
+CREATED_MARK = ".key"  # inside a _new-* folder: the key Jira gave it, kept until its subtasks are created
+
+
 def _local(epic: Path, epic_key: str) -> List[dict]:
     """Every local issue file with the parent and kind its location implies."""
     found = []
@@ -257,6 +260,11 @@ def _local(epic: Path, epic_key: str) -> List[dict]:
             found.append({"path": item, "kind": kind, "parent": epic_key})
             for sub in sorted((item.parent / "subtasks").glob("*/subtask.md")):
                 found.append({"path": sub, "kind": "subtask", "parent": item.parent.name})
+        # A new parent already created whose subtasks were not (a push stopped halfway): they go under its key.
+        for mark in sorted((epic / folder).glob(f"_new*/{CREATED_MARK}")):
+            if not (mark.parent / f"{kind}.md").exists():
+                for sub in sorted((mark.parent / "subtasks").glob("*/subtask.md")):
+                    found.append({"path": sub, "kind": "subtask", "parent": mark.read_text(encoding="utf-8").strip()})
     parsed = []
     for entry in found:  # the folder decides kind and parent; the front matter never moves an issue
         parsed.append(dict(kanban.parse(entry["path"].read_text(encoding="utf-8")), **entry))
@@ -274,17 +282,20 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
     baseline = state["issues"] if "issues" in state else state  # a flat baseline predates the sync time
     changes, conflicts, new, invalid = [], [], [], []
     depth: Dict[str, int] = {}
+    new_parents = set()  # folders of new tasks or stories that this push creates: their new subtasks can go along
     for entry in _local(epic, epic_key):
         depth[entry["key"]] = {"subtask": 0, "epic": 2}.get(entry["kind"], 1)
         folder = entry["path"].parent.name
         if folder.startswith("_new") or not entry["key"]:
-            if entry["parent"] and not KEY_RE.match(entry["parent"]):
+            if entry["parent"] and not KEY_RE.match(entry["parent"]) and entry["parent"] not in new_parents:
                 conflicts.append({"key": folder, "field": "parent", "reason": "create its parent first"})
                 continue
             problems = description.check(entry["description"])
             if problems:  # a new card is created only once its description follows templates/description.md
                 invalid += [{"key": folder, "field": "description", "problem": p} for p in problems]
                 continue
+            if entry["kind"] != "subtask":  # _local lists a task before its subtasks, so they see it here
+                new_parents.add(folder)
             new.append({"path": entry["path"], "kind": entry["kind"], "parent": entry["parent"],
                         "summary": entry["summary"], "description": entry["description"],
                         "done": entry["category"] == "done" or entry["status"].strip().lower() in DONE_STATUSES})
@@ -322,12 +333,19 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
             result["errors"].append(f"{change['key']}: {change['field']} not written ({exc})")
     if new:
         me = jira.myself() if any(item["assignee"] != "none" for item in new) else None
+        created: Dict[str, str] = {}  # folder of a new parent -> its key, for the new subtasks under it
         for item in new:
             who = me if item["assignee"] != "none" else None
-            key = jira.create(_fields(conv, who, item["kind"], item["summary"], item["description"], item["parent"],
+            parent = created.get(item["parent"], item["parent"])
+            key = jira.create(_fields(conv, who, item["kind"], item["summary"], item["description"], parent,
                                       conv.get("default_priority")))
             item["key"] = key
-            shutil.rmtree(item["path"].parent, ignore_errors=True)
+            if item["kind"] == "subtask":
+                shutil.rmtree(item["path"].parent, ignore_errors=True)
+            else:  # its subtasks still live in its folder: only the card goes now, the folder once they are created
+                created[item["path"].parent.name] = key
+                (item["path"].parent / CREATED_MARK).write_text(key + "\n", encoding="utf-8")
+                item["path"].unlink()
             if item["done"]:  # a card written as finished is created and then moved, like create does
                 try:
                     moved = jira.transition_done(key)
@@ -337,6 +355,10 @@ def push(jira, project: Path, epic_key: str, apply: bool, conv: Optional[dict] =
                     reason = "no transition to Done"
                 if not moved:
                     result["errors"].append(f"{key}: created, but {reason}")
+        for folder in kanban.FOLDER.values():  # a created parent's folder goes once none of its subtasks is left
+            for mark in (epic / folder).glob(f"_new*/{CREATED_MARK}"):
+                if not any((mark.parent / "subtasks").glob("*/subtask.md")):
+                    shutil.rmtree(mark.parent, ignore_errors=True)
     pull(jira, project, epic_key, conv)
     return result
 
